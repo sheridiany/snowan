@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/api/chat.ts","./src/theme/tokens.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/api/chat.ts","./src/components/chatview.tsx","./src/components/composer.tsx","./src/components/sider.tsx","./src/components/toolcallcard.tsx","./src/components/types.ts","./src/theme/thememodecontext.tsx","./src/theme/tokens.ts"],"version":"5.9.3"}

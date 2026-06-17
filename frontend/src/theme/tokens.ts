@@ -1,12 +1,35 @@
-import type { ThemeConfig } from 'antd';
+import { theme as antdTheme, type ThemeConfig } from 'antd';
+import type { ThemeAppearance } from 'antd-style';
 
-// Warm "snowan" palette carried over from the prototype.
-export const snowanTheme: ThemeConfig = {
-  token: {
-    colorPrimary: '#FF7F16',
-    borderRadius: 12,
-    colorBgLayout: '#F3EFE7',
-    fontFamily:
-      "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
-  },
-};
+const ACCENT = '#FF7F16';
+
+const FONT =
+  "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+// Warm "snowan" palette. Light keeps the cream document feel; dark keeps the
+// warm accent against a deep neutral so the whole UI flips but stays on-brand.
+export function snowanTheme(appearance: ThemeAppearance): ThemeConfig {
+  if (appearance === 'dark') {
+    return {
+      algorithm: antdTheme.darkAlgorithm,
+      token: {
+        colorPrimary: ACCENT,
+        borderRadius: 12,
+        colorBgLayout: '#1A1714',
+        colorBgContainer: '#231F1B',
+        colorBgElevated: '#2A2521',
+        fontFamily: FONT,
+      },
+    };
+  }
+  return {
+    token: {
+      colorPrimary: ACCENT,
+      borderRadius: 12,
+      colorBgLayout: '#F3EFE7',
+      colorBgContainer: '#FBF8F2',
+      colorBgElevated: '#FFFFFF',
+      fontFamily: FONT,
+    },
+  };
+}

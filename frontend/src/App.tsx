@@ -1,133 +1,115 @@
-import { useRef, useState } from 'react';
-import { Button, Input } from 'antd';
-import { Markdown } from '@lobehub/ui';
+import { useState } from 'react';
 import { createStyles } from 'antd-style';
 import { streamChat } from './api/chat';
-
-type Msg = { role: 'user' | 'assistant'; content: string };
+import Sider from './components/Sider';
+import ChatView from './components/ChatView';
+import Composer from './components/Composer';
+import type { Block, Message, Session } from './components/types';
 
 const useStyles = createStyles(({ token, css }) => ({
   app: css`
     height: 100vh;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     background: ${token.colorBgLayout};
-  `,
-  header: css`
-    width: 100%;
-    max-width: 760px;
-    padding: 20px 16px 8px;
-    font-size: 15px;
-    font-weight: 600;
-    color: ${token.colorTextSecondary};
-  `,
-  scroll: css`
-    flex: 1;
-    width: 100%;
-    overflow-y: auto;
-    display: flex;
-    justify-content: center;
-  `,
-  list: css`
-    width: 100%;
-    max-width: 760px;
-    padding: 8px 16px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  `,
-  user: css`
-    align-self: flex-end;
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: 16px 16px 4px 16px;
-    background: ${token.colorPrimary};
-    color: #fff;
-    white-space: pre-wrap;
-  `,
-  assistant: css`
-    align-self: flex-start;
-    max-width: 92%;
-    padding: 4px 2px;
     color: ${token.colorText};
   `,
-  composer: css`
-    width: 100%;
-    max-width: 760px;
-    padding: 12px 16px 20px;
+  main: css`
+    flex: 1;
+    min-width: 0;
     display: flex;
-    gap: 8px;
-    align-items: flex-end;
+    flex-direction: column;
   `,
 }));
 
+const newSession = (): Session => ({ id: crypto.randomUUID(), title: '新对话' });
+
+// Append a streamed text delta to the last assistant block (or open a new one
+// after a tool card, so text and tools stay in invocation order).
+function appendDelta(blocks: Block[], text: string): Block[] {
+  const last = blocks[blocks.length - 1];
+  if (last && last.kind === 'text') {
+    return [...blocks.slice(0, -1), { kind: 'text', text: last.text + text }];
+  }
+  return [...blocks, { kind: 'text', text }];
+}
+
 export default function App() {
   const { styles } = useStyles();
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [input, setInput] = useState('');
+  const [sessions, setSessions] = useState<Session[]>(() => [newSession()]);
+  const [activeId, setActiveId] = useState(() => sessions[0].id);
+  const [threads, setThreads] = useState<Record<string, Message[]>>({});
   const [busy, setBusy] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const sessionId = useRef(crypto.randomUUID());
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || busy) return;
-    setInput('');
+  const messages = threads[activeId] ?? [];
+
+  const setActiveMessages = (fn: (prev: Message[]) => Message[]) =>
+    setThreads((t) => ({ ...t, [activeId]: fn(t[activeId] ?? []) }));
+
+  // Update the trailing assistant message's blocks in place.
+  const patchAssistant = (fn: (blocks: Block[]) => Block[]) =>
+    setActiveMessages((prev) => {
+      const next = [...prev];
+      const last = next[next.length - 1];
+      if (!last || last.role !== 'assistant') return prev;
+      next[next.length - 1] = { ...last, blocks: fn(last.blocks) };
+      return next;
+    });
+
+  const send = async (text: string) => {
     setBusy(true);
-    setMessages((m) => [...m, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
+
+    const sid = activeId;
+    if (messages.length === 0) {
+      const title = text.length > 24 ? text.slice(0, 24) + '…' : text;
+      setSessions((s) => s.map((x) => (x.id === sid ? { ...x, title } : x)));
+    }
+
+    setActiveMessages((prev) => [
+      ...prev,
+      { role: 'user', blocks: [{ kind: 'text', text }] },
+      { role: 'assistant', blocks: [] },
+    ]);
+
     try {
-      await streamChat(text, sessionId.current, (delta) => {
-        setMessages((m) => {
-          const next = [...m];
-          next[next.length - 1] = {
-            role: 'assistant',
-            content: next[next.length - 1].content + delta,
-          };
-          return next;
-        });
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+      await streamChat(text, sid, {
+        onDelta: (delta) => patchAssistant((b) => appendDelta(b, delta)),
+        onToolCall: (call) =>
+          patchAssistant((b) => [
+            ...b,
+            { kind: 'tool', step: { id: call.id, name: call.name, args: call.args } },
+          ]),
+        onToolResult: (res) =>
+          patchAssistant((b) =>
+            b.map((blk) =>
+              blk.kind === 'tool' && blk.step.id === res.id
+                ? { kind: 'tool', step: { ...blk.step, result: res.result } }
+                : blk,
+            ),
+          ),
       });
     } finally {
       setBusy(false);
     }
   };
 
+  const handleNew = () => {
+    const s = newSession();
+    setSessions((prev) => [s, ...prev]);
+    setActiveId(s.id);
+  };
+
   return (
     <div className={styles.app}>
-      <div className={styles.header}>Snowan</div>
-      <div className={styles.scroll} ref={scrollRef}>
-        <div className={styles.list}>
-          {messages.map((m, i) =>
-            m.role === 'user' ? (
-              <div key={i} className={styles.user}>
-                {m.content}
-              </div>
-            ) : (
-              <div key={i} className={styles.assistant}>
-                <Markdown>{m.content || '…'}</Markdown>
-              </div>
-            ),
-          )}
-        </div>
-      </div>
-      <div className={styles.composer}>
-        <Input.TextArea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onPressEnter={(e) => {
-            if (!e.shiftKey) {
-              e.preventDefault();
-              void send();
-            }
-          }}
-          autoSize={{ minRows: 1, maxRows: 6 }}
-          placeholder="问点什么…"
-        />
-        <Button type="primary" loading={busy} onClick={() => void send()}>
-          发送
-        </Button>
-      </div>
+      <Sider
+        sessions={sessions}
+        activeId={activeId}
+        onSelect={setActiveId}
+        onNew={handleNew}
+      />
+      <main className={styles.main}>
+        <ChatView messages={messages} />
+        <Composer busy={busy} onSend={send} />
+      </main>
     </div>
   );
 }
