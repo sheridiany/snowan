@@ -68,6 +68,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sessionId = useRef(crypto.randomUUID());
 
   const send = async () => {
     const text = input.trim();
@@ -76,7 +77,7 @@ export default function App() {
     setBusy(true);
     setMessages((m) => [...m, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
     try {
-      await streamChat(text, (delta) => {
+      await streamChat(text, sessionId.current, (delta) => {
         setMessages((m) => {
           const next = [...m];
           next[next.length - 1] = {

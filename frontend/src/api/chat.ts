@@ -1,12 +1,13 @@
 // Minimal SSE client for POST /api/chat/stream.
 export async function streamChat(
   message: string,
+  sessionId: string,
   onDelta: (text: string) => void,
 ): Promise<void> {
   const res = await fetch('/api/chat/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, session_id: sessionId }),
   });
   if (!res.body) return;
 
