@@ -69,21 +69,29 @@ fine-grained permission rules, shortcuts editor._
 
 ## 🟡 Phase 2 — Knowledge base  (M — the KM half, highest product value)
 
-Wire the empty 知识库 tabs to a real backend and give the agent a
-`knowledge_search` tool. Build sub-features in order:
+Foundation laid (researched against REMIO + the AI-PKM field + OSS Khoj/Reor/Onyx
++ 2026 retrieval practice): **everything local except the final LLM answer**;
+portable Markdown vault as source of truth; a derived SQLite index; hybrid
+(keyword + on-device-embedding) retrieval. Build sub-features in order:
 
-- **2a Notes** — _backend ✅_: notes store at `~/.snowan/knowledge/notes.json`
-  (`backend/src/snowan/knowledge.py`), CRUD at `/api/knowledge/notes`. Scoped down
-  from QwenPaw `app/knowledge_notes.py` (dropped chat-capture source fields, daily
-  notes, draft generation). _Frontend 笔记 tab wiring pending the shell refactor._
-- **2b `knowledge_search` tool + `/api/knowledge/search`** — _backend ✅_: keyword +
-  recency search over notes (CJK n-grams, stopwords, title×10/body×3/recency,
-  hit-centered excerpt), exposed as a read-only agent tool that auto-lists in
-  Settings 工具. Ported from QwenPaw `knowledge_service.py` / `knowledge_query.py`
-  minus list-intent/alias/embedding paths. _Composer 数据源 chip = frontend, later._
-- **2c Local folders + embeddings**: register folders, markdown-aware chunking,
-  SQLite chunk+embedding store, hybrid search; embedding model derived from the
-  active endpoint. _QwenPaw `knowledge_index.py`, `knowledge_embeddings.py`._
+- **2a Notes** — _backend ✅_: portable Markdown **vault** — one `.md` + YAML
+  frontmatter per note under `~/.snowan/knowledge/notes/` (Obsidian/git-able),
+  source of truth; CRUD at `/api/knowledge/notes`; one-time migration from the old
+  notes.json; title-change renames the file. `backend/src/snowan/knowledge.py`.
+  _Frontend 笔记 tab wiring pending the shell refactor._
+- **2b `knowledge_search` (hybrid) + `/api/knowledge/search`** — _backend ✅_:
+  derived SQLite index (`documents` + `chunks`, markdown chunking, sha256
+  hash-incremental) with **on-device embeddings** (fastembed `bge-small-zh-v1.5`,
+  512d — the active cloud endpoint serves no embeddings, and local is more private
+  anyway). Retrieval = CJK-n-gram keyword recall + semantic cosine fused by RRF,
+  deduped per note; read-only agent tool, auto-lists in Settings 工具. Brute-force
+  at single-user scale; FTS5/sqlite-vec are the drop-in scale-up path. `documents`
+  is source-typed so files/web/chat reuse the same index.
+  `embeddings.py` · `knowledge_index.py` · `knowledge_search.py`.
+- **2c Local folders / file import**: ingest a chosen folder's files (reuse the
+  attachment doc-parsers) as `source_type='file'` documents into the SAME index —
+  embeddings + chunking + hybrid search already done in 2b. _QwenPaw
+  `knowledge_index.py`._
 - **2d Web / AI-chat capture**: 网页 + AI 对话 tabs — fetch URL → extract text +
   metadata (httpx + readability), dedupe; import AI-chat transcripts. _QwenPaw
   `browser_capture.py` (store only, no headless browser)._
