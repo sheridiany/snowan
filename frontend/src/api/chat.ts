@@ -33,6 +33,10 @@ export async function streamChat(
   await consume(res, handlers);
 }
 
+export async function deleteSession(sessionId: string): Promise<void> {
+  await fetch(api(`/api/sessions/${sessionId}`), { method: 'DELETE' });
+}
+
 // Resume a paused turn: approved tools execute, denied tools return a denial to
 // the model. The continuation streams back the same typed event protocol.
 export async function approveChat(

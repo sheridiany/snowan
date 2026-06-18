@@ -18,7 +18,7 @@ from pydantic_ai import (
 from pydantic_ai.messages import ModelMessage
 
 from ..agent.build import build_agent
-from ..agent.sessions import load_history, save_history
+from ..agent.sessions import delete_history, load_history, save_history
 
 router = APIRouter()
 
@@ -128,6 +128,12 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
         _run_new(req.message, history, req.session_id, req.mode),
         media_type="text/event-stream",
     )
+
+
+@router.delete("/api/sessions/{session_id}")
+def delete_session(session_id: str) -> dict:
+    delete_history(session_id)
+    return {"ok": True}
 
 
 @router.post("/api/chat/approve")

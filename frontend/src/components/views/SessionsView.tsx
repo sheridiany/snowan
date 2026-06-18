@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActionIcon, Empty, Flexbox, Tag, Text } from '@lobehub/ui';
+import { Dropdown, Input, Modal } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   Check,
@@ -7,7 +8,10 @@ import {
   ChevronRight,
   Circle,
   MessageSquare,
+  MoreHorizontal,
+  Pencil,
   SlidersHorizontal,
+  Trash2,
 } from 'lucide-react';
 
 import { ListPane } from '../shell/ListPane';
@@ -88,6 +92,10 @@ const useStyles = createStyles(({ token, css }) => ({
     &:hover {
       background: ${token.colorFillTertiary};
     }
+    /* reveal the ⋯ button only on hover (or while its menu is open) */
+    &:hover .row-more {
+      opacity: 1;
+    }
   `,
   rowActive: css`
     background: ${token.colorFillSecondary};
@@ -143,7 +151,7 @@ const useStyles = createStyles(({ token, css }) => ({
   rowTop: css`
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
   `,
   rowTitle: css`
     flex: 1;
@@ -162,6 +170,23 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 11px;
     color: ${token.colorTextQuaternary};
   `,
+  more: css`
+    flex: none;
+    width: 22px;
+    height: 18px;
+    margin: -1px -4px 0 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: ${token.borderRadiusSM}px;
+    color: ${token.colorTextTertiary};
+    opacity: 0;
+    transition: opacity 0.12s ease, background 0.12s ease;
+    &:hover {
+      background: ${token.colorFill};
+      color: ${token.colorText};
+    }
+  `,
   tags: css`
     display: flex;
     flex-wrap: wrap;
@@ -174,20 +199,46 @@ export default function SessionsView({
   activeId,
   onSelect,
   onSetStatus,
+  onRename,
+  onDelete,
 }: {
   sessions: Session[];
   activeId: string;
   onSelect: (id: string) => void;
   onSetStatus?: (id: string, status: SessionStatus) => void;
+  onRename?: (id: string, title: string) => void;
+  onDelete?: (id: string) => void;
 }) {
   const { styles, cx } = useStyles();
   const [collapsed, setCollapsed] = useState<Set<SessionStatus>>(new Set());
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState('');
 
   const toggle = (status: SessionStatus) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
       next.has(status) ? next.delete(status) : next.add(status);
       return next;
+    });
+
+  const startRename = (s: Session) => {
+    setEditId(s.id);
+    setEditVal(s.title);
+  };
+  const saveRename = (s: Session) => {
+    if (editId !== s.id) return;
+    setEditId(null);
+    const t = editVal.trim();
+    if (t && t !== s.title) onRename?.(s.id, t);
+  };
+  const confirmDelete = (s: Session) =>
+    Modal.confirm({
+      title: `删除会话?`,
+      content: `“${s.title}” 及其全部对话将被删除,无法撤销。`,
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: () => onDelete?.(s.id),
     });
 
   return (
@@ -246,12 +297,58 @@ export default function SessionsView({
                       </div>
                       <div className={styles.body}>
                         <div className={styles.rowTop}>
-                          <Text
-                            className={cx(styles.rowTitle, done && styles.rowTitleDone)}
-                          >
-                            {s.title}
-                          </Text>
+                          {editId === s.id ? (
+                            <Input
+                              size="small"
+                              autoFocus
+                              variant="borderless"
+                              style={{ flex: 1, padding: 0, height: 18, fontSize: 13 }}
+                              value={editVal}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setEditVal(e.target.value)}
+                              onPressEnter={() => saveRename(s)}
+                              onBlur={() => saveRename(s)}
+                            />
+                          ) : (
+                            <Text
+                              className={cx(styles.rowTitle, done && styles.rowTitleDone)}
+                            >
+                              {s.title}
+                            </Text>
+                          )}
                           <Text className={styles.time}>{relTime(s.updatedAt)}</Text>
+                          {(onRename || onDelete) && editId !== s.id && (
+                            <Dropdown
+                              trigger={['click']}
+                              menu={{
+                                items: [
+                                  onRename && {
+                                    key: 'rename',
+                                    icon: <Pencil size={14} />,
+                                    label: '重命名',
+                                  },
+                                  onDelete && {
+                                    key: 'delete',
+                                    icon: <Trash2 size={14} />,
+                                    label: '删除',
+                                    danger: true,
+                                  },
+                                ].filter(Boolean) as { key: string }[],
+                                onClick: ({ key, domEvent }) => {
+                                  domEvent.stopPropagation();
+                                  if (key === 'rename') startRename(s);
+                                  if (key === 'delete') confirmDelete(s);
+                                },
+                              }}
+                            >
+                              <span
+                                className={cx(styles.more, 'row-more')}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal size={15} />
+                              </span>
+                            </Dropdown>
+                          )}
                         </div>
                         {s.tags.length > 0 && (
                           <Flexbox className={styles.tags}>

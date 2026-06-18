@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createStyles, useThemeMode } from 'antd-style';
 import { persistThemeMode } from './theme/themes';
-import { streamChat, approveChat, type ChatHandlers } from './api/chat';
+import { streamChat, approveChat, deleteSession, type ChatHandlers } from './api/chat';
 import TitleBar from './components/shell/TitleBar';
 import RightPanel from './components/shell/RightPanel';
 import NavRail, { type View } from './components/shell/NavRail';
@@ -236,6 +236,29 @@ export default function App() {
     go('conversations');
   };
 
+  const handleRenameSession = (id: string, title: string) =>
+    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
+
+  const handleDeleteSession = (id: string) => {
+    deleteSession(id).catch(() => {});
+    setThreads((t) => {
+      const next = { ...t };
+      delete next[id];
+      return next;
+    });
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      return next.length ? next : [newSession()];
+    });
+  };
+
+  // Keep the active id pointing at a session that still exists (e.g. after delete).
+  useEffect(() => {
+    if (sessions.length && !sessions.some((s) => s.id === activeId)) {
+      setActiveId(sessions[0].id);
+    }
+  }, [sessions, activeId]);
+
   const activeTitle = sessions.find((s) => s.id === activeId)?.title;
 
   return (
@@ -267,6 +290,8 @@ export default function App() {
                       ),
                     )
                   }
+                  onRename={handleRenameSession}
+                  onDelete={handleDeleteSession}
                 />
               )}
               <section className={styles.detail}>
