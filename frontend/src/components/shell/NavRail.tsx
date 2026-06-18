@@ -1,10 +1,10 @@
 import { Button, Icon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import {
-  PencilLine,
-  MessagesSquare,
+  SquarePen,
+  Inbox,
   Library,
-  Sparkles,
+  Zap,
   Settings,
   Moon,
   Sun,
@@ -114,9 +114,9 @@ const useStyles = createStyles(({ token, css }) => ({
 type NavItem = { view: View; label: string; icon: LucideIcon };
 
 const PRIMARY: NavItem[] = [
-  { view: 'conversations', label: '所有会话', icon: MessagesSquare },
+  { view: 'conversations', label: '所有会话', icon: Inbox },
   { view: 'knowledge', label: '知识库', icon: Library },
-  { view: 'skills', label: '技能', icon: Sparkles },
+  { view: 'skills', label: '技能', icon: Zap },
 ];
 
 export default function NavRail({
@@ -159,7 +159,7 @@ export default function NavRail({
         className={styles.newBtn}
         type="primary"
         shape="round"
-        icon={<Icon icon={PencilLine} size={16} />}
+        icon={<Icon icon={SquarePen} size={16} />}
         onClick={onNewChat}
       >
         新建会话
