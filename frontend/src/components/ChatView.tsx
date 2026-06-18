@@ -127,11 +127,14 @@ export default function ChatView({ messages, onApprovalDecision }: Props) {
                     </Markdown>
                   ) : null;
                 }
-                return (
-                  <div key={j} className={styles.tool}>
-                    <ToolCallCard step={b.step} />
-                  </div>
-                );
+                if (b.kind === 'tool') {
+                  return (
+                    <div key={j} className={styles.tool}>
+                      <ToolCallCard step={b.step} />
+                    </div>
+                  );
+                }
+                return null; // legacy block shape from threads saved before this schema
               })}
               {(() => {
                 const pending = m.blocks.filter(
