@@ -13,6 +13,8 @@ import RightPanel from './components/shell/RightPanel';
 import type { View } from './components/shell/ListPane';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
+import NoteDraftModal from './components/NoteDraftModal';
+import type { DraftEntry } from './api/knowledge';
 import SessionsView from './components/views/SessionsView';
 import KnowledgeView from './components/knowledge/KnowledgeView';
 import ComingSoonView from './components/views/ComingSoonView';
@@ -308,6 +310,28 @@ export default function App() {
 
   const activeTitle = sessions.find((s) => s.id === activeId)?.title;
 
+  // 存为笔记: distill the answer (+ its question) into a note draft to review.
+  const [noteDraft, setNoteDraft] = useState<{ open: boolean; entries: DraftEntry[]; topic: string }>({
+    open: false,
+    entries: [],
+    topic: '',
+  });
+  const textOf = (m: Message) =>
+    m.blocks
+      .filter((b): b is Extract<Block, { kind: 'text' }> => b.kind === 'text')
+      .map((b) => b.text)
+      .join('')
+      .trim();
+  const handleSaveNote = (messageIndex: number) => {
+    const prevUser = messages.slice(0, messageIndex).reverse().find((m) => m.role === 'user');
+    const entries: DraftEntry[] = [];
+    if (prevUser && textOf(prevUser)) entries.push({ role: 'user', text: textOf(prevUser) });
+    const answer = textOf(messages[messageIndex]);
+    if (answer) entries.push({ role: 'assistant', text: answer });
+    if (!entries.length) return;
+    setNoteDraft({ open: true, entries, topic: prevUser ? textOf(prevUser).slice(0, 40) : '' });
+  };
+
   return (
     <div className={styles.app}>
       <TitleBar
@@ -351,6 +375,7 @@ export default function App() {
                   messages={messages}
                   busy={busy}
                   onApprovalDecision={handleApprovalDecision}
+                  onSaveNote={handleSaveNote}
                 />
                 <Composer busy={busy} onSend={send} onStop={stop} />
               </section>
@@ -383,6 +408,13 @@ export default function App() {
           {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
         </main>
       </div>
+      <NoteDraftModal
+        open={noteDraft.open}
+        entries={noteDraft.entries}
+        sessionId={activeId}
+        topic={noteDraft.topic}
+        onClose={() => setNoteDraft((s) => ({ ...s, open: false }))}
+      />
     </div>
   );
 }

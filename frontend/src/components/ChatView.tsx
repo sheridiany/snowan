@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Empty, Markdown } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
-import { Check, Copy, Paperclip, Sparkles } from 'lucide-react';
+import { Check, Copy, NotebookPen, Paperclip, Sparkles } from 'lucide-react';
 import ToolCallCard from './ToolCallCard';
 import ApprovalCard from './ApprovalCard';
 import type { Message } from './types';
@@ -152,9 +152,10 @@ type Props = {
   messages: Message[];
   busy?: boolean;
   onApprovalDecision?: (messageIndex: number, approve: boolean) => void;
+  onSaveNote?: (messageIndex: number) => void;
 };
 
-export default function ChatView({ messages, busy, onApprovalDecision }: Props) {
+export default function ChatView({ messages, busy, onApprovalDecision, onSaveNote }: Props) {
   const { styles } = useStyles();
   const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -263,6 +264,14 @@ export default function ChatView({ messages, busy, onApprovalDecision }: Props) 
                   {textContent && !isStreaming && (
                     <div className={`${styles.actions} msg-actions`}>
                       <CopyAction text={textContent} />
+                      {onSaveNote && (
+                        <ActionIcon
+                          icon={NotebookPen}
+                          size="small"
+                          title="存为笔记"
+                          onClick={() => onSaveNote(i)}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
