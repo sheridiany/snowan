@@ -3,7 +3,7 @@ import { createStyles } from 'antd-style';
 import {
   PencilLine,
   MessagesSquare,
-  Database,
+  Library,
   Sparkles,
   Settings,
   Moon,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useThemeMode } from 'antd-style';
 
-export type View = 'chat' | 'sessions' | 'sources' | 'skills' | 'settings';
+export type View = 'conversations' | 'knowledge' | 'skills' | 'settings';
 
 const useStyles = createStyles(({ token, css }) => ({
   rail: css`
@@ -114,8 +114,8 @@ const useStyles = createStyles(({ token, css }) => ({
 type NavItem = { view: View; label: string; icon: LucideIcon };
 
 const PRIMARY: NavItem[] = [
-  { view: 'sessions', label: '所有会话', icon: MessagesSquare },
-  { view: 'sources', label: '数据源', icon: Database },
+  { view: 'conversations', label: '所有会话', icon: MessagesSquare },
+  { view: 'knowledge', label: '知识库', icon: Library },
   { view: 'skills', label: '技能', icon: Sparkles },
 ];
 

@@ -24,7 +24,12 @@ export type Message = {
   blocks: Block[];
 };
 
+export type SessionStatus = 'active' | 'todo' | 'done';
+
 export type Session = {
   id: string;
   title: string;
+  status: SessionStatus;
+  tags: string[];
+  updatedAt: number;
 };

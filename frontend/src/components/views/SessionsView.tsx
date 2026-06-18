@@ -1,54 +1,209 @@
-import { Empty, ListItem, Tag, Text } from '@lobehub/ui';
+import { useState } from 'react';
+import { ActionIcon, Empty, Flexbox, Tag, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { MessageSquare } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  MessageSquare,
+  SlidersHorizontal,
+} from 'lucide-react';
+
+import type { Session, SessionStatus } from '../types';
+
+// Relative time in Chinese from a past epoch ms: "刚刚" / "3分钟" / "5小时" / "19天".
+function relTime(ts: number): string {
+  const diff = Math.max(0, Date.now() - ts);
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return '刚刚';
+  if (min < 60) return `${min}分钟`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}小时`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}天`;
+  const mon = Math.floor(day / 30);
+  if (mon < 12) return `${mon}个月`;
+  return `${Math.floor(mon / 12)}年`;
+}
+
+const SECTIONS: { status: SessionStatus; label: string }[] = [
+  { status: 'active', label: '进行中' },
+  { status: 'todo', label: '待办' },
+  { status: 'done', label: '已完成' },
+];
+
+// Clicking the status circle advances active -> todo -> done -> active.
+const NEXT: Record<SessionStatus, SessionStatus> = {
+  active: 'todo',
+  todo: 'done',
+  done: 'active',
+};
 
 const useStyles = createStyles(({ token, css }) => ({
-  scroll: css`
-    flex: 1;
-    overflow-y: auto;
-  `,
-  page: css`
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 28px 24px 32px;
+  column: css`
+    width: 340px;
+    flex: none;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    background: ${token.colorBgContainer};
+    border-right: 1px solid ${token.colorBorderSecondary};
   `,
   header: css`
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  `,
-  title: css`
-    font-size: 24px;
-    font-weight: 700;
-    color: ${token.colorText};
-  `,
-  sub: css`
-    font-size: 13px;
-    color: ${token.colorTextTertiary};
-  `,
-  list: css`
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  `,
-  avatar: css`
-    width: 34px;
-    height: 34px;
+    position: relative;
     flex: none;
-    border-radius: 10px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: ${token.colorFillTertiary};
+    padding: 0 12px;
+    border-bottom: 1px solid ${token.colorBorderSecondary};
+  `,
+  title: css`
+    font-size: 15px;
+    font-weight: 600;
+    color: ${token.colorText};
+  `,
+  filter: css`
+    position: absolute;
+    right: 8px;
+  `,
+  scroll: css`
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 8px 16px;
+  `,
+  section: css`
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+  `,
+  sectionHeader: css`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 8px;
+    border-radius: ${token.borderRadiusSM}px;
+    cursor: pointer;
+    user-select: none;
+    color: ${token.colorTextSecondary};
+    &:hover {
+      background: ${token.colorFillQuaternary};
+    }
+  `,
+  chevron: css`
+    flex: none;
+    display: inline-flex;
+    color: ${token.colorTextTertiary};
+  `,
+  sectionLabel: css`
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     color: ${token.colorTextSecondary};
   `,
-  avatarActive: css`
-    background: ${token.colorPrimary};
-    color: #fff;
+  count: css`
+    font-size: 12px;
+    color: ${token.colorTextQuaternary};
+  `,
+  row: css`
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: ${token.borderRadius}px;
+    cursor: pointer;
+    transition: background 0.15s;
+    &:hover {
+      background: ${token.colorFillTertiary};
+    }
+  `,
+  rowActive: css`
+    background: ${token.colorFillSecondary};
+    &:hover {
+      background: ${token.colorFillSecondary};
+    }
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: ${token.colorPrimary};
+    }
+  `,
+  circle: css`
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: ${token.colorTextTertiary};
+    cursor: pointer;
+    transition: color 0.15s;
+    &:hover {
+      color: ${token.colorText};
+    }
+  `,
+  circleDone: css`
+    color: ${token.colorSuccess};
+    &:hover {
+      color: ${token.colorSuccess};
+    }
+  `,
+  circleReadonly: css`
+    cursor: default;
+    &:hover {
+      color: ${token.colorTextTertiary};
+    }
+  `,
+  body: css`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  `,
+  rowTop: css`
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  `,
+  rowTitle: css`
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: ${token.colorText};
+  `,
+  rowTitleDone: css`
+    color: ${token.colorTextTertiary};
+  `,
+  time: css`
+    flex: none;
+    font-size: 11px;
+    color: ${token.colorTextQuaternary};
+  `,
+  tags: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  `,
+  empty: css`
+    flex: 1;
+    min-height: 0;
+    display: flex;
   `,
 }));
 
@@ -56,55 +211,119 @@ export default function SessionsView({
   sessions,
   activeId,
   onSelect,
+  onSetStatus,
 }: {
-  sessions: { id: string; title: string }[];
+  sessions: Session[];
   activeId: string;
   onSelect: (id: string) => void;
+  onSetStatus?: (id: string, status: SessionStatus) => void;
 }) {
   const { styles, cx } = useStyles();
+  const [collapsed, setCollapsed] = useState<Set<SessionStatus>>(new Set());
+
+  const toggle = (status: SessionStatus) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(status) ? next.delete(status) : next.add(status);
+      return next;
+    });
 
   return (
-    <div className={styles.scroll}>
-      <div className={styles.page}>
-        <div className={styles.header}>
-          <Text className={styles.title}>所有会话</Text>
-          <Text className={styles.sub}>
-            {sessions.length > 0
-              ? `共 ${sessions.length} 个会话`
-              : '你的对话历史会显示在这里'}
-          </Text>
-        </div>
+    <div className={styles.column}>
+      <div className={styles.header}>
+        <Text className={styles.title}>所有会话</Text>
+        <ActionIcon
+          className={styles.filter}
+          icon={SlidersHorizontal}
+          size="small"
+          title="筛选"
+        />
+      </div>
 
-        {sessions.length === 0 ? (
+      {sessions.length === 0 ? (
+        <div className={styles.empty}>
           <Empty
+            flex={1}
             icon={MessageSquare}
             title="还没有会话"
             description="开始一段新对话,它会出现在这里。"
-            paddingBlock={48}
           />
-        ) : (
-          <div className={styles.list}>
-            {sessions.map((s) => {
-              const active = s.id === activeId;
-              return (
-                <ListItem
-                  key={s.id}
-                  active={active}
-                  title={s.title}
-                  onClick={() => onSelect(s.id)}
-                  avatar={
-                    <div className={cx(styles.avatar, active && styles.avatarActive)}>
-                      <MessageSquare size={18} strokeWidth={1.8} />
-                    </div>
-                  }
-                  actions={active ? <Tag color="success">当前</Tag> : undefined}
-                  showAction={active}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className={styles.scroll}>
+          {SECTIONS.map(({ status, label }) => {
+            const items = sessions.filter((s) => s.status === status);
+            if (items.length === 0) return null;
+            const isCollapsed = collapsed.has(status);
+            return (
+              <div key={status} className={styles.section}>
+                <div className={styles.sectionHeader} onClick={() => toggle(status)}>
+                  <span className={styles.chevron}>
+                    {isCollapsed ? (
+                      <ChevronRight size={14} />
+                    ) : (
+                      <ChevronDown size={14} />
+                    )}
+                  </span>
+                  <Text className={styles.sectionLabel}>{label}</Text>
+                  <Text className={styles.count}>{items.length}</Text>
+                </div>
+                {!isCollapsed &&
+                  items.map((s) => {
+                    const active = s.id === activeId;
+                    const done = s.status === 'done';
+                    return (
+                      <div
+                        key={s.id}
+                        className={cx(styles.row, active && styles.rowActive)}
+                        onClick={() => onSelect(s.id)}
+                      >
+                        <div
+                          className={cx(
+                            styles.circle,
+                            done && styles.circleDone,
+                            !onSetStatus && styles.circleReadonly,
+                          )}
+                          onClick={(e) => {
+                            if (!onSetStatus) return;
+                            e.stopPropagation();
+                            onSetStatus(s.id, NEXT[s.status]);
+                          }}
+                        >
+                          {done ? (
+                            <Check size={15} strokeWidth={2.4} />
+                          ) : (
+                            <Circle size={15} strokeWidth={2} />
+                          )}
+                        </div>
+                        <div className={styles.body}>
+                          <div className={styles.rowTop}>
+                            <Text
+                              className={cx(
+                                styles.rowTitle,
+                                done && styles.rowTitleDone,
+                              )}
+                            >
+                              {s.title}
+                            </Text>
+                            <Text className={styles.time}>{relTime(s.updatedAt)}</Text>
+                          </div>
+                          {s.tags.length > 0 && (
+                            <Flexbox className={styles.tags}>
+                              {s.tags.map((t) => (
+                                <Tag key={t}>{t}</Tag>
+                              ))}
+                            </Flexbox>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

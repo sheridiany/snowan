@@ -8,7 +8,7 @@ import NavRail, { type View } from './components/shell/NavRail';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
 import SessionsView from './components/views/SessionsView';
-import SourcesView from './components/views/SourcesView';
+import KnowledgeView from './components/knowledge/KnowledgeView';
 import SkillsView from './components/views/SkillsView';
 import SettingsView from './components/settings/SettingsView';
 import type { Block, Message, Session } from './components/types';
@@ -32,9 +32,39 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
   `,
+  detail: css`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: ${token.colorBgLayout};
+  `,
+  detailHeader: css`
+    flex: none;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border-bottom: 1px solid ${token.colorBorderSecondary};
+  `,
+  detailTitle: css`
+    font-size: 14px;
+    font-weight: 600;
+    color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
 }));
 
-const newSession = (): Session => ({ id: crypto.randomUUID(), title: '新对话' });
+const newSession = (): Session => ({
+  id: crypto.randomUUID(),
+  title: '新对话',
+  status: 'active',
+  tags: [],
+  updatedAt: Date.now(),
+});
 
 // Append a streamed text delta to the last assistant block (or open a new one
 // after a tool card, so text and tools stay in invocation order).
@@ -54,7 +84,7 @@ export default function App() {
   useEffect(() => persistThemeMode(themeMode), [themeMode]);
 
   // View navigation with back/forward history.
-  const [hist, setHist] = useState<View[]>(['chat']);
+  const [hist, setHist] = useState<View[]>(['conversations']);
   const [hi, setHi] = useState(0);
   const view = hist[hi];
   const go = (v: View) => {
@@ -167,7 +197,7 @@ export default function App() {
     const s = newSession();
     setSessions((prev) => [s, ...prev]);
     setActiveId(s.id);
-    go('chat');
+    go('conversations');
   };
 
   const activeTitle = sessions.find((s) => s.id === activeId)?.title;
@@ -179,7 +209,6 @@ export default function App() {
         rightOpen={rightOpen}
         canBack={canBack}
         canForward={canForward}
-        title={view === 'chat' ? activeTitle : undefined}
         onToggleNav={() => setNavCollapsed((c) => !c)}
         onToggleRight={() => setRightOpen((o) => !o)}
         onBack={() => setHi((i) => Math.max(0, i - 1))}
@@ -187,27 +216,35 @@ export default function App() {
       />
       <div className={styles.body}>
         {!navCollapsed && <NavRail view={view} onView={go} onNewChat={handleNew} />}
-        <main className={styles.main}>
-          {view === 'chat' && (
-            <>
-              <ChatView messages={messages} onApprovalDecision={handleApprovalDecision} />
-              <Composer busy={busy} onSend={send} />
-            </>
-          )}
-          {view === 'sessions' && (
+        {view === 'conversations' ? (
+          <>
             <SessionsView
               sessions={sessions}
               activeId={activeId}
-              onSelect={(id) => {
-                setActiveId(id);
-                go('chat');
-              }}
+              onSelect={setActiveId}
+              onSetStatus={(id, status) =>
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    s.id === id ? { ...s, status, updatedAt: Date.now() } : s,
+                  ),
+                )
+              }
             />
-          )}
-          {view === 'sources' && <SourcesView />}
-          {view === 'skills' && <SkillsView />}
-          {view === 'settings' && <SettingsView />}
-        </main>
+            <section className={styles.detail}>
+              <header className={styles.detailHeader}>
+                <span className={styles.detailTitle}>{activeTitle}</span>
+              </header>
+              <ChatView messages={messages} onApprovalDecision={handleApprovalDecision} />
+              <Composer busy={busy} onSend={send} />
+            </section>
+          </>
+        ) : (
+          <main className={styles.main}>
+            {view === 'knowledge' && <KnowledgeView />}
+            {view === 'skills' && <SkillsView />}
+            {view === 'settings' && <SettingsView />}
+          </main>
+        )}
         {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
       </div>
     </div>
