@@ -17,7 +17,7 @@ import SessionsView from './components/views/SessionsView';
 import KnowledgeView from './components/knowledge/KnowledgeView';
 import SkillsView from './components/views/SkillsView';
 import SettingsView from './components/settings/SettingsView';
-import type { Block, Message, Session } from './components/types';
+import type { Block, Message, Session, ToolStep } from './components/types';
 
 const useStyles = createStyles(({ token, css }) => ({
   app: css`
@@ -99,6 +99,20 @@ function appendDelta(blocks: Block[], text: string): Block[] {
   return [...blocks, { kind: 'text', text }];
 }
 
+// Merge a tool event into its existing row (matched by call id) or append a new
+// one, so the announce / approval / execution events for one call stay a single
+// row instead of stacking up. `patch` overlays only the fields it carries.
+function upsertTool(blocks: Block[], id: string, patch: Partial<ToolStep>): Block[] {
+  const i = blocks.findIndex((b) => b.kind === 'tool' && b.step.id === id);
+  if (i === -1) {
+    return [...blocks, { kind: 'tool', step: { id, name: '', args: {}, ...patch } }];
+  }
+  const next = [...blocks];
+  const prev = next[i] as Extract<Block, { kind: 'tool' }>;
+  next[i] = { kind: 'tool', step: { ...prev.step, ...patch } };
+  return next;
+}
+
 export default function App() {
   const { styles } = useStyles();
   const { themeMode } = useThemeMode();
@@ -165,20 +179,16 @@ export default function App() {
   const streamHandlers: ChatHandlers = {
     onDelta: (delta) => patchAssistant((b) => appendDelta(b, delta)),
     onToolCall: (call) =>
-      patchAssistant((b) => [
-        ...b,
-        { kind: 'tool', step: { id: call.id, name: call.name, args: call.args } },
-      ]),
+      patchAssistant((b) => upsertTool(b, call.id, { name: call.name, args: call.args })),
     onToolResult: (res) =>
+      patchAssistant((b) => upsertTool(b, res.id, { name: res.name, result: res.result })),
+    onApprovalRequired: (calls) =>
       patchAssistant((b) =>
-        b.map((blk) =>
-          blk.kind === 'tool' && blk.step.id === res.id
-            ? { kind: 'tool', step: { ...blk.step, result: res.result } }
-            : blk,
+        calls.reduce(
+          (acc, c) => upsertTool(acc, c.id, { name: c.name, args: c.args, approval: 'pending' }),
+          b,
         ),
       ),
-    onApprovalRequired: (calls) =>
-      patchAssistant((b) => [...b, { kind: 'approval', calls }]),
   };
 
   const abortRef = useRef<AbortController | null>(null);
@@ -213,27 +223,30 @@ export default function App() {
     }
   };
 
-  const handleApprovalDecision = async (
-    messageIndex: number,
-    blockIndex: number,
-    approve: boolean,
-  ) => {
+  // A paused turn answers all its pending tool calls in one resume, so the
+  // decision applies to every pending row in that message at once.
+  const handleApprovalDecision = async (messageIndex: number, approve: boolean) => {
     const message = messages[messageIndex];
-    const block = message?.blocks[blockIndex];
-    if (!block || block.kind !== 'approval' || block.decided) return;
+    const pendingIds = (message?.blocks ?? [])
+      .filter((b): b is Extract<Block, { kind: 'tool' }> => b.kind === 'tool' && b.step.approval === 'pending')
+      .map((b) => b.step.id);
+    if (pendingIds.length === 0) return;
 
     const decisions: Record<string, boolean> = {};
-    for (const call of block.calls) decisions[call.id] = approve;
+    for (const id of pendingIds) decisions[id] = approve;
 
     setActiveMessages((prev) => {
       const next = [...prev];
       const msg = next[messageIndex];
       if (!msg) return prev;
-      const blocks = [...msg.blocks];
-      const blk = blocks[blockIndex];
-      if (!blk || blk.kind !== 'approval') return prev;
-      blocks[blockIndex] = { ...blk, decided: true, approved: approve };
-      next[messageIndex] = { ...msg, blocks };
+      next[messageIndex] = {
+        ...msg,
+        blocks: msg.blocks.map((b) =>
+          b.kind === 'tool' && b.step.approval === 'pending'
+            ? { kind: 'tool', step: { ...b.step, approval: approve ? 'approved' : 'denied' } }
+            : b,
+        ),
+      };
       return next;
     });
 

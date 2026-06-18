@@ -1,23 +1,19 @@
+// One tool call is a single row that transitions in place: a guarded call is
+// 'pending' until the user decides, then 'approved'/'denied'; a result arriving
+// marks it done. So announce -> approve -> run collapse into one row, not three.
 export type ToolStep = {
   id: string;
   name: string;
   args: Record<string, unknown>;
   result?: string;
+  approval?: 'pending' | 'approved' | 'denied';
 };
 
-export type ApprovalCall = {
-  id: string;
-  name: string;
-  args: Record<string, unknown>;
-};
-
-// A turn's content is an ordered stream of text and tool steps, so tool cards
-// land inline exactly where the agent invoked them. An approval block pauses the
-// turn inline until the user allows or denies the pending calls.
+// A turn's content is an ordered stream of text and tool steps, so tool rows
+// land inline exactly where the agent invoked them.
 export type Block =
   | { kind: 'text'; text: string }
-  | { kind: 'tool'; step: ToolStep }
-  | { kind: 'approval'; calls: ApprovalCall[]; decided?: boolean; approved?: boolean };
+  | { kind: 'tool'; step: ToolStep };
 
 export type Attachment = { name: string; mime: string };
 

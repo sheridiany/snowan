@@ -61,19 +61,18 @@ const useStyles = createStyles(({ token, css }) => ({
     align-self: stretch;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     color: ${token.colorText};
   `,
   tool: css`
-    align-self: flex-start;
+    align-self: stretch;
     width: 100%;
-    max-width: 560px;
   `,
 }));
 
 type Props = {
   messages: Message[];
-  onApprovalDecision?: (messageIndex: number, blockIndex: number, approve: boolean) => void;
+  onApprovalDecision?: (messageIndex: number, approve: boolean) => void;
 };
 
 export default function ChatView({ messages, onApprovalDecision }: Props) {
@@ -128,24 +127,22 @@ export default function ChatView({ messages, onApprovalDecision }: Props) {
                     </Markdown>
                   ) : null;
                 }
-                if (b.kind === 'approval') {
-                  return (
-                    <div key={j} className={styles.tool}>
-                      <ApprovalCard
-                        calls={b.calls}
-                        decided={b.decided}
-                        approved={b.approved}
-                        onDecide={(approve) => onApprovalDecision?.(i, j, approve)}
-                      />
-                    </div>
-                  );
-                }
                 return (
                   <div key={j} className={styles.tool}>
                     <ToolCallCard step={b.step} />
                   </div>
                 );
               })}
+              {(() => {
+                const pending = m.blocks.filter(
+                  (b) => b.kind === 'tool' && b.step.approval === 'pending',
+                ).length;
+                return pending > 0 ? (
+                  <div className={styles.tool}>
+                    <ApprovalCard count={pending} onDecide={(approve) => onApprovalDecision?.(i, approve)} />
+                  </div>
+                ) : null;
+              })()}
             </div>
           ),
         )}
