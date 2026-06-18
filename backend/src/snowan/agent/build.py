@@ -10,10 +10,6 @@ from .tools.time_tools import get_current_time
 INSTRUCTIONS = """You are Snowan, a local-first personal AI assistant and knowledge \
 workbench. Be concise and direct. Use tools when they help; otherwise just answer."""
 
-EXPLORE_NOTE = "\n\nYou are in EXPLORE (read-only) mode: you may read and search, \
-but you have no tools to modify files or run commands. If a task needs changes, \
-say so and ask the user to switch to 执行 (execute) mode."
-
 # Read-only tools run automatically; mutating + shell tools require human approval.
 READONLY_TOOLS = [get_current_time, read_file, grep_search, glob_search]
 GUARDED_TOOLS = [
@@ -24,13 +20,10 @@ GUARDED_TOOLS = [
 ]
 
 
-def build_agent(mode: str = "execute") -> Agent:
-    """mode 'explore' exposes only read-only tools (no approvals ever);
-    'execute' adds the mutating/shell tools, gated by human approval."""
-    explore = mode == "explore"
+def build_agent() -> Agent:
     return Agent(
         build_model(load_settings()),
-        instructions=INSTRUCTIONS + (EXPLORE_NOTE if explore else ""),
-        tools=list(READONLY_TOOLS) if explore else [*READONLY_TOOLS, *GUARDED_TOOLS],
+        instructions=INSTRUCTIONS,
+        tools=[*READONLY_TOOLS, *GUARDED_TOOLS],
         output_type=[str, DeferredToolRequests],
     )

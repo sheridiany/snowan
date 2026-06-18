@@ -178,7 +178,7 @@ export default function App() {
   const abortRef = useRef<AbortController | null>(null);
   const stop = () => abortRef.current?.abort();
 
-  const send = async (text: string, mode: string) => {
+  const send = async (text: string) => {
     setBusy(true);
 
     const sid = activeId;
@@ -196,7 +196,7 @@ export default function App() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      await streamChat(text, sid, mode, streamHandlers, ctrl.signal);
+      await streamChat(text, sid, streamHandlers, ctrl.signal);
     } finally {
       setBusy(false);
       abortRef.current = null;
