@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createStyles } from 'antd-style';
-import { streamChat } from './api/chat';
+import { streamChat, approveChat, type ChatHandlers } from './api/chat';
 import TitleBar from './components/shell/TitleBar';
 import NavRail, { type View } from './components/shell/NavRail';
 import ChatView from './components/ChatView';
@@ -67,6 +67,27 @@ export default function App() {
       return next;
     });
 
+  // Streamed events patch the trailing assistant message identically whether they
+  // arrive from the initial turn or from an approval continuation.
+  const streamHandlers: ChatHandlers = {
+    onDelta: (delta) => patchAssistant((b) => appendDelta(b, delta)),
+    onToolCall: (call) =>
+      patchAssistant((b) => [
+        ...b,
+        { kind: 'tool', step: { id: call.id, name: call.name, args: call.args } },
+      ]),
+    onToolResult: (res) =>
+      patchAssistant((b) =>
+        b.map((blk) =>
+          blk.kind === 'tool' && blk.step.id === res.id
+            ? { kind: 'tool', step: { ...blk.step, result: res.result } }
+            : blk,
+        ),
+      ),
+    onApprovalRequired: (calls) =>
+      patchAssistant((b) => [...b, { kind: 'approval', calls }]),
+  };
+
   const send = async (text: string) => {
     setBusy(true);
 
@@ -83,22 +104,39 @@ export default function App() {
     ]);
 
     try {
-      await streamChat(text, sid, {
-        onDelta: (delta) => patchAssistant((b) => appendDelta(b, delta)),
-        onToolCall: (call) =>
-          patchAssistant((b) => [
-            ...b,
-            { kind: 'tool', step: { id: call.id, name: call.name, args: call.args } },
-          ]),
-        onToolResult: (res) =>
-          patchAssistant((b) =>
-            b.map((blk) =>
-              blk.kind === 'tool' && blk.step.id === res.id
-                ? { kind: 'tool', step: { ...blk.step, result: res.result } }
-                : blk,
-            ),
-          ),
-      });
+      await streamChat(text, sid, streamHandlers);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleApprovalDecision = async (
+    messageIndex: number,
+    blockIndex: number,
+    approve: boolean,
+  ) => {
+    const message = messages[messageIndex];
+    const block = message?.blocks[blockIndex];
+    if (!block || block.kind !== 'approval' || block.decided) return;
+
+    const decisions: Record<string, boolean> = {};
+    for (const call of block.calls) decisions[call.id] = approve;
+
+    setActiveMessages((prev) => {
+      const next = [...prev];
+      const msg = next[messageIndex];
+      if (!msg) return prev;
+      const blocks = [...msg.blocks];
+      const blk = blocks[blockIndex];
+      if (!blk || blk.kind !== 'approval') return prev;
+      blocks[blockIndex] = { ...blk, decided: true, approved: approve };
+      next[messageIndex] = { ...msg, blocks };
+      return next;
+    });
+
+    setBusy(true);
+    try {
+      await approveChat(activeId, decisions, streamHandlers);
     } finally {
       setBusy(false);
     }
@@ -119,7 +157,7 @@ export default function App() {
         <main className={styles.main}>
           {view === 'chat' && (
             <>
-              <ChatView messages={messages} />
+              <ChatView messages={messages} onApprovalDecision={handleApprovalDecision} />
               <Composer busy={busy} onSend={send} />
             </>
           )}

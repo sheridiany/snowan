@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Markdown, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import ToolCallCard from './ToolCallCard';
+import ApprovalCard from './ApprovalCard';
 import type { Message } from './types';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -67,7 +68,12 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-export default function ChatView({ messages }: { messages: Message[] }) {
+type Props = {
+  messages: Message[];
+  onApprovalDecision?: (messageIndex: number, blockIndex: number, approve: boolean) => void;
+};
+
+export default function ChatView({ messages, onApprovalDecision }: Props) {
   const { styles } = useStyles();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -97,15 +103,32 @@ export default function ChatView({ messages }: { messages: Message[] }) {
             </div>
           ) : (
             <div key={i} className={styles.assistant}>
-              {m.blocks.map((b, j) =>
-                b.kind === 'text' ? (
-                  b.text ? <Markdown key={j} variant="chat">{b.text}</Markdown> : null
-                ) : (
+              {m.blocks.map((b, j) => {
+                if (b.kind === 'text') {
+                  return b.text ? (
+                    <Markdown key={j} variant="chat">
+                      {b.text}
+                    </Markdown>
+                  ) : null;
+                }
+                if (b.kind === 'approval') {
+                  return (
+                    <div key={j} className={styles.tool}>
+                      <ApprovalCard
+                        calls={b.calls}
+                        decided={b.decided}
+                        approved={b.approved}
+                        onDecide={(approve) => onApprovalDecision?.(i, j, approve)}
+                      />
+                    </div>
+                  );
+                }
+                return (
                   <div key={j} className={styles.tool}>
                     <ToolCallCard step={b.step} />
                   </div>
-                ),
-              )}
+                );
+              })}
             </div>
           ),
         )}

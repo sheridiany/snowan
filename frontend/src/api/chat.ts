@@ -6,6 +6,7 @@ export type ChatHandlers = {
   onDelta?: (text: string) => void;
   onToolCall?: (call: ToolCall) => void;
   onToolResult?: (result: ToolResult) => void;
+  onApprovalRequired?: (calls: ToolCall[]) => void;
   onDone?: () => void;
 };
 
@@ -13,6 +14,7 @@ type SSEEvent =
   | { type: 'delta'; text: string }
   | { type: 'tool_call'; id: string; name: string; args: Record<string, unknown> }
   | { type: 'tool_result'; id: string; name: string; result: string }
+  | { type: 'approval_required'; calls: ToolCall[] }
   | { type: 'done' };
 
 export async function streamChat(
@@ -25,6 +27,25 @@ export async function streamChat(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, session_id: sessionId }),
   });
+  await consume(res, handlers);
+}
+
+// Resume a paused turn: approved tools execute, denied tools return a denial to
+// the model. The continuation streams back the same typed event protocol.
+export async function approveChat(
+  sessionId: string,
+  decisions: Record<string, boolean>,
+  handlers: ChatHandlers,
+): Promise<void> {
+  const res = await fetch('/api/chat/approve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, decisions }),
+  });
+  await consume(res, handlers);
+}
+
+async function consume(res: Response, handlers: ChatHandlers): Promise<void> {
   if (!res.body) return;
 
   const reader = res.body.getReader();
@@ -55,6 +76,9 @@ function dispatch(raw: string, handlers: ChatHandlers): void {
       break;
     case 'tool_result':
       handlers.onToolResult?.({ id: payload.id, name: payload.name, result: payload.result });
+      break;
+    case 'approval_required':
+      handlers.onApprovalRequired?.(payload.calls);
       break;
     case 'done':
       handlers.onDone?.();
