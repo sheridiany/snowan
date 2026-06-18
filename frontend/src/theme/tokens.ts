@@ -1,4 +1,4 @@
-import { theme as antdTheme, type ThemeConfig } from 'antd';
+import type { ThemeConfig } from 'antd';
 import type { ThemeAppearance } from 'antd-style';
 
 const ACCENT = '#FF7F16';
@@ -11,7 +11,6 @@ const FONT =
 export function snowanTheme(appearance: ThemeAppearance): ThemeConfig {
   if (appearance === 'dark') {
     return {
-      algorithm: antdTheme.darkAlgorithm,
       token: {
         colorPrimary: ACCENT,
         borderRadius: 12,

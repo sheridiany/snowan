@@ -10,7 +10,7 @@ import {
   Sun,
   type LucideIcon,
 } from 'lucide-react';
-import { useThemeMode } from '../../theme/ThemeModeContext';
+import { useThemeMode } from 'antd-style';
 
 export type View = 'chat' | 'sessions' | 'sources' | 'skills' | 'settings';
 
@@ -129,7 +129,7 @@ export default function NavRail({
   onNewChat: () => void;
 }) {
   const { styles, cx } = useStyles();
-  const { isDark, toggle } = useThemeMode();
+  const { isDarkMode, setThemeMode } = useThemeMode();
 
   const Row = ({ item }: { item: NavItem }) => {
     const active = view === item.view;
@@ -186,13 +186,18 @@ export default function NavRail({
           />
           设置
         </div>
-        <Button className={styles.toggle} type="text" size="small" onClick={toggle}>
+        <Button
+          className={styles.toggle}
+          type="text"
+          size="small"
+          onClick={() => setThemeMode(isDarkMode ? 'light' : 'dark')}
+        >
           <Icon
             className={styles.toggleIcon}
-            icon={isDark ? Sun : Moon}
+            icon={isDarkMode ? Sun : Moon}
             size={16}
           />
-          {isDark ? '浅色模式' : '深色模式'}
+          {isDarkMode ? '浅色模式' : '深色模式'}
         </Button>
       </div>
     </nav>

@@ -3,7 +3,7 @@ import { Segmented } from '@lobehub/ui';
 import { Select, Switch } from 'antd';
 import { createStyles } from 'antd-style';
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
-import { useThemeMode } from '../../theme/ThemeModeContext';
+import { useThemeMode } from 'antd-style';
 import { Row, Section } from './_kit';
 
 const ACCENTS = ['#FF7F16', '#E5484D', '#3E63DD', '#30A46C', '#8E4EC6', '#F5B400'];
@@ -44,22 +44,13 @@ const useStyles = createStyles(({ css }) => ({
 
 export default function SettingsAppearance() {
   const { styles } = useStyles();
-  const { isDark, toggle } = useThemeMode();
+  const { themeMode, setThemeMode } = useThemeMode();
 
   const [font, setFont] = useState<'inter' | 'system'>('inter');
   const [lang, setLang] = useState('zh');
-  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(
-    isDark ? 'dark' : 'light',
-  );
   const [accent, setAccent] = useState(ACCENTS[0]);
   const [showProviderIcons, setShowProviderIcons] = useState(true);
   const [richToolDesc, setRichToolDesc] = useState(true);
-
-  const setMode = (m: 'light' | 'dark' | 'system') => {
-    setThemeMode(m);
-    const wantDark = m === 'dark';
-    if (m !== 'system' && wantDark !== isDark) toggle();
-  };
 
   return (
     <div className={styles.wrap}>
@@ -102,7 +93,7 @@ export default function SettingsAppearance() {
           control={
             <Segmented
               value={themeMode}
-              onChange={(v) => setMode(v as 'light' | 'dark' | 'system')}
+              onChange={(v) => setThemeMode(v as 'light' | 'dark' | 'auto')}
               options={[
                 {
                   value: 'light',
@@ -121,7 +112,7 @@ export default function SettingsAppearance() {
                   ),
                 },
                 {
-                  value: 'system',
+                  value: 'auto',
                   label: (
                     <span className={styles.seg}>
                       <Monitor size={14} /> 跟随系统
