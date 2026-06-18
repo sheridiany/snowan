@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { ActionIcon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import {
+  Info,
   Keyboard,
   MoreHorizontal,
   Palette,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
-  FolderOpen,
+  UserRound,
+  Wrench,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
@@ -16,18 +18,22 @@ import type { LucideIcon } from 'lucide-react';
 import { ListPane, ListRow } from '../shell/ListPane';
 import SettingsAppearance from './SettingsAppearance';
 import SettingsAI from './SettingsAI';
-import SettingsWorkspace from './SettingsWorkspace';
+import SettingsTools from './SettingsTools';
 import SettingsPermissions from './SettingsPermissions';
+import SettingsRun from './SettingsRun';
+import SettingsProfile from './SettingsProfile';
 import SettingsShortcuts from './SettingsShortcuts';
-import SettingsPreferences from './SettingsPreferences';
+import SettingsAbout from './SettingsAbout';
 
 type CategoryId =
   | 'appearance'
   | 'ai'
-  | 'workspace'
+  | 'tools'
   | 'permissions'
+  | 'run'
+  | 'profile'
   | 'shortcuts'
-  | 'preferences';
+  | 'about';
 
 type Category = {
   id: CategoryId;
@@ -40,10 +46,12 @@ type Category = {
 const CATEGORIES: Category[] = [
   { id: 'appearance', title: '外观', subtitle: '主题与字体', icon: Palette, panel: SettingsAppearance },
   { id: 'ai', title: 'AI', subtitle: '模型与连接', icon: Sparkles, panel: SettingsAI },
-  { id: 'workspace', title: 'Workspace', subtitle: '工作目录', icon: FolderOpen, panel: SettingsWorkspace },
-  { id: 'permissions', title: '权限', subtitle: '探索与执行规则', icon: ShieldCheck, panel: SettingsPermissions },
+  { id: 'tools', title: '工具', subtitle: '可用工具', icon: Wrench, panel: SettingsTools },
+  { id: 'permissions', title: '权限', subtitle: '审批模式', icon: ShieldCheck, panel: SettingsPermissions },
+  { id: 'run', title: '运行', subtitle: '模型行为', icon: SlidersHorizontal, panel: SettingsRun },
+  { id: 'profile', title: '个人档案', subtitle: '让助手懂你', icon: UserRound, panel: SettingsProfile },
   { id: 'shortcuts', title: '快捷键', subtitle: '键盘操作', icon: Keyboard, panel: SettingsShortcuts },
-  { id: 'preferences', title: '偏好', subtitle: '语言与其他', icon: SlidersHorizontal, panel: SettingsPreferences },
+  { id: 'about', title: '关于', subtitle: '版本与数据', icon: Info, panel: SettingsAbout },
 ];
 
 const useStyles = createStyles(({ token, css }) => ({

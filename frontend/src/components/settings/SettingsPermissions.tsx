@@ -1,22 +1,39 @@
-import { Button, Tag, Text } from '@lobehub/ui';
+import { useEffect, useState } from 'react';
+import { App } from 'antd';
+import { Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { Pencil, ShieldCheck } from 'lucide-react';
+import { Check, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
 import { Section } from './_kit';
+import { getPrefs, savePrefs } from '../../api/system';
 
-type Rule = {
-  access: 'allow' | 'ask';
-  type: string;
-  pattern: string;
-  comment: string;
-};
+type Mode = 'auto' | 'ask' | 'strict';
 
-const DEFAULT_RULES: Rule[] = [
-  { access: 'allow', type: 'Bash', pattern: '^ls\\b', comment: 'List directory contents' },
-  { access: 'allow', type: 'Bash', pattern: '^grep\\b', comment: 'Search file contents' },
-  { access: 'allow', type: 'Bash', pattern: '^cat\\b', comment: 'Read a file' },
-  { access: 'allow', type: 'Bash', pattern: '^pwd\\b', comment: 'Print working directory' },
-  { access: 'allow', type: 'Bash', pattern: '^git status\\b', comment: 'Inspect repo state' },
-  { access: 'ask', type: 'Bash', pattern: '^rm\\b', comment: 'Delete files — confirm first' },
+const OPTIONS: {
+  value: Mode;
+  icon: typeof Zap;
+  title: string;
+  desc: string;
+  recommended?: boolean;
+}[] = [
+  {
+    value: 'auto',
+    icon: Zap,
+    title: '全自动',
+    desc: '所有工具直接执行,不打断。',
+  },
+  {
+    value: 'ask',
+    icon: ShieldCheck,
+    title: '写操作需确认',
+    desc: '读取/搜索直接跑,写文件/改文件/执行命令前要你点允许。',
+    recommended: true,
+  },
+  {
+    value: 'strict',
+    icon: ShieldAlert,
+    title: '全部需确认',
+    desc: '每次工具调用都要确认。',
+  },
 ];
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -25,188 +42,154 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 28px;
   `,
-  block: css`
+  options: css`
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   `,
-  explainer: css`
+  option: css`
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
     padding: 14px 16px;
     border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorFillQuaternary};
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  `,
-  explainIcon: css`
-    flex: none;
-    margin-top: 1px;
-    color: ${token.colorPrimary};
-    display: inline-flex;
-  `,
-  explainBody: css`
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  `,
-  explainTitle: css`
-    font-size: 13px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
-  explainText: css`
-    font-size: 12.5px;
-    line-height: 1.7;
-    color: ${token.colorTextSecondary};
-  `,
-  link: css`
-    color: ${token.colorPrimary};
-    cursor: pointer;
-    font-weight: 500;
-  `,
-  sectionHead: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 0 2px;
-  `,
-  sectionTitle: css`
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: ${token.colorText};
-  `,
-  table: css`
     border: 1px solid ${token.colorBorderSecondary};
-    border-radius: ${token.borderRadius}px;
-    overflow: hidden;
     background: ${token.colorBgContainer};
-  `,
-  headRow: css`
-    display: grid;
-    grid-template-columns: 96px 84px 1.1fr 1.4fr;
-    background: ${token.colorFillQuaternary};
-    border-bottom: 1px solid ${token.colorBorderSecondary};
-  `,
-  bodyRow: css`
-    display: grid;
-    grid-template-columns: 96px 84px 1.1fr 1.4fr;
-    border-bottom: 1px solid ${token.colorBorderSecondary};
-    &:last-child {
-      border-bottom: none;
-    }
+    cursor: pointer;
+    transition: all 0.15s ease;
     &:hover {
+      border-color: ${token.colorPrimaryBorder};
       background: ${token.colorFillQuaternary};
     }
   `,
-  th: css`
-    padding: 9px 12px;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: ${token.colorTextTertiary};
+  optionActive: css`
+    border-color: ${token.colorPrimary};
+    background: ${token.colorPrimaryBg};
+    box-shadow: 0 0 0 1px ${token.colorPrimary} inset;
+    &:hover {
+      border-color: ${token.colorPrimary};
+      background: ${token.colorPrimaryBg};
+    }
   `,
-  td: css`
-    padding: 11px 12px;
-    font-size: 13px;
-    color: ${token.colorTextSecondary};
+  icon: css`
+    flex: none;
+    margin-top: 1px;
+    color: ${token.colorTextTertiary};
+    display: inline-flex;
+  `,
+  iconActive: css`
+    color: ${token.colorPrimary};
+  `,
+  body: css`
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 3px;
     min-width: 0;
   `,
-  mono: css`
-    font-family: ${token.fontFamilyCode};
-    font-size: 12px;
+  titleRow: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `,
+  title: css`
+    font-size: 13.5px;
+    font-weight: 600;
     color: ${token.colorText};
   `,
-  comment: css`
+  desc: css`
+    font-size: 12.5px;
+    line-height: 1.6;
     color: ${token.colorTextTertiary};
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   `,
-  empty: css`
-    padding: 28px;
-    border: 1px dashed ${token.colorBorderSecondary};
-    border-radius: ${token.borderRadius}px;
-    text-align: center;
-    font-size: 13px;
-    color: ${token.colorTextTertiary};
+  recommended: css`
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 3px 7px;
+    border-radius: ${token.borderRadiusSM}px;
+    color: ${token.colorPrimary};
+    background: ${token.colorPrimaryBg};
+    border: 1px solid ${token.colorPrimaryBorder};
+  `,
+  check: css`
+    flex: none;
+    margin-top: 2px;
+    margin-left: auto;
+    color: ${token.colorPrimary};
+    display: inline-flex;
   `,
 }));
 
-function SectionHead({ title }: { title: string }) {
-  const { styles } = useStyles();
-  return (
-    <div className={styles.sectionHead}>
-      <Text className={styles.sectionTitle}>{title}</Text>
-      <Button size="small" icon={<Pencil size={13} />}>
-        编辑
-      </Button>
-    </div>
-  );
-}
-
 export default function SettingsPermissions() {
-  const { styles } = useStyles();
+  const { styles, cx } = useStyles();
+  const { message } = App.useApp();
+  const [mode, setMode] = useState<Mode>('ask');
+
+  useEffect(() => {
+    getPrefs()
+      .then((p) => setMode((p.approval_mode as Mode) || 'ask'))
+      .catch(() => {});
+  }, []);
+
+  const select = async (next: Mode) => {
+    if (next === mode) return;
+    const prev = mode;
+    setMode(next);
+    try {
+      await savePrefs({ approval_mode: next });
+      message.success('已更新审批模式');
+    } catch {
+      setMode(prev);
+      message.error('保存失败,请重试');
+    }
+  };
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.explainer}>
-        <span className={styles.explainIcon}>
-          <ShieldCheck size={18} />
-        </span>
-        <div className={styles.explainBody}>
-          <span className={styles.explainTitle}>关于权限</span>
-          <span className={styles.explainText}>
-            探索模式(explore)下,助手可以自由读取你的文件与代码;执行模式(execute)
-            下,任何会修改系统的命令都需要先经过这里的规则匹配。命中“允许”直接放行,命中“询问”
-            会在执行前向你确认。 <span className={styles.link}>了解更多</span>
-          </span>
-        </div>
-      </div>
-
-      <Section bare>
-        <div className={styles.block}>
-          <SectionHead title="默认权限" />
-          <div className={styles.table}>
-            <div className={styles.headRow}>
-              <span className={styles.th}>访问</span>
-              <span className={styles.th}>类型</span>
-              <span className={styles.th}>模式</span>
-              <span className={styles.th}>注释</span>
-            </div>
-            {DEFAULT_RULES.map((r, i) => (
-              <div className={styles.bodyRow} key={i}>
-                <span className={styles.td}>
-                  {r.access === 'allow' ? (
-                    <Tag color="success">允许</Tag>
-                  ) : (
-                    <Tag color="warning">询问</Tag>
-                  )}
+      <Section
+        title="审批模式"
+        subtitle="决定助手调用工具前是否需要你确认。"
+        bare
+      >
+        <div className={styles.options}>
+          {OPTIONS.map((o) => {
+            const active = o.value === mode;
+            const Icon = o.icon;
+            return (
+              <div
+                key={o.value}
+                role="button"
+                tabIndex={0}
+                className={cx(styles.option, active && styles.optionActive)}
+                onClick={() => select(o.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    select(o.value);
+                  }
+                }}
+              >
+                <span className={cx(styles.icon, active && styles.iconActive)}>
+                  <Icon size={18} />
                 </span>
-                <span className={styles.td}>
-                  <Tag>{r.type}</Tag>
-                </span>
-                <span className={styles.td}>
-                  <code className={styles.mono}>{r.pattern}</code>
-                </span>
-                <span className={styles.td}>
-                  <span className={styles.comment}>{r.comment}</span>
-                </span>
+                <div className={styles.body}>
+                  <div className={styles.titleRow}>
+                    <Text className={styles.title}>{o.title}</Text>
+                    {o.recommended && (
+                      <span className={styles.recommended}>推荐</span>
+                    )}
+                  </div>
+                  <Text className={styles.desc}>{o.desc}</Text>
+                </div>
+                {active && (
+                  <span className={styles.check}>
+                    <Check size={16} />
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      <Section bare>
-        <div className={styles.block}>
-          <SectionHead title="Workspace 自定义" />
-          <div className={styles.empty}>
-            当前工作区还没有自定义权限规则。添加规则可针对此项目覆盖默认行为。
-          </div>
+            );
+          })}
         </div>
       </Section>
     </div>

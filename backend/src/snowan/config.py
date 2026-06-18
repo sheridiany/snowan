@@ -275,3 +275,35 @@ def provider_settings(pid: str, model_id: str = "") -> Settings:
         api_key=cfg.get("api_key"),
         base_url=cfg.get("base_url"),
     )
+
+
+# --- app preferences -------------------------------------------------------
+
+PREF_DEFAULTS: dict = {
+    "approval_mode": "ask",  # auto = no approvals · ask = mutating/shell need approval · strict = every tool
+    "max_iters": 40,
+    "timezone": "",  # default IANA tz for the time tool
+    "auto_title": True,
+    "system_prompt": "",  # extra instructions appended to the agent's system prompt
+    "profile": {"name": "", "location": "", "notes": ""},
+}
+
+
+def load_prefs() -> dict:
+    stored = _read().get("prefs") or {}
+    p = {**PREF_DEFAULTS, **stored}
+    p["profile"] = {**PREF_DEFAULTS["profile"], **(stored.get("profile") or {})}
+    return p
+
+
+def save_prefs(patch: dict) -> dict:
+    data = _read()
+    cur = dict(data.get("prefs") or {})
+    for k, v in patch.items():
+        if k == "profile" and isinstance(v, dict):
+            cur["profile"] = {**(cur.get("profile") or {}), **v}
+        elif k in PREF_DEFAULTS:
+            cur[k] = v
+    data["prefs"] = cur
+    _write(data)
+    return load_prefs()

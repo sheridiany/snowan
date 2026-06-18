@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 from .chat import router  # noqa: E402
 from .providers import router as providers_router  # noqa: E402
+from .system import router as system_router  # noqa: E402
 
 app = FastAPI(title="Snowan")
 app.add_middleware(
@@ -19,6 +20,7 @@ app.add_middleware(
 )
 app.include_router(router)
 app.include_router(providers_router)
+app.include_router(system_router)
 
 
 @app.get("/health")

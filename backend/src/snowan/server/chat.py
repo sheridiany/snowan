@@ -19,11 +19,17 @@ from pydantic_ai import (
     ToolDenied,
 )
 from pydantic_ai.messages import ModelMessage
+from pydantic_ai.usage import UsageLimits
 
 from ..agent.build import build_agent
 from ..agent.sessions import delete_history, load_history, save_history
+from ..config import load_prefs
 
 router = APIRouter()
+
+
+def _limits() -> UsageLimits:
+    return UsageLimits(request_limit=load_prefs().get("max_iters", 40))
 
 
 class Attachment(BaseModel):
@@ -178,7 +184,7 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
 async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
     # Build per-request so a model/key change saved in Settings takes effect at once.
     agent = build_agent()
-    async with agent.iter(prompt, message_history=history) as run:
+    async with agent.iter(prompt, message_history=history, usage_limits=_limits()) as run:
         async for chunk in _stream_run(run):
             yield chunk
         save_history(session_id, run.result.all_messages())
@@ -190,7 +196,9 @@ async def _run_resume(
     session_id: str,
 ) -> AsyncIterator[str]:
     agent = build_agent()
-    async with agent.iter(message_history=history, deferred_tool_results=results) as run:
+    async with agent.iter(
+        message_history=history, deferred_tool_results=results, usage_limits=_limits()
+    ) as run:
         async for chunk in _stream_run(run):
             yield chunk
         save_history(session_id, run.result.all_messages())
