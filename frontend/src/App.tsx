@@ -3,6 +3,7 @@ import { createStyles, useThemeMode } from 'antd-style';
 import { persistThemeMode } from './theme/themes';
 import { streamChat, approveChat, type ChatHandlers } from './api/chat';
 import TitleBar from './components/shell/TitleBar';
+import RightPanel from './components/shell/RightPanel';
 import NavRail, { type View } from './components/shell/NavRail';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
@@ -52,7 +53,21 @@ export default function App() {
   // light/dark/auto choice is restored as defaultThemeMode on the next reload.
   useEffect(() => persistThemeMode(themeMode), [themeMode]);
 
-  const [view, setView] = useState<View>('chat');
+  // View navigation with back/forward history.
+  const [hist, setHist] = useState<View[]>(['chat']);
+  const [hi, setHi] = useState(0);
+  const view = hist[hi];
+  const go = (v: View) => {
+    if (v === hist[hi]) return;
+    setHist((h) => [...h.slice(0, hi + 1), v]);
+    setHi((i) => i + 1);
+  };
+  const canBack = hi > 0;
+  const canForward = hi < hist.length - 1;
+
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
+
   const [sessions, setSessions] = useState<Session[]>(() => [newSession()]);
   const [activeId, setActiveId] = useState(() => sessions[0].id);
   const [threads, setThreads] = useState<Record<string, Message[]>>({});
@@ -152,14 +167,26 @@ export default function App() {
     const s = newSession();
     setSessions((prev) => [s, ...prev]);
     setActiveId(s.id);
-    setView('chat');
+    go('chat');
   };
+
+  const activeTitle = sessions.find((s) => s.id === activeId)?.title;
 
   return (
     <div className={styles.app}>
-      <TitleBar />
+      <TitleBar
+        navCollapsed={navCollapsed}
+        rightOpen={rightOpen}
+        canBack={canBack}
+        canForward={canForward}
+        title={view === 'chat' ? activeTitle : undefined}
+        onToggleNav={() => setNavCollapsed((c) => !c)}
+        onToggleRight={() => setRightOpen((o) => !o)}
+        onBack={() => setHi((i) => Math.max(0, i - 1))}
+        onForward={() => setHi((i) => Math.min(hist.length - 1, i + 1))}
+      />
       <div className={styles.body}>
-        <NavRail view={view} onView={setView} onNewChat={handleNew} />
+        {!navCollapsed && <NavRail view={view} onView={go} onNewChat={handleNew} />}
         <main className={styles.main}>
           {view === 'chat' && (
             <>
@@ -173,7 +200,7 @@ export default function App() {
               activeId={activeId}
               onSelect={(id) => {
                 setActiveId(id);
-                setView('chat');
+                go('chat');
               }}
             />
           )}
@@ -181,6 +208,7 @@ export default function App() {
           {view === 'skills' && <SkillsView />}
           {view === 'settings' && <SettingsView />}
         </main>
+        {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
       </div>
     </div>
   );

@@ -1,5 +1,10 @@
-import { createStyles } from 'antd-style';
-import { ChevronDown, Plus, HelpCircle } from 'lucide-react';
+import { createStyles, cx } from 'antd-style';
+import {
+  PanelLeft,
+  PanelRight,
+  ArrowLeft,
+  ArrowRight,
+} from 'lucide-react';
 
 const useStyles = createStyles(({ token, css }) => ({
   bar: css`
@@ -7,48 +12,30 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: none;
     display: flex;
     align-items: center;
+    gap: 2px;
     /* Reserve 78px on the left for macOS traffic lights (close/minimize/zoom). */
-    padding: 0 12px 0 78px;
+    padding: 0 10px 0 78px;
     background: ${token.colorBgContainer};
     border-bottom: 1px solid ${token.colorBorderSecondary};
-    /* This attribute makes the entire bar draggable in Tauri native mode. */
-    /* Child elements with data-tauri-drag-region="false" opt out. */
     user-select: none;
-  `,
-  workspaceBtn: css`
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 8px;
-    border-radius: ${token.borderRadiusSM}px;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    color: ${token.colorText};
-    &:hover {
-      background: ${token.colorFillTertiary};
-    }
-  `,
-  workspaceName: css`
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    line-height: 1;
-  `,
-  chevron: css`
-    color: ${token.colorTextTertiary};
-    flex: none;
   `,
   spacer: css`
     flex: 1;
-  `,
-  actions: css`
+    align-self: stretch;
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+  `,
+  title: css`
+    font-size: 13px;
+    font-weight: 600;
+    color: ${token.colorTextSecondary};
+    pointer-events: none;
   `,
   iconBtn: css`
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -61,55 +48,90 @@ const useStyles = createStyles(({ token, css }) => ({
       color: ${token.colorText};
     }
   `,
+  disabled: css`
+    color: ${token.colorTextQuaternary};
+    cursor: default;
+    pointer-events: none;
+  `,
 }));
 
-export default function TitleBar() {
+type Props = {
+  navCollapsed: boolean;
+  rightOpen: boolean;
+  canBack: boolean;
+  canForward: boolean;
+  title?: string;
+  onToggleNav: () => void;
+  onToggleRight: () => void;
+  onBack: () => void;
+  onForward: () => void;
+};
+
+export default function TitleBar({
+  rightOpen,
+  canBack,
+  canForward,
+  title,
+  onToggleNav,
+  onToggleRight,
+  onBack,
+  onForward,
+}: Props) {
   const { styles } = useStyles();
 
-  return (
+  const Btn = ({
+    icon,
+    label,
+    onClick,
+    disabled,
+    active,
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    active?: boolean;
+  }) => (
     <div
-      className={styles.bar}
-      // This attribute enables native Tauri window dragging on the entire bar.
-      data-tauri-drag-region
+      className={cx(styles.iconBtn, disabled && styles.disabled)}
+      data-tauri-drag-region="false"
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      aria-pressed={active}
+      title={label}
+      onClick={disabled ? undefined : onClick}
     >
-      {/* Workspace switcher — no drag so click works */}
-      <div
-        className={styles.workspaceBtn}
-        data-tauri-drag-region="false"
-        role="button"
-        tabIndex={0}
-        aria-label="Switch workspace"
-      >
-        <span className={styles.workspaceName}>My Workspace</span>
-        <ChevronDown className={styles.chevron} size={14} />
+      {icon}
+    </div>
+  );
+
+  return (
+    <div className={styles.bar} data-tauri-drag-region>
+      <Btn icon={<PanelLeft size={17} />} label="折叠侧栏" onClick={onToggleNav} />
+      <Btn
+        icon={<ArrowLeft size={17} />}
+        label="后退"
+        onClick={onBack}
+        disabled={!canBack}
+      />
+      <Btn
+        icon={<ArrowRight size={17} />}
+        label="前进"
+        onClick={onForward}
+        disabled={!canForward}
+      />
+
+      <div className={styles.spacer} data-tauri-drag-region>
+        {title ? <span className={styles.title}>{title}</span> : null}
       </div>
 
-      <div className={styles.spacer} data-tauri-drag-region />
-
-      {/* Action buttons — opt out of drag region so clicks fire */}
-      <div
-        className={styles.actions}
-        data-tauri-drag-region="false"
-      >
-        <div
-          className={styles.iconBtn}
-          role="button"
-          tabIndex={0}
-          aria-label="New item"
-          title="New"
-        >
-          <Plus size={16} />
-        </div>
-        <div
-          className={styles.iconBtn}
-          role="button"
-          tabIndex={0}
-          aria-label="Help"
-          title="Help"
-        >
-          <HelpCircle size={16} />
-        </div>
-      </div>
+      <Btn
+        icon={<PanelRight size={17} />}
+        label="折叠右栏"
+        onClick={onToggleRight}
+        active={rightOpen}
+      />
     </div>
   );
 }
