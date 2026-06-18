@@ -18,12 +18,9 @@ from pydantic_ai import (
 from pydantic_ai.messages import ModelMessage
 
 from ..agent.build import build_agent
+from ..agent.sessions import load_history, save_history
 
 router = APIRouter()
-
-# In-memory conversation history per session. Disk persistence (ModelMessagesTypeAdapter)
-# arrives with the session-store phase.
-_sessions: dict[str, list[ModelMessage]] = {}
 
 
 class ChatRequest(BaseModel):
@@ -106,7 +103,7 @@ async def _run_new(message: str, history: list[ModelMessage], session_id: str) -
     async with agent.iter(message, message_history=history) as run:
         async for chunk in _stream_run(run):
             yield chunk
-        _sessions[session_id] = run.result.all_messages()
+        save_history(session_id, run.result.all_messages())
 
 
 async def _run_resume(
@@ -118,12 +115,12 @@ async def _run_resume(
     async with agent.iter(message_history=history, deferred_tool_results=results) as run:
         async for chunk in _stream_run(run):
             yield chunk
-        _sessions[session_id] = run.result.all_messages()
+        save_history(session_id, run.result.all_messages())
 
 
 @router.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest) -> StreamingResponse:
-    history = _sessions.get(req.session_id, [])
+    history = load_history(req.session_id)
     return StreamingResponse(
         _run_new(req.message, history, req.session_id),
         media_type="text/event-stream",
@@ -132,7 +129,7 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
 
 @router.post("/api/chat/approve")
 async def chat_approve(req: ApproveRequest) -> StreamingResponse:
-    history = _sessions.get(req.session_id, [])
+    history = load_history(req.session_id)
     results = DeferredToolResults()
     for tool_call_id, approved in req.decisions.items():
         results.approvals[tool_call_id] = (

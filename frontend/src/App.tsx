@@ -70,6 +70,19 @@ const newSession = (): Session => ({
   updatedAt: Date.now(),
 });
 
+// Local persistence so the session list + transcripts survive a reload. The
+// backend separately persists the agent's message history per session id.
+const LS = { sessions: 'snowan.sessions', threads: 'snowan.threads', active: 'snowan.activeId' };
+function readLS<T>(key: string, fallback: T): T {
+  if (typeof localStorage === 'undefined') return fallback;
+  try {
+    const s = localStorage.getItem(key);
+    return s ? (JSON.parse(s) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // Append a streamed text delta to the last assistant block (or open a new one
 // after a tool card, so text and tools stay in invocation order).
 function appendDelta(blocks: Block[], text: string): Block[] {
@@ -103,10 +116,28 @@ export default function App() {
   const [listCollapsed, setListCollapsed] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
 
-  const [sessions, setSessions] = useState<Session[]>(() => [newSession()]);
-  const [activeId, setActiveId] = useState(() => sessions[0].id);
-  const [threads, setThreads] = useState<Record<string, Message[]>>({});
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    const stored = readLS<Session[]>(LS.sessions, []);
+    return stored.length ? stored : [newSession()];
+  });
+  const [activeId, setActiveId] = useState(() => {
+    const stored = readLS<string>(LS.active, '');
+    return sessions.some((s) => s.id === stored) ? stored : sessions[0].id;
+  });
+  const [threads, setThreads] = useState<Record<string, Message[]>>(() =>
+    readLS<Record<string, Message[]>>(LS.threads, {}),
+  );
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(LS.sessions, JSON.stringify(sessions));
+  }, [sessions]);
+  useEffect(() => {
+    localStorage.setItem(LS.threads, JSON.stringify(threads));
+  }, [threads]);
+  useEffect(() => {
+    localStorage.setItem(LS.active, activeId);
+  }, [activeId]);
 
   const messages = threads[activeId] ?? [];
 
