@@ -67,16 +67,20 @@ model / backend / data dir). Prefs persist in `~/.snowan`. Removed empty
 Workspace + Preferences panels. _Deferred to later phases: per-tool enable/disable,
 fine-grained permission rules, shortcuts editor._
 
-## ⬜ Phase 2 — Knowledge base  (M — the KM half, highest product value)
+## 🟡 Phase 2 — Knowledge base  (M — the KM half, highest product value)
 
 Wire the empty 知识库 tabs to a real backend and give the agent a
 `knowledge_search` tool. Build sub-features in order:
 
-- **2a Notes**: CRUD + store `~/.snowan/knowledge/notes.json`. _QwenPaw
-  `app/knowledge_notes.py`._
-- **2b `knowledge_search` tool + `/api/knowledge/search`**: keyword + recency +
-  intent (list-vs-keyword) over notes; composer 数据源 chip scopes it. _QwenPaw
-  `knowledge_service.py`, `knowledge_query.py`._ Embeddings = optional later boost.
+- **2a Notes** — _backend ✅_: notes store at `~/.snowan/knowledge/notes.json`
+  (`backend/src/snowan/knowledge.py`), CRUD at `/api/knowledge/notes`. Scoped down
+  from QwenPaw `app/knowledge_notes.py` (dropped chat-capture source fields, daily
+  notes, draft generation). _Frontend 笔记 tab wiring pending the shell refactor._
+- **2b `knowledge_search` tool + `/api/knowledge/search`** — _backend ✅_: keyword +
+  recency search over notes (CJK n-grams, stopwords, title×10/body×3/recency,
+  hit-centered excerpt), exposed as a read-only agent tool that auto-lists in
+  Settings 工具. Ported from QwenPaw `knowledge_service.py` / `knowledge_query.py`
+  minus list-intent/alias/embedding paths. _Composer 数据源 chip = frontend, later._
 - **2c Local folders + embeddings**: register folders, markdown-aware chunking,
   SQLite chunk+embedding store, hybrid search; embedding model derived from the
   active endpoint. _QwenPaw `knowledge_index.py`, `knowledge_embeddings.py`._
