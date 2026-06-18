@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createStyles, useThemeMode } from 'antd-style';
 import { persistThemeMode } from './theme/themes';
 import { streamChat, approveChat, deleteSession, type ChatHandlers } from './api/chat';
@@ -175,6 +175,9 @@ export default function App() {
       patchAssistant((b) => [...b, { kind: 'approval', calls }]),
   };
 
+  const abortRef = useRef<AbortController | null>(null);
+  const stop = () => abortRef.current?.abort();
+
   const send = async (text: string, mode: string) => {
     setBusy(true);
 
@@ -190,10 +193,13 @@ export default function App() {
       { role: 'assistant', blocks: [] },
     ]);
 
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     try {
-      await streamChat(text, sid, mode, streamHandlers);
+      await streamChat(text, sid, mode, streamHandlers, ctrl.signal);
     } finally {
       setBusy(false);
+      abortRef.current = null;
     }
   };
 
@@ -299,7 +305,7 @@ export default function App() {
                   <span className={styles.detailTitle}>{activeTitle}</span>
                 </header>
                 <ChatView messages={messages} onApprovalDecision={handleApprovalDecision} />
-                <Composer busy={busy} onSend={send} />
+                <Composer busy={busy} onSend={send} onStop={stop} />
               </section>
             </>
           )}

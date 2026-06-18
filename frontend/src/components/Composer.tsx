@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActionIcon, Button, TextArea } from '@lobehub/ui';
 import { Select } from 'antd';
 import { createStyles } from 'antd-style';
-import { ArrowUp, Box, Compass, Database, Paperclip, Play } from 'lucide-react';
+import { ArrowUp, Box, Compass, Database, Paperclip, Play, Square } from 'lucide-react';
 import ModelSelect from './ModelSelect';
 
 export type ComposerMode = 'explore' | 'execute';
@@ -142,6 +142,7 @@ const useStyles = createStyles(({ token, css }) => ({
 export interface ComposerProps {
   busy: boolean;
   onSend: (text: string, mode: ComposerMode) => void;
+  onStop?: () => void;
   mode?: ComposerMode;
   onModeChange?: (mode: ComposerMode) => void;
   sourceOptions?: Option[];
@@ -151,6 +152,7 @@ export interface ComposerProps {
 export default function Composer({
   busy,
   onSend,
+  onStop,
   mode: modeProp,
   onModeChange,
   sourceOptions = DEFAULT_SOURCE_OPTIONS,
@@ -239,15 +241,26 @@ export default function Composer({
 
           <ModelSelect />
 
-          <Button
-            type="primary"
-            className={styles.send}
-            loading={busy}
-            onClick={submit}
-            title="发送"
-            aria-label="发送"
-            icon={busy ? undefined : <ArrowUp size={18} />}
-          />
+          {busy && onStop ? (
+            <Button
+              type="primary"
+              className={styles.send}
+              onClick={onStop}
+              title="停止"
+              aria-label="停止"
+              icon={<Square size={13} fill="currentColor" />}
+            />
+          ) : (
+            <Button
+              type="primary"
+              className={styles.send}
+              loading={busy}
+              onClick={submit}
+              title="发送"
+              aria-label="发送"
+              icon={busy ? undefined : <ArrowUp size={18} />}
+            />
+          )}
         </div>
       </div>
       <div className={styles.hint}>Enter 发送 · Shift + Enter 换行</div>

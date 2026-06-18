@@ -24,13 +24,19 @@ export async function streamChat(
   sessionId: string,
   mode: string,
   handlers: ChatHandlers,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(api('/api/chat/stream'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, session_id: sessionId, mode }),
-  });
-  await consume(res, handlers);
+  try {
+    const res = await fetch(api('/api/chat/stream'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, session_id: sessionId, mode }),
+      signal,
+    });
+    await consume(res, handlers);
+  } catch (e) {
+    if ((e as Error).name !== 'AbortError') throw e; // stop = quietly end the stream
+  }
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
