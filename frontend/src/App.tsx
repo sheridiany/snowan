@@ -10,22 +10,40 @@ import {
 } from './api/chat';
 import TitleBar from './components/shell/TitleBar';
 import RightPanel from './components/shell/RightPanel';
-import NavRail, { type View } from './components/shell/NavRail';
+import type { View } from './components/shell/ListPane';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
 import SessionsView from './components/views/SessionsView';
 import KnowledgeView from './components/knowledge/KnowledgeView';
-import SkillsView from './components/views/SkillsView';
+import ComingSoonView from './components/views/ComingSoonView';
 import SettingsView from './components/settings/SettingsView';
 import type { Block, Message, Session, ToolStep } from './components/types';
 
-const useStyles = createStyles(({ token, css }) => ({
+// A tiled fractal-noise texture (inline SVG data URI) overlaid app-wide for a
+// matte / frosted grain. Theme-agnostic: the blend mode flips per appearance so
+// the grain darkens on light themes and lightens on dark ones.
+const NOISE_URL =
+  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='1.3'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+const useStyles = createStyles(({ token, css, isDarkMode }) => ({
   app: css`
+    position: relative;
     height: 100vh;
     display: flex;
     flex-direction: column;
     background: ${token.colorBgLayout};
     color: ${token.colorText};
+    &::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image: ${NOISE_URL};
+      background-size: 140px 140px;
+      opacity: ${isDarkMode ? 0.1 : 0.065};
+      mix-blend-mode: ${isDarkMode ? 'screen' : 'multiply'};
+    }
   `,
   body: css`
     flex: 1;
@@ -132,7 +150,7 @@ export default function App() {
   const canBack = hi > 0;
   const canForward = hi < hist.length - 1;
 
-  // The thin icon rail is always shown; ◫ collapses the list pane (column 2).
+  // ◫ collapses the list pane (column 2) — which now also carries the section nav.
   const [listCollapsed, setListCollapsed] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
 
@@ -303,12 +321,14 @@ export default function App() {
         onForward={() => setHi((i) => Math.min(hist.length - 1, i + 1))}
       />
       <div className={styles.body}>
-        <NavRail view={view} onView={go} onNewChat={handleNew} />
         <main className={styles.stage}>
           {view === 'conversations' && (
             <>
               {!listCollapsed && (
                 <SessionsView
+                  view={view}
+                  onView={go}
+                  onNewChat={handleNew}
                   sessions={sessions}
                   activeId={activeId}
                   onSelect={setActiveId}
@@ -327,14 +347,39 @@ export default function App() {
                 <header className={styles.detailHeader}>
                   <span className={styles.detailTitle}>{activeTitle}</span>
                 </header>
-                <ChatView messages={messages} onApprovalDecision={handleApprovalDecision} />
+                <ChatView
+                  messages={messages}
+                  busy={busy}
+                  onApprovalDecision={handleApprovalDecision}
+                />
                 <Composer busy={busy} onSend={send} onStop={stop} />
               </section>
             </>
           )}
-          {view === 'knowledge' && <KnowledgeView listCollapsed={listCollapsed} />}
-          {view === 'skills' && <SkillsView listCollapsed={listCollapsed} />}
-          {view === 'settings' && <SettingsView listCollapsed={listCollapsed} />}
+          {view === 'knowledge' && (
+            <KnowledgeView
+              view={view}
+              onView={go}
+              onNewChat={handleNew}
+              listCollapsed={listCollapsed}
+            />
+          )}
+          {(view === 'draw' || view === 'design' || view === 'news') && (
+            <ComingSoonView
+              view={view}
+              onView={go}
+              onNewChat={handleNew}
+              listCollapsed={listCollapsed}
+            />
+          )}
+          {view === 'settings' && (
+            <SettingsView
+              view={view}
+              onView={go}
+              onNewChat={handleNew}
+              listCollapsed={listCollapsed}
+            />
+          )}
           {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
         </main>
       </div>

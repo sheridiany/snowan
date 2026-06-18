@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { Empty, Markdown } from '@lobehub/ui';
+import { useEffect, useRef, useState } from 'react';
+import { ActionIcon, Empty, Markdown } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
-import { Paperclip, Sparkles } from 'lucide-react';
+import { Check, Copy, Paperclip, Sparkles } from 'lucide-react';
 import ToolCallCard from './ToolCallCard';
 import ApprovalCard from './ApprovalCard';
 import type { Message } from './types';
@@ -35,7 +35,7 @@ const useStyles = createStyles(({ token, css }) => ({
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    box-shadow: 0 4px 14px ${token.colorPrimaryBorder};
+    box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.18);
   `,
   attachRow: css`
     display: flex;
@@ -63,26 +63,117 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 8px;
     color: ${token.colorText};
+    /* reveal per-message actions on hover */
+    &:hover .msg-actions {
+      opacity: 1;
+    }
   `,
   tool: css`
     align-self: stretch;
     width: 100%;
   `,
+  actions: css`
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-top: -2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  `,
+  thinking: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 0;
+    & span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: ${token.colorTextQuaternary};
+      animation: dotpulse 1.2s ease-in-out infinite both;
+    }
+    & span:nth-child(2) {
+      animation-delay: 0.18s;
+    }
+    & span:nth-child(3) {
+      animation-delay: 0.36s;
+    }
+    @keyframes dotpulse {
+      0%,
+      80%,
+      100% {
+        opacity: 0.25;
+        transform: scale(0.85);
+      }
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  `,
+  caret: css`
+    display: inline-block;
+    width: 7px;
+    height: 1.05em;
+    margin-top: 2px;
+    border-radius: 1px;
+    background: ${token.colorText};
+    animation: caretblink 1s steps(2, start) infinite;
+    @keyframes caretblink {
+      50% {
+        opacity: 0;
+      }
+    }
+  `,
 }));
+
+function CopyAction({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setDone(true);
+      setTimeout(() => setDone(false), 1400);
+    } catch {
+      // clipboard unavailable — nothing to recover, the user can select manually
+    }
+  };
+  return (
+    <ActionIcon
+      icon={done ? Check : Copy}
+      size="small"
+      title={done ? '已复制' : '复制'}
+      onClick={copy}
+    />
+  );
+}
 
 type Props = {
   messages: Message[];
+  busy?: boolean;
   onApprovalDecision?: (messageIndex: number, approve: boolean) => void;
 };
 
-export default function ChatView({ messages, onApprovalDecision }: Props) {
+export default function ChatView({ messages, busy, onApprovalDecision }: Props) {
   const { styles } = useStyles();
   const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Stick to the bottom only while the user is already there; if they scroll up
+  // to read history, streamed updates must not yank them back down.
+  const stickRef = useRef(true);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    // A message the user just sent always pins us to the bottom.
+    if (messages[messages.length - 1]?.role === 'user') stickRef.current = true;
+    if (stickRef.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   if (messages.length === 0) {
@@ -100,7 +191,7 @@ export default function ChatView({ messages, onApprovalDecision }: Props) {
   }
 
   return (
-    <div className={styles.scroll} ref={scrollRef}>
+    <div className={styles.scroll} ref={scrollRef} onScroll={onScroll}>
       <div className={styles.list}>
         {messages.map((m, i) =>
           m.role === 'user' ? (
@@ -118,35 +209,65 @@ export default function ChatView({ messages, onApprovalDecision }: Props) {
               {m.blocks.map((b) => (b.kind === 'text' ? b.text : '')).join('')}
             </div>
           ) : (
-            <div key={i} className={styles.assistant}>
-              {m.blocks.map((b, j) => {
-                if (b.kind === 'text') {
-                  return b.text ? (
-                    <Markdown key={j} variant="chat">
-                      {b.text}
-                    </Markdown>
-                  ) : null;
-                }
-                if (b.kind === 'tool') {
-                  return (
-                    <div key={j} className={styles.tool}>
-                      <ToolCallCard step={b.step} />
+            (() => {
+              const isStreaming = !!busy && i === messages.length - 1;
+              const textContent = m.blocks
+                .map((b) => (b.kind === 'text' ? b.text : ''))
+                .join('');
+              const hasTool = m.blocks.some((b) => b.kind === 'tool');
+              const lastBlock = m.blocks[m.blocks.length - 1];
+              const showThinking = isStreaming && !textContent && !hasTool;
+              const showCaret = isStreaming && lastBlock?.kind === 'text' && !!textContent;
+              const pending = m.blocks.filter(
+                (b) => b.kind === 'tool' && b.step.approval === 'pending',
+              ).length;
+
+              return (
+                <div key={i} className={styles.assistant}>
+                  {m.blocks.map((b, j) => {
+                    if (b.kind === 'text') {
+                      return b.text ? (
+                        <Markdown key={j} variant="chat">
+                          {b.text}
+                        </Markdown>
+                      ) : null;
+                    }
+                    if (b.kind === 'tool') {
+                      return (
+                        <div key={j} className={styles.tool}>
+                          <ToolCallCard step={b.step} />
+                        </div>
+                      );
+                    }
+                    return null; // legacy block shape from threads saved before this schema
+                  })}
+
+                  {showThinking && (
+                    <div className={styles.thinking}>
+                      <span />
+                      <span />
+                      <span />
                     </div>
-                  );
-                }
-                return null; // legacy block shape from threads saved before this schema
-              })}
-              {(() => {
-                const pending = m.blocks.filter(
-                  (b) => b.kind === 'tool' && b.step.approval === 'pending',
-                ).length;
-                return pending > 0 ? (
-                  <div className={styles.tool}>
-                    <ApprovalCard count={pending} onDecide={(approve) => onApprovalDecision?.(i, approve)} />
-                  </div>
-                ) : null;
-              })()}
-            </div>
+                  )}
+                  {showCaret && <span className={styles.caret} />}
+
+                  {pending > 0 && (
+                    <div className={styles.tool}>
+                      <ApprovalCard
+                        count={pending}
+                        onDecide={(approve) => onApprovalDecision?.(i, approve)}
+                      />
+                    </div>
+                  )}
+
+                  {textContent && !isStreaming && (
+                    <div className={`${styles.actions} msg-actions`}>
+                      <CopyAction text={textContent} />
+                    </div>
+                  )}
+                </div>
+              );
+            })()
           ),
         )}
       </div>

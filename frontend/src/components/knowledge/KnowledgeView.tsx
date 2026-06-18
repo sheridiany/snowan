@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-import { ListPane, ListRow } from '../shell/ListPane';
+import { ListPane, ListRow, type NavProps } from '../shell/ListPane';
 
 type TabKey = 'notes' | 'web' | 'aichat' | 'folders' | 'calendar';
 
@@ -162,7 +162,12 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-export default function KnowledgeView({ listCollapsed }: { listCollapsed?: boolean }) {
+export default function KnowledgeView({
+  view,
+  onView,
+  onNewChat,
+  listCollapsed,
+}: NavProps & { listCollapsed?: boolean }) {
   const { styles } = useStyles();
   const [tab, setTab] = useState<TabKey>('notes');
   const active = CATEGORIES.find((c) => c.key === tab) ?? CATEGORIES[0];
@@ -170,7 +175,7 @@ export default function KnowledgeView({ listCollapsed }: { listCollapsed?: boole
   return (
     <>
       {!listCollapsed && (
-        <ListPane title="知识库">
+        <ListPane view={view} onView={onView} onNewChat={onNewChat}>
           {CATEGORIES.map((c) => (
             <ListRow
               key={c.key}

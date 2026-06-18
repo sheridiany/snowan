@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActionIcon, Empty, Flexbox, Tag, Text } from '@lobehub/ui';
+import { Empty, Flexbox, Tag, Text } from '@lobehub/ui';
 import { Dropdown, Input, Modal } from 'antd';
 import { createStyles } from 'antd-style';
 import {
@@ -10,11 +10,10 @@ import {
   MessageSquare,
   MoreHorizontal,
   Pencil,
-  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 
-import { ListPane } from '../shell/ListPane';
+import { ListPane, type NavProps } from '../shell/ListPane';
 import type { Session, SessionStatus } from '../types';
 
 // Relative time in Chinese from a past epoch ms: "刚刚" / "3分钟" / "5小时" / "19天".
@@ -195,13 +194,16 @@ const useStyles = createStyles(({ token, css }) => ({
 }));
 
 export default function SessionsView({
+  view,
+  onView,
+  onNewChat,
   sessions,
   activeId,
   onSelect,
   onSetStatus,
   onRename,
   onDelete,
-}: {
+}: NavProps & {
   sessions: Session[];
   activeId: string;
   onSelect: (id: string) => void;
@@ -242,10 +244,7 @@ export default function SessionsView({
     });
 
   return (
-    <ListPane
-      title="所有会话"
-      actions={<ActionIcon icon={SlidersHorizontal} size="small" title="筛选" />}
-    >
+    <ListPane view={view} onView={onView} onNewChat={onNewChat}>
       {sessions.length === 0 ? (
         <Empty
           icon={MessageSquare}

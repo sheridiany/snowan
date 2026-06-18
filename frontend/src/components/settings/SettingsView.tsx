@@ -11,17 +11,19 @@ import {
   Sparkles,
   UserRound,
   Wrench,
+  Zap,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
-import { ListPane, ListRow } from '../shell/ListPane';
+import { ListPane, ListRow, type NavProps } from '../shell/ListPane';
 import SettingsAppearance from './SettingsAppearance';
 import SettingsAI from './SettingsAI';
 import SettingsTools from './SettingsTools';
 import SettingsPermissions from './SettingsPermissions';
 import SettingsRun from './SettingsRun';
 import SettingsProfile from './SettingsProfile';
+import SettingsSkills from './SettingsSkills';
 import SettingsShortcuts from './SettingsShortcuts';
 import SettingsAbout from './SettingsAbout';
 
@@ -32,6 +34,7 @@ type CategoryId =
   | 'permissions'
   | 'run'
   | 'profile'
+  | 'skills'
   | 'shortcuts'
   | 'about';
 
@@ -50,6 +53,7 @@ const CATEGORIES: Category[] = [
   { id: 'permissions', title: '权限', subtitle: '审批模式', icon: ShieldCheck, panel: SettingsPermissions },
   { id: 'run', title: '运行', subtitle: '模型行为', icon: SlidersHorizontal, panel: SettingsRun },
   { id: 'profile', title: '个人档案', subtitle: '让助手懂你', icon: UserRound, panel: SettingsProfile },
+  { id: 'skills', title: '技能', subtitle: '可安装的能力', icon: Zap, panel: SettingsSkills },
   { id: 'shortcuts', title: '快捷键', subtitle: '键盘操作', icon: Keyboard, panel: SettingsShortcuts },
   { id: 'about', title: '关于', subtitle: '版本与数据', icon: Info, panel: SettingsAbout },
 ];
@@ -93,7 +97,12 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-export default function SettingsView({ listCollapsed }: { listCollapsed?: boolean }) {
+export default function SettingsView({
+  view,
+  onView,
+  onNewChat,
+  listCollapsed,
+}: NavProps & { listCollapsed?: boolean }) {
   const { styles } = useStyles();
   const [activeId, setActiveId] = useState<CategoryId>('appearance');
 
@@ -103,7 +112,7 @@ export default function SettingsView({ listCollapsed }: { listCollapsed?: boolea
   return (
     <>
       {!listCollapsed && (
-        <ListPane title="设置">
+        <ListPane view={view} onView={onView} onNewChat={onNewChat}>
           {CATEGORIES.map((c) => (
             <ListRow
               key={c.id}

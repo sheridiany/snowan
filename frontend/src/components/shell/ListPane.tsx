@@ -1,11 +1,48 @@
 import { Icon } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
-import type { LucideIcon } from 'lucide-react';
+import { Tooltip } from 'antd';
+import { createStyles, useThemeMode } from 'antd-style';
+import {
+  Library,
+  MessageSquare,
+  Moon,
+  Newspaper,
+  PenTool,
+  Settings,
+  Shapes,
+  SquarePen,
+  Sun,
+  type LucideIcon,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 
-// Column 2 — the universal list pane. Every section (conversations / knowledge /
-// skills / settings) renders its list through this so the middle column is
-// visually identical everywhere.
+export type View =
+  | 'conversations'
+  | 'knowledge'
+  | 'draw'
+  | 'design'
+  | 'news'
+  | 'settings';
+
+// Section nav + new-chat + settings/theme controls are threaded into every list
+// pane so the middle card is the single home for navigation (no left rail).
+export type NavProps = {
+  view: View;
+  onView: (v: View) => void;
+  onNewChat: () => void;
+};
+
+const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
+  { view: 'conversations', label: '对话', icon: MessageSquare },
+  { view: 'knowledge', label: '知识库', icon: Library },
+  { view: 'draw', label: '画图', icon: Shapes },
+  { view: 'design', label: '设计', icon: PenTool },
+  { view: 'news', label: '新闻', icon: Newspaper },
+];
+
+// Column 2 — the universal list pane. It carries the horizontal section nav at the
+// top and the settings / theme controls at the bottom; section-specific list
+// content goes in the middle. Every section renders through this so the middle
+// column is visually identical everywhere.
 const useStyles = createStyles(({ token, css }) => ({
   col: css`
     width: 272px;
@@ -17,51 +54,164 @@ const useStyles = createStyles(({ token, css }) => ({
     box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
   `,
-  header: css`
-    position: relative;
+  nav: css`
     flex: none;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 12px;
-  `,
-  title: css`
-    font-size: 15px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
-  actions: css`
-    position: absolute;
-    right: 10px;
     display: flex;
     align-items: center;
     gap: 2px;
+    height: 52px;
+    padding: 0 10px;
+  `,
+  navItem: css`
+    width: 38px;
+    height: 38px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: ${token.colorTextSecondary};
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+    &:hover {
+      background: ${token.colorFillTertiary};
+      color: ${token.colorText};
+    }
+  `,
+  navItemActive: css`
+    background: ${token.colorFillSecondary};
+    color: ${token.colorPrimary};
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorPrimary};
+    }
+  `,
+  navSpacer: css`
+    flex: 1;
+  `,
+  newBtn: css`
+    width: 38px;
+    height: 38px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: ${token.colorPrimary};
+    background: ${token.colorPrimaryBg};
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+    &:hover {
+      background: ${token.colorPrimaryBgHover};
+    }
   `,
   scroll: css`
     flex: 1;
     overflow-y: auto;
     padding: 8px;
   `,
+  footer: css`
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 48px;
+    padding: 0 12px;
+    border-top: 1px solid ${token.colorFillQuaternary};
+  `,
+  footerItem: css`
+    width: 34px;
+    height: 34px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    color: ${token.colorTextSecondary};
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+    &:hover {
+      background: ${token.colorFillTertiary};
+      color: ${token.colorText};
+    }
+  `,
+  footerItemActive: css`
+    background: ${token.colorFillSecondary};
+    color: ${token.colorPrimary};
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorPrimary};
+    }
+  `,
 }));
 
+function SideNav({ view, onView, onNewChat }: NavProps) {
+  const { styles, cx } = useStyles();
+  return (
+    <nav className={styles.nav}>
+      {SECTIONS.map((s) => (
+        <Tooltip key={s.view} title={s.label}>
+          <div
+            className={cx(styles.navItem, view === s.view && styles.navItemActive)}
+            onClick={() => onView(s.view)}
+          >
+            <Icon icon={s.icon} size={19} />
+          </div>
+        </Tooltip>
+      ))}
+      <div className={styles.navSpacer} />
+      <Tooltip title="新建对话">
+        <div className={styles.newBtn} onClick={onNewChat}>
+          <Icon icon={SquarePen} size={17} />
+        </div>
+      </Tooltip>
+    </nav>
+  );
+}
+
+function SideFooter({ view, onView }: Pick<NavProps, 'view' | 'onView'>) {
+  const { styles, cx } = useStyles();
+  const { isDarkMode, setThemeMode } = useThemeMode();
+  return (
+    <div className={styles.footer}>
+      <Tooltip title="设置">
+        <div
+          className={cx(styles.footerItem, view === 'settings' && styles.footerItemActive)}
+          onClick={() => onView('settings')}
+        >
+          <Icon icon={Settings} size={18} />
+        </div>
+      </Tooltip>
+      <Tooltip title={isDarkMode ? '浅色模式' : '深色模式'}>
+        <div
+          className={styles.footerItem}
+          onClick={() => setThemeMode(isDarkMode ? 'light' : 'dark')}
+        >
+          <Icon icon={isDarkMode ? Sun : Moon} size={17} />
+        </div>
+      </Tooltip>
+    </div>
+  );
+}
+
 export function ListPane({
-  title,
-  actions,
+  view,
+  onView,
+  onNewChat,
   children,
-}: {
-  title: string;
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
+}: NavProps & { children: ReactNode }) {
   const { styles } = useStyles();
   return (
     <div className={styles.col}>
-      <div className={styles.header}>
-        <span className={styles.title}>{title}</span>
-        {actions && <div className={styles.actions}>{actions}</div>}
-      </div>
+      <SideNav view={view} onView={onView} onNewChat={onNewChat} />
       <div className={styles.scroll}>{children}</div>
+      <SideFooter view={view} onView={onView} />
     </div>
   );
 }

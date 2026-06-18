@@ -10,7 +10,7 @@ const useStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 8px;
     min-width: 0;
-    padding: 5px 8px;
+    padding: 6px 8px;
     border-radius: ${token.borderRadius}px;
     transition: background 0.15s ease;
   `,
@@ -89,7 +89,9 @@ const useStyles = createStyles(({ token, css }) => ({
     transform: rotate(90deg);
   `,
   body: css`
-    margin: 2px 0 6px 22px;
+    margin: 4px 0 6px 14px;
+    padding-left: 14px;
+    border-left: 2px solid ${token.colorFillSecondary};
     display: flex;
     flex-direction: column;
     gap: 6px;
