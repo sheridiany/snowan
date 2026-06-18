@@ -1,111 +1,35 @@
 import { useState } from 'react';
-import { ActionIcon, Button, TextArea } from '@lobehub/ui';
-import { Select } from 'antd';
+import { Button, TextArea } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { ArrowUp, Box, Compass, Database, Paperclip, Play, Square } from 'lucide-react';
+import { ArrowUp, Square } from 'lucide-react';
 import ModelSelect from './ModelSelect';
-
-export type ComposerMode = 'explore' | 'execute';
-
-type Option = { value: string; label: string };
-
-const MODE_OPTIONS: { value: ComposerMode; label: string; hint: string }[] = [
-  { value: 'explore', label: '探索', hint: '只读 · 不改动任何数据' },
-  { value: 'execute', label: '执行', hint: '可执行操作 · 可写入' },
-];
-
-const DEFAULT_SOURCE_OPTIONS: Option[] = [
-  { value: 'all', label: '全部数据源' },
-  { value: 'local', label: '本地文件' },
-  { value: 'web', label: '网页' },
-  { value: 'calendar', label: '日历' },
-];
-
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
     width: 100%;
     max-width: 760px;
     margin: 0 auto;
-    padding: 12px 16px 22px;
+    padding: 12px 16px 18px;
   `,
   card: css`
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px 12px 8px;
-    border-radius: 12px;
-    background: transparent;
-  `,
-  topRow: css`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  `,
-  modeGroup: css`
-    display: inline-flex;
-    padding: 2px;
-    gap: 2px;
-    border-radius: 8px;
-    background: ${token.colorFillTertiary};
-  `,
-  modeItem: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 26px;
-    padding: 0 11px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    color: ${token.colorTextSecondary};
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.15s ease, color 0.15s ease;
-    &:hover {
-      color: ${token.colorText};
-    }
-  `,
-  modeItemActive: css`
+    padding: 12px 12px 10px;
+    border-radius: 16px;
     background: ${token.colorBgElevated};
-    color: ${token.colorText};
-    box-shadow: 0 1px 3px ${token.colorFillQuaternary};
-  `,
-  chip: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 6px 0 10px;
-    border-radius: 8px;
-    background: ${token.colorFillTertiary};
-    color: ${token.colorTextSecondary};
-  `,
-  chipIcon: css`
-    display: inline-flex;
-    color: ${token.colorTextTertiary};
-  `,
-  chipSelect: css`
-    .ant-select-selector {
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      padding-inline: 0 !important;
-      height: 28px !important;
-    }
-    .ant-select-selection-item {
-      font-size: 12px;
-      font-weight: 500;
-      line-height: 28px !important;
-      color: ${token.colorTextSecondary};
+    border: 1px solid ${token.colorBorderSecondary};
+    box-shadow: ${token.boxShadowTertiary};
+    transition: border-color 0.15s ease;
+    &:focus-within {
+      border-color: ${token.colorPrimaryBorder};
     }
   `,
   ta: css`
     border: none !important;
     box-shadow: none !important;
     background: transparent !important;
-    padding: 2px 2px 0 !important;
+    padding: 2px 4px 0 !important;
     resize: none;
     font-size: 15px;
   `,
@@ -113,11 +37,6 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 8px;
-  `,
-  leftTools: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
   `,
   spacer: css`
     flex: 1;
@@ -132,7 +51,7 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 0 !important;
   `,
   hint: css`
-    margin-top: 6px;
+    margin-top: 8px;
     text-align: center;
     font-size: 11px;
     color: ${token.colorTextQuaternary};
@@ -143,31 +62,11 @@ export interface ComposerProps {
   busy: boolean;
   onSend: (text: string) => void;
   onStop?: () => void;
-  mode?: ComposerMode;
-  onModeChange?: (mode: ComposerMode) => void;
-  sourceOptions?: Option[];
-  defaultSource?: string;
 }
 
-export default function Composer({
-  busy,
-  onSend,
-  onStop,
-  mode: modeProp,
-  onModeChange,
-  sourceOptions = DEFAULT_SOURCE_OPTIONS,
-  defaultSource,
-}: ComposerProps) {
-  const { styles, cx } = useStyles();
+export default function Composer({ busy, onSend, onStop }: ComposerProps) {
+  const { styles } = useStyles();
   const [value, setValue] = useState('');
-  const [modeState, setModeState] = useState<ComposerMode>(modeProp ?? 'explore');
-  const [source, setSource] = useState(defaultSource ?? sourceOptions[0]?.value);
-
-  const mode = modeProp ?? modeState;
-  const setMode = (next: ComposerMode) => {
-    if (modeProp === undefined) setModeState(next);
-    onModeChange?.(next);
-  };
 
   const submit = () => {
     const text = value.trim();
@@ -179,43 +78,6 @@ export default function Composer({
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
-        <div className={styles.topRow}>
-          <div className={styles.modeGroup} role="radiogroup" aria-label="模式">
-            {MODE_OPTIONS.map((opt) => {
-              const active = mode === opt.value;
-              const Icon = opt.value === 'explore' ? Compass : Play;
-              return (
-                <span
-                  key={opt.value}
-                  role="radio"
-                  aria-checked={active}
-                  title={opt.hint}
-                  className={cx(styles.modeItem, active && styles.modeItemActive)}
-                  onClick={() => setMode(opt.value)}
-                >
-                  <Icon size={14} />
-                  {opt.label}
-                </span>
-              );
-            })}
-          </div>
-
-          <div className={styles.chip}>
-            <span className={styles.chipIcon}>
-              <Database size={14} />
-            </span>
-            <Select
-              className={styles.chipSelect}
-              value={source}
-              onChange={setSource}
-              options={sourceOptions}
-              variant="borderless"
-              popupMatchSelectWidth={false}
-              styles={{ popup: { root: { minWidth: 140 } } }}
-            />
-          </div>
-        </div>
-
         <TextArea
           className={styles.ta}
           value={value}
@@ -229,18 +91,9 @@ export default function Composer({
           autoSize={{ minRows: 1, maxRows: 8 }}
           placeholder="问点什么…"
         />
-
         <div className={styles.bottomRow}>
-          <div className={styles.leftTools}>
-            <ActionIcon icon={Paperclip} size="small" title="附件" />
-            <ActionIcon icon={Database} size="small" title="数据源" />
-            <ActionIcon icon={Box} size="small" title="MCP" />
-          </div>
-
           <span className={styles.spacer} />
-
           <ModelSelect />
-
           {busy && onStop ? (
             <Button
               type="primary"
