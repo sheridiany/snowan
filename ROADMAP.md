@@ -1,42 +1,47 @@
-# Snowan — Build Roadmap (autonomous iteration)
+# Snowan — Build Roadmap
 
-Each iteration ends GREEN: backend imports + runs, frontend `npm run build` passes,
-a runtime smoke check succeeds, then a commit. No iteration is committed broken.
+Each iteration ends GREEN (backend runs, `npm run build` passes, runtime smoke ok) then commits.
+Status: ✅ done · 🛠 in progress · ⬜ todo
 
-Status legend: ✅ done · 🛠 in progress · ⬜ todo
-
-## ✅ Phase 0 — Skeleton + minimal loop
+## ✅ Phase 0 — Skeleton + minimal loop  ·  `6a3ce17`
 PydanticAI agent + 1 tool + streaming SSE; React19/antd6/lobe-ui builds & renders.
 
-## ✅ Phase 1 — Multi-turn + read-only tools
-Session-keyed history; `read_file` / `grep_search` / `glob_search` (workspace-scoped).
+## ✅ Phase 1 — Multi-turn + read-only tools  ·  `6e4d8d6`
+Session history; read_file / grep_search / glob_search (workspace-scoped).
 
-## 🛠 Phase 2 — Real chat UI + tool visibility
-- ⬜ Frontend layout with lobe-ui: sessions sider · chat canvas · composer · warm+dark theme
-- ⬜ Richer SSE: emit tool-call events (name/args/result), not just text deltas
-- ⬜ Frontend: tool-call chips (the "agent is doing things" feel)
+## ✅ Phase 2 — Chat UI + tool visibility  ·  `45fa003`
+agent.iter streaming → typed SSE (delta/tool_call/tool_result/done). lobe-ui chat:
+inline tool-call cards, warm theme, working dark mode.
 
-## ⬜ Phase 3 — Tool-guard approval + mutating tools + MCP
-- write_file / edit_file / append_file / execute_shell_command, gated by `requires_approval`
-- approval bridge: `ApprovalRequired` / `DeferredToolRequests` → resume endpoint → UI approval card
-- MCP toolsets: `MCPServerStdio` / `MCPServerStreamableHTTP` / `FastMCPToolset` + config
+## ✅ App shell (Craft-style)  ·  `9465138`
+Nav rail (会话/数据源/技能/设置) + master-detail settings (外观/AI/Workspace/权限/
+快捷键/偏好); permissions panel mirrors Craft; sources/skills views.
+
+## ✅ Desktop + detail  ·  `a5ca44c`
+Tauri v2 wrapper (macOS Overlay titlebar, `cargo check` passes); draggable TitleBar;
+settings polished to Craft detail via a shared Section/Row kit.
+
+## ✅ Phase 3 — Mutating tools + interactive approval  ·  `0ef575a`
+write/edit/append/shell tools gated by requires_approval; approval_required SSE +
+/api/chat/approve resume (DeferredToolRequests); inline ApprovalCard (允许/拒绝).
+Verified end-to-end: approve writes the file, deny is refused.
 
 ## ⬜ Phase 4 — Knowledge layer
-- notes store (JSON) + CRUD routes + notes UI (lobe-ui Markdown/Mermaid)
-- `knowledge_search` tool (keyword first, embeddings/semantic next) + index
-- later: web capture · calendar · local folders · external-AI-chat capture
+notes store (JSON) + CRUD routes + notes UI (lobe-ui Markdown/Mermaid);
+knowledge_search tool (keyword → embeddings); later: web capture / calendar / folders.
 
 ## ⬜ Phase 5 — Memory + persistence
-- session persistence to disk via `ModelMessagesTypeAdapter`
-- context compaction via `ProcessHistory`
-- ReMe long-term memory (auto-memory + retrieval)
+disk session persistence (ModelMessagesTypeAdapter); context compaction
+(ProcessHistory); ReMe long-term memory.
 
 ## ⬜ Phase 6 — Skills + plugins
-- SKILL.md parsing → dynamic `FunctionToolset`; plugin registry
+SKILL.md → dynamic FunctionToolset; plugin registry.
 
-## ⬜ Phase 7 — Desktop packaging (Tauri)
+## ⬜ Phase 7 — MCP toolsets + Tauri native run
+FastMCPToolset / MCPServerStdio/HTTP; `npm run tauri dev` native window verify.
 
-## Parallelization rule
-Within a phase, fan out agents only over DISJOINT new files. Shared integration
-points (`agent/build.py`, `server/app.py`, `App.tsx`) are edited by the orchestrator
-after, then verified. Keep the build green at every commit.
+## Open items / notes
+- Set a real provider to chat for real: backend/.env → SNOWAN_PROVIDER + SNOWAN_API_KEY
+  (offline default is a TestModel that just calls every tool — hence the noisy demos).
+- Parallelization rule: fan out over DISJOINT new files; orchestrator integrates
+  shared files (App.tsx, build.py, chat.py) + runs the green build before commit.
