@@ -1,5 +1,6 @@
-import { Button, Icon } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
+import { Icon } from '@lobehub/ui';
+import { Tooltip } from 'antd';
+import { createStyles, useThemeMode } from 'antd-style';
 import {
   SquarePen,
   Inbox,
@@ -10,104 +11,74 @@ import {
   Sun,
   type LucideIcon,
 } from 'lucide-react';
-import { useThemeMode } from 'antd-style';
 
 export type View = 'conversations' | 'knowledge' | 'skills' | 'settings';
 
 const useStyles = createStyles(({ token, css }) => ({
   rail: css`
-    width: 208px;
+    width: 60px;
     flex: none;
     height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 12px 10px 10px;
-    background: ${token.colorBgContainer};
-    border-right: 1px solid ${token.colorBorderSecondary};
-  `,
-  brand: css`
-    display: flex;
     align-items: center;
-    gap: 9px;
-    padding: 4px 8px 12px;
+    gap: 4px;
+    padding: 10px 0 12px;
+    background: ${token.colorBgLayout};
   `,
   mark: css`
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     flex: none;
+    margin-bottom: 6px;
     background: linear-gradient(135deg, ${token.colorPrimaryHover}, ${token.colorPrimary});
-    box-shadow: 0 2px 8px ${token.colorPrimaryBorder};
   `,
-  brandText: css`
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: ${token.colorText};
-  `,
-  newBtn: css`
-    width: 100%;
-    justify-content: center;
-    margin-bottom: 12px;
-  `,
-  section: css`
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  `,
-  sectionLabel: css`
-    padding: 6px 10px 5px;
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: ${token.colorTextTertiary};
-  `,
-  row: css`
+  item: css`
+    width: 40px;
+    height: 40px;
+    flex: none;
     display: flex;
     align-items: center;
-    gap: 10px;
-    height: 36px;
-    padding: 0 10px;
-    border-radius: ${token.borderRadius}px;
-    font-size: 13px;
+    justify-content: center;
+    border-radius: 10px;
     color: ${token.colorTextSecondary};
     cursor: pointer;
-    user-select: none;
     transition:
-      background 0.15s ease,
-      color 0.15s ease;
+      background 0.12s ease,
+      color 0.12s ease;
     &:hover {
       background: ${token.colorFillTertiary};
+      color: ${token.colorText};
     }
   `,
-  rowActive: css`
+  itemActive: css`
     background: ${token.colorFillSecondary};
-    color: ${token.colorText};
-    font-weight: 600;
-  `,
-  rowIcon: css`
-    flex: none;
-    color: inherit;
-  `,
-  rowIconActive: css`
     color: ${token.colorPrimary};
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorPrimary};
+    }
+  `,
+  newBtn: css`
+    width: 40px;
+    height: 40px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    color: ${token.colorTextLightSolid};
+    background: ${token.colorPrimary};
+    cursor: pointer;
+    transition: filter 0.12s ease;
+    &:hover {
+      filter: brightness(1.06);
+    }
   `,
   spacer: css`
     flex: 1;
-  `,
-  footer: css`
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  `,
-  toggle: css`
-    width: 100%;
-    justify-content: flex-start;
-    height: 36px;
-    color: ${token.colorTextSecondary};
-  `,
-  toggleIcon: css`
-    margin-right: 4px;
   `,
 }));
 
@@ -131,74 +102,45 @@ export default function NavRail({
   const { styles, cx } = useStyles();
   const { isDarkMode, setThemeMode } = useThemeMode();
 
-  const Row = ({ item }: { item: NavItem }) => {
-    const active = view === item.view;
-    return (
-      <div
-        className={cx(styles.row, active && styles.rowActive)}
-        onClick={() => onView(item.view)}
-      >
-        <Icon
-          className={cx(styles.rowIcon, active && styles.rowIconActive)}
-          icon={item.icon}
-          size={18}
-        />
-        {item.label}
-      </div>
-    );
-  };
-
   return (
     <nav className={styles.rail}>
-      <div className={styles.brand}>
-        <div className={styles.mark} />
-        <span className={styles.brandText}>Snowan</span>
-      </div>
+      <div className={styles.mark} />
 
-      <Button
-        className={styles.newBtn}
-        type="primary"
-        icon={<Icon icon={SquarePen} size={16} />}
-        onClick={onNewChat}
-      >
-        新建会话
-      </Button>
+      <Tooltip title="新建会话" placement="right">
+        <div className={styles.newBtn} onClick={onNewChat}>
+          <Icon icon={SquarePen} size={18} />
+        </div>
+      </Tooltip>
 
-      <div className={styles.section}>
-        <span className={styles.sectionLabel}>工作台</span>
-        {PRIMARY.map((item) => (
-          <Row key={item.view} item={item} />
-        ))}
-      </div>
+      {PRIMARY.map((item) => (
+        <Tooltip key={item.view} title={item.label} placement="right">
+          <div
+            className={cx(styles.item, view === item.view && styles.itemActive)}
+            onClick={() => onView(item.view)}
+          >
+            <Icon icon={item.icon} size={20} />
+          </div>
+        </Tooltip>
+      ))}
 
       <div className={styles.spacer} />
 
-      <div className={styles.footer}>
+      <Tooltip title="设置" placement="right">
         <div
-          className={cx(styles.row, view === 'settings' && styles.rowActive)}
+          className={cx(styles.item, view === 'settings' && styles.itemActive)}
           onClick={() => onView('settings')}
         >
-          <Icon
-            className={cx(styles.rowIcon, view === 'settings' && styles.rowIconActive)}
-            icon={Settings}
-            size={18}
-          />
-          设置
+          <Icon icon={Settings} size={20} />
         </div>
-        <Button
-          className={styles.toggle}
-          type="text"
-          size="small"
+      </Tooltip>
+      <Tooltip title={isDarkMode ? '浅色模式' : '深色模式'} placement="right">
+        <div
+          className={styles.item}
           onClick={() => setThemeMode(isDarkMode ? 'light' : 'dark')}
         >
-          <Icon
-            className={styles.toggleIcon}
-            icon={isDarkMode ? Sun : Moon}
-            size={16}
-          />
-          {isDarkMode ? '浅色模式' : '深色模式'}
-        </Button>
-      </div>
+          <Icon icon={isDarkMode ? Sun : Moon} size={18} />
+        </div>
+      </Tooltip>
     </nav>
   );
 }

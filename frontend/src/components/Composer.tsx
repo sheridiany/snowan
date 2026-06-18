@@ -47,14 +47,9 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 8px;
     padding: 10px 12px 8px;
     border-radius: 12px;
-    background: ${token.colorBgContainer};
-    border: 1px solid ${token.colorBorderSecondary};
-    box-shadow: 0 6px 24px ${token.colorFillQuaternary};
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    &:focus-within {
-      border-color: ${token.colorPrimaryBorder};
-      box-shadow: 0 8px 28px ${token.colorPrimaryBgHover};
-    }
+    background: ${token.colorBgElevated};
+    box-shadow: ${token.boxShadowSecondary};
+    transition: box-shadow 0.15s ease;
   `,
   topRow: css`
     display: flex;

@@ -1,4 +1,4 @@
-import { Block, Text } from '@lobehub/ui';
+import { Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import type { ReactNode } from 'react';
 
@@ -26,9 +26,10 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextTertiary};
   `,
   card: css`
-    padding: 4px 18px;
+    padding: 6px 20px;
     border-radius: ${token.borderRadiusLG}px;
     background: ${token.colorBgContainer};
+    box-shadow: ${token.boxShadowTertiary};
   `,
   row: css`
     display: flex;
@@ -91,13 +92,7 @@ export function Section({
           {subtitle && <Text className={styles.sectionSub}>{subtitle}</Text>}
         </div>
       )}
-      {bare ? (
-        children
-      ) : (
-        <Block variant="outlined" className={styles.card}>
-          {children}
-        </Block>
-      )}
+      {bare ? children : <div className={styles.card}>{children}</div>}
     </div>
   );
 }

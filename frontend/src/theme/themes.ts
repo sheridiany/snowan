@@ -26,8 +26,8 @@ export const THEME_PRESETS: ThemePreset[] = [
   {
     id: 'snowan',
     name: 'Snowan 暖橙',
-    light: { accent: '#EF6C00', bg: '#FAF6EF', surface: '#FFFDF8', elevated: '#FFFFFF', text: '#1F1A14', textSecondary: '#5C544A', textTertiary: '#938A7C', border: '#E3DACB', borderSecondary: '#EFE8DC' },
-    dark: { accent: '#FF8C2E', bg: '#1A1613', surface: '#242019', elevated: '#2E2920', text: '#F2EADD', textSecondary: '#B5AB99', textTertiary: '#857C6C', border: '#3D3730', borderSecondary: '#2E2922' },
+    light: { accent: '#C2703D', bg: '#F6F1E9', surface: '#FCF9F3', elevated: '#FFFFFF', text: '#3A322A', textSecondary: '#6E6357', textTertiary: '#9C8E7E', border: '#ECE4D7', borderSecondary: '#F3ECE1' },
+    dark: { accent: '#D89063', bg: '#1E1A17', surface: '#262220', elevated: '#2F2926', text: '#EDE6DD', textSecondary: '#B3A99C', textTertiary: '#80776B', border: '#3A332E', borderSecondary: '#322C28' },
   },
   {
     id: 'catppuccin',
@@ -85,6 +85,27 @@ function onAccent(accent: string): string {
   return contrast(la, 1) >= contrast(la, relLum('#1a1a1a')) ? '#ffffff' : '#1a1a1a';
 }
 
+function hexToRgb(hex: string): string {
+  const c = hex.replace('#', '');
+  return [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16)).join(', ');
+}
+
+// Craft-style soft "card" shadow: a foreground-tinted 1px ring plus a whisper of
+// blur (light), leaning to an outline in dark. This replaces hard card/pane
+// borders — the source of the stark, boxed-in look.
+function cardShadow(p: Palette, dark: boolean): string {
+  const ring = hexToRgb(p.text);
+  return dark
+    ? `0 0 0 1px rgba(${ring}, 0.10), 0 1px 2px -1px rgba(0,0,0,0.4), 0 2px 6px -2px rgba(0,0,0,0.28)`
+    : `0 0 0 1px rgba(${ring}, 0.05), 0 1px 1px -0.5px rgba(0,0,0,0.05), 0 3px 4px -1.5px rgba(0,0,0,0.05)`;
+}
+function cardShadowHover(p: Palette, dark: boolean): string {
+  const ring = hexToRgb(p.text);
+  return dark
+    ? `0 0 0 1px rgba(${ring}, 0.14), 0 2px 6px -1px rgba(0,0,0,0.45), 0 8px 16px -5px rgba(0,0,0,0.35)`
+    : `0 0 0 1px rgba(${ring}, 0.07), 0 2px 4px -1px rgba(0,0,0,0.06), 0 10px 18px -6px rgba(0,0,0,0.08)`;
+}
+
 // Appearance-aware antd ThemeConfig. `algorithm` is included so this wins over
 // lobe-ui's own algorithm; base/text seeds make derived fills (hover/active) sit
 // in-theme; the primary button text auto-contrasts against the accent.
@@ -108,8 +129,13 @@ export function makeThemeConfig(themeId: string) {
         colorTextQuaternary: p.textTertiary,
         colorBorder: p.border,
         colorBorderSecondary: p.borderSecondary,
-        // Craft-style small radii: base 6 derives sm 4 / base 6 / lg 8.
+        // Craft-style small radii: base 6 (sm 4 / base 6) for buttons/rows,
+        // softer 10 for cards.
         borderRadius: 6,
+        borderRadiusLG: 10,
+        // Soft, foreground-tinted card shadows that stand in for borders.
+        boxShadowTertiary: cardShadow(p, dark),
+        boxShadowSecondary: cardShadowHover(p, dark),
         fontFamily: FONT,
       },
       components: { Button: { primaryColor: onAccent(p.accent) } },

@@ -41,12 +41,11 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   detailHeader: css`
     flex: none;
-    height: 48px;
+    height: 52px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0 16px;
-    border-bottom: 1px solid ${token.colorBorderSecondary};
   `,
   detailTitle: css`
     font-size: 14px;
@@ -216,7 +215,7 @@ export default function App() {
       />
       <div className={styles.body}>
         {!navCollapsed && <NavRail view={view} onView={go} onNewChat={handleNew} />}
-        {view === 'conversations' ? (
+        {view === 'conversations' && (
           <>
             <SessionsView
               sessions={sessions}
@@ -238,13 +237,10 @@ export default function App() {
               <Composer busy={busy} onSend={send} />
             </section>
           </>
-        ) : (
-          <main className={styles.main}>
-            {view === 'knowledge' && <KnowledgeView />}
-            {view === 'skills' && <SkillsView />}
-            {view === 'settings' && <SettingsView />}
-          </main>
         )}
+        {view === 'knowledge' && <KnowledgeView />}
+        {view === 'skills' && <SkillsView />}
+        {view === 'settings' && <SettingsView />}
         {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
       </div>
     </div>

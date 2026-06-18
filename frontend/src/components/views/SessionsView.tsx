@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 
+import { ListPane } from '../shell/ListPane';
 import type { Session, SessionStatus } from '../types';
 
 // Relative time in Chinese from a past epoch ms: "刚刚" / "3分钟" / "5小时" / "19天".
@@ -41,39 +42,6 @@ const NEXT: Record<SessionStatus, SessionStatus> = {
 };
 
 const useStyles = createStyles(({ token, css }) => ({
-  column: css`
-    width: 340px;
-    flex: none;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background: ${token.colorBgContainer};
-    border-right: 1px solid ${token.colorBorderSecondary};
-  `,
-  header: css`
-    position: relative;
-    flex: none;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 12px;
-    border-bottom: 1px solid ${token.colorBorderSecondary};
-  `,
-  title: css`
-    font-size: 15px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
-  filter: css`
-    position: absolute;
-    right: 8px;
-  `,
-  scroll: css`
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px 8px 16px;
-  `,
   section: css`
     display: flex;
     flex-direction: column;
@@ -88,7 +56,6 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusSM}px;
     cursor: pointer;
     user-select: none;
-    color: ${token.colorTextSecondary};
     &:hover {
       background: ${token.colorFillQuaternary};
     }
@@ -117,7 +84,7 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 9px 10px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.12s ease;
     &:hover {
       background: ${token.colorFillTertiary};
     }
@@ -200,11 +167,6 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-wrap: wrap;
     gap: 4px;
   `,
-  empty: css`
-    flex: 1;
-    min-height: 0;
-    display: flex;
-  `,
 }));
 
 export default function SessionsView({
@@ -229,101 +191,83 @@ export default function SessionsView({
     });
 
   return (
-    <div className={styles.column}>
-      <div className={styles.header}>
-        <Text className={styles.title}>所有会话</Text>
-        <ActionIcon
-          className={styles.filter}
-          icon={SlidersHorizontal}
-          size="small"
-          title="筛选"
-        />
-      </div>
-
+    <ListPane
+      title="所有会话"
+      actions={<ActionIcon icon={SlidersHorizontal} size="small" title="筛选" />}
+    >
       {sessions.length === 0 ? (
-        <div className={styles.empty}>
-          <Empty
-            flex={1}
-            icon={MessageSquare}
-            title="还没有会话"
-            description="开始一段新对话,它会出现在这里。"
-          />
-        </div>
+        <Empty
+          icon={MessageSquare}
+          title="还没有会话"
+          description="开始一段新对话,它会出现在这里。"
+          paddingBlock={40}
+        />
       ) : (
-        <div className={styles.scroll}>
-          {SECTIONS.map(({ status, label }) => {
-            const items = sessions.filter((s) => s.status === status);
-            if (items.length === 0) return null;
-            const isCollapsed = collapsed.has(status);
-            return (
-              <div key={status} className={styles.section}>
-                <div className={styles.sectionHeader} onClick={() => toggle(status)}>
-                  <span className={styles.chevron}>
-                    {isCollapsed ? (
-                      <ChevronRight size={14} />
-                    ) : (
-                      <ChevronDown size={14} />
-                    )}
-                  </span>
-                  <Text className={styles.sectionLabel}>{label}</Text>
-                  <Text className={styles.count}>{items.length}</Text>
-                </div>
-                {!isCollapsed &&
-                  items.map((s) => {
-                    const active = s.id === activeId;
-                    const done = s.status === 'done';
-                    return (
-                      <div
-                        key={s.id}
-                        className={cx(styles.row, active && styles.rowActive)}
-                        onClick={() => onSelect(s.id)}
-                      >
-                        <div
-                          className={cx(
-                            styles.circle,
-                            done && styles.circleDone,
-                            !onSetStatus && styles.circleReadonly,
-                          )}
-                          onClick={(e) => {
-                            if (!onSetStatus) return;
-                            e.stopPropagation();
-                            onSetStatus(s.id, NEXT[s.status]);
-                          }}
-                        >
-                          {done ? (
-                            <Check size={15} strokeWidth={2.4} />
-                          ) : (
-                            <Circle size={15} strokeWidth={2} />
-                          )}
-                        </div>
-                        <div className={styles.body}>
-                          <div className={styles.rowTop}>
-                            <Text
-                              className={cx(
-                                styles.rowTitle,
-                                done && styles.rowTitleDone,
-                              )}
-                            >
-                              {s.title}
-                            </Text>
-                            <Text className={styles.time}>{relTime(s.updatedAt)}</Text>
-                          </div>
-                          {s.tags.length > 0 && (
-                            <Flexbox className={styles.tags}>
-                              {s.tags.map((t) => (
-                                <Tag key={t}>{t}</Tag>
-                              ))}
-                            </Flexbox>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+        SECTIONS.map(({ status, label }) => {
+          const items = sessions.filter((s) => s.status === status);
+          if (items.length === 0) return null;
+          const isCollapsed = collapsed.has(status);
+          return (
+            <div key={status} className={styles.section}>
+              <div className={styles.sectionHeader} onClick={() => toggle(status)}>
+                <span className={styles.chevron}>
+                  {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                </span>
+                <Text className={styles.sectionLabel}>{label}</Text>
+                <Text className={styles.count}>{items.length}</Text>
               </div>
-            );
-          })}
-        </div>
+              {!isCollapsed &&
+                items.map((s) => {
+                  const active = s.id === activeId;
+                  const done = s.status === 'done';
+                  return (
+                    <div
+                      key={s.id}
+                      className={cx(styles.row, active && styles.rowActive)}
+                      onClick={() => onSelect(s.id)}
+                    >
+                      <div
+                        className={cx(
+                          styles.circle,
+                          done && styles.circleDone,
+                          !onSetStatus && styles.circleReadonly,
+                        )}
+                        onClick={(e) => {
+                          if (!onSetStatus) return;
+                          e.stopPropagation();
+                          onSetStatus(s.id, NEXT[s.status]);
+                        }}
+                      >
+                        {done ? (
+                          <Check size={15} strokeWidth={2.4} />
+                        ) : (
+                          <Circle size={15} strokeWidth={2} />
+                        )}
+                      </div>
+                      <div className={styles.body}>
+                        <div className={styles.rowTop}>
+                          <Text
+                            className={cx(styles.rowTitle, done && styles.rowTitleDone)}
+                          >
+                            {s.title}
+                          </Text>
+                          <Text className={styles.time}>{relTime(s.updatedAt)}</Text>
+                        </div>
+                        {s.tags.length > 0 && (
+                          <Flexbox className={styles.tags}>
+                            {s.tags.map((t) => (
+                              <Tag key={t}>{t}</Tag>
+                            ))}
+                          </Flexbox>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          );
+        })
       )}
-    </div>
+    </ListPane>
   );
 }
