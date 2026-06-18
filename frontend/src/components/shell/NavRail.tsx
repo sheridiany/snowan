@@ -26,14 +26,6 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 10px 0 12px;
     background: ${token.colorBgLayout};
   `,
-  mark: css`
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    flex: none;
-    margin-bottom: 6px;
-    background: linear-gradient(135deg, ${token.colorPrimaryHover}, ${token.colorPrimary});
-  `,
   item: css`
     width: 40px;
     height: 40px;
@@ -104,8 +96,6 @@ export default function NavRail({
 
   return (
     <nav className={styles.rail}>
-      <div className={styles.mark} />
-
       <Tooltip title="新建会话" placement="right">
         <div className={styles.newBtn} onClick={onNewChat}>
           <Icon icon={SquarePen} size={18} />
