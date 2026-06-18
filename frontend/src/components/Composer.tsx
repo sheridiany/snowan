@@ -141,7 +141,7 @@ const useStyles = createStyles(({ token, css }) => ({
 
 export interface ComposerProps {
   busy: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, mode: ComposerMode) => void;
   mode?: ComposerMode;
   onModeChange?: (mode: ComposerMode) => void;
   sourceOptions?: Option[];
@@ -171,7 +171,7 @@ export default function Composer({
     const text = value.trim();
     if (!text || busy) return;
     setValue('');
-    onSend(text);
+    onSend(text, mode);
   };
 
   return (

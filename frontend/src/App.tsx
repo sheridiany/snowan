@@ -175,7 +175,7 @@ export default function App() {
       patchAssistant((b) => [...b, { kind: 'approval', calls }]),
   };
 
-  const send = async (text: string) => {
+  const send = async (text: string, mode: string) => {
     setBusy(true);
 
     const sid = activeId;
@@ -191,7 +191,7 @@ export default function App() {
     ]);
 
     try {
-      await streamChat(text, sid, streamHandlers);
+      await streamChat(text, sid, mode, streamHandlers);
     } finally {
       setBusy(false);
     }

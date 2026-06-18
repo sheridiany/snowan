@@ -26,6 +26,7 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
+    mode: str = "execute"  # 'explore' = read-only tools, no approvals
 
 
 class ApproveRequest(BaseModel):
@@ -97,9 +98,11 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
     yield _sse({"type": "done"})
 
 
-async def _run_new(message: str, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
+async def _run_new(
+    message: str, history: list[ModelMessage], session_id: str, mode: str
+) -> AsyncIterator[str]:
     # Build per-request so a model/key change saved in Settings takes effect at once.
-    agent = build_agent()
+    agent = build_agent(mode)
     async with agent.iter(message, message_history=history) as run:
         async for chunk in _stream_run(run):
             yield chunk
@@ -122,7 +125,7 @@ async def _run_resume(
 async def chat_stream(req: ChatRequest) -> StreamingResponse:
     history = load_history(req.session_id)
     return StreamingResponse(
-        _run_new(req.message, history, req.session_id),
+        _run_new(req.message, history, req.session_id, req.mode),
         media_type="text/event-stream",
     )
 

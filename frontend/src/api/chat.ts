@@ -22,12 +22,13 @@ type SSEEvent =
 export async function streamChat(
   message: string,
   sessionId: string,
+  mode: string,
   handlers: ChatHandlers,
 ): Promise<void> {
   const res = await fetch(api('/api/chat/stream'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, session_id: sessionId }),
+    body: JSON.stringify({ message, session_id: sessionId, mode }),
   });
   await consume(res, handlers);
 }
