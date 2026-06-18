@@ -1,50 +1,53 @@
-import { Block, CopyButton, Text } from '@lobehub/ui';
+import { CopyButton } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { FolderOpen } from 'lucide-react';
+import { Row, Section } from './_kit';
 
+const WORKSPACE_NAME = 'Snowan';
 const WORKSPACE_DIR = '~/.snowan/workspace';
 
 const useStyles = createStyles(({ token, css }) => ({
-  card: css`
-    padding: 20px;
-    border-radius: ${token.borderRadiusLG}px;
+  wrap: css`
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 28px;
   `,
-  title: css`
-    font-size: 14px;
+  name: css`
+    font-size: 13.5px;
     font-weight: 600;
     color: ${token.colorText};
-  `,
-  sub: css`
-    font-size: 12px;
-    color: ${token.colorTextTertiary};
-    line-height: 1.6;
   `,
   path: css`
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 8px;
+    padding: 5px 6px 5px 11px;
     border-radius: ${token.borderRadius}px;
     background: ${token.colorFillQuaternary};
     border: 1px solid ${token.colorBorderSecondary};
   `,
-  icon: css`
+  pathIcon: css`
     flex: none;
     color: ${token.colorTextTertiary};
     display: inline-flex;
   `,
   mono: css`
-    flex: 1;
-    min-width: 0;
     font-family: ${token.fontFamilyCode};
-    font-size: 13px;
+    font-size: 12.5px;
     color: ${token.colorText};
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  `,
+  swatch: css`
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: ${token.colorPrimary};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    box-shadow: 0 2px 8px ${token.colorPrimaryBorder};
   `,
 }));
 
@@ -52,18 +55,32 @@ export default function SettingsWorkspace() {
   const { styles } = useStyles();
 
   return (
-    <Block variant="outlined" className={styles.card}>
-      <Text className={styles.title}>工作目录</Text>
-      <Text className={styles.sub}>
-        会话产生的文件、技能与本地资料都保存在这个目录下。
-      </Text>
-      <div className={styles.path}>
-        <span className={styles.icon}>
-          <FolderOpen size={16} />
-        </span>
-        <span className={styles.mono}>{WORKSPACE_DIR}</span>
-        <CopyButton content={WORKSPACE_DIR} size="small" />
-      </div>
-    </Block>
+    <div className={styles.wrap}>
+      <Section title="工作区" subtitle="会话产生的文件、技能与本地资料都保存在这个工作区下">
+        <Row
+          label="名称"
+          subtitle="显示在侧边栏与窗口标题中"
+          control={<span className={styles.name}>{WORKSPACE_NAME}</span>}
+        />
+        <Row
+          label="工作目录"
+          subtitle="所有持久化内容的根目录"
+          control={
+            <div className={styles.path}>
+              <span className={styles.pathIcon}>
+                <FolderOpen size={15} />
+              </span>
+              <span className={styles.mono}>{WORKSPACE_DIR}</span>
+              <CopyButton content={WORKSPACE_DIR} size="small" />
+            </div>
+          }
+        />
+        <Row
+          label="图标"
+          subtitle="工作区的标识色块"
+          control={<span className={styles.swatch}>S</span>}
+        />
+      </Section>
+    </div>
   );
 }

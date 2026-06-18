@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Text } from '@lobehub/ui';
+import { ActionIcon, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import {
   Keyboard,
+  MoreHorizontal,
   Palette,
   ShieldCheck,
   SlidersHorizontal,
@@ -77,32 +78,33 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: 1;
     min-width: 0;
     display: flex;
-    height: 100vh;
+    height: 100%;
     background: ${token.colorBgLayout};
   `,
   nav: css`
-    width: 248px;
+    width: 256px;
     flex: none;
     height: 100%;
     overflow-y: auto;
-    padding: 22px 12px;
+    padding: 16px 12px;
     border-right: 1px solid ${token.colorBorderSecondary};
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
   `,
   navTitle: css`
-    padding: 4px 10px 12px;
-    font-size: 20px;
+    padding: 6px 10px 12px;
+    font-size: 18px;
     font-weight: 700;
     color: ${token.colorText};
   `,
   catRow: css`
     display: flex;
     align-items: center;
-    gap: 11px;
-    padding: 9px 10px;
-    border-radius: ${token.borderRadius}px;
+    gap: 12px;
+    height: 60px;
+    padding: 0 10px;
+    border-radius: ${token.borderRadiusLG}px;
     cursor: pointer;
     transition: background 0.15s ease;
     &:hover {
@@ -113,10 +115,10 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorFillSecondary};
   `,
   catIcon: css`
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     flex: none;
-    border-radius: 9px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -130,7 +132,7 @@ const useStyles = createStyles(({ token, css }) => ({
   catText: css`
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
     min-width: 0;
   `,
   catTitle: css`
@@ -151,23 +153,30 @@ const useStyles = createStyles(({ token, css }) => ({
   detailInner: css`
     max-width: 720px;
     margin: 0 auto;
-    padding: 36px 32px 64px;
+    padding: 32px 36px 64px;
     display: flex;
     flex-direction: column;
     gap: 8px;
   `,
   detailHead: css`
-    margin-bottom: 14px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  `,
+  detailHeadText: css`
+    min-width: 0;
   `,
   detailTitle: css`
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     color: ${token.colorText};
   `,
   detailSub: css`
     font-size: 13px;
     color: ${token.colorTextTertiary};
-    margin-top: 2px;
+    margin-top: 3px;
   `,
 }));
 
@@ -206,8 +215,11 @@ export default function SettingsView() {
       <div className={styles.detail}>
         <div className={styles.detailInner}>
           <div className={styles.detailHead}>
-            <div className={styles.detailTitle}>{active.title}</div>
-            <div className={styles.detailSub}>{active.subtitle}</div>
+            <div className={styles.detailHeadText}>
+              <div className={styles.detailTitle}>{active.title}</div>
+              <div className={styles.detailSub}>{active.subtitle}</div>
+            </div>
+            <ActionIcon icon={MoreHorizontal} size="small" title="更多" />
           </div>
           <Panel />
         </div>

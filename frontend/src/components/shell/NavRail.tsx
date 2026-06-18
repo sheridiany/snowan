@@ -1,4 +1,4 @@
-import { Button, Icon, Text } from '@lobehub/ui';
+import { Button, Icon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import {
   PencilLine,
@@ -6,6 +6,8 @@ import {
   Database,
   Sparkles,
   Settings,
+  Moon,
+  Sun,
   type LucideIcon,
 } from 'lucide-react';
 import { useThemeMode } from '../../theme/ThemeModeContext';
@@ -14,39 +16,39 @@ export type View = 'chat' | 'sessions' | 'sources' | 'skills' | 'settings';
 
 const useStyles = createStyles(({ token, css }) => ({
   rail: css`
-    width: 210px;
+    width: 208px;
     flex: none;
-    height: 100vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 18px 12px 14px;
+    padding: 12px 10px 10px;
     background: ${token.colorBgContainer};
     border-right: 1px solid ${token.colorBorderSecondary};
   `,
   brand: css`
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 6px 18px;
+    gap: 9px;
+    padding: 4px 8px 12px;
   `,
   mark: css`
-    width: 28px;
-    height: 28px;
-    border-radius: 9px;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
     flex: none;
     background: linear-gradient(135deg, ${token.colorPrimary}, #ffb066);
-    box-shadow: 0 4px 12px ${token.colorPrimaryBorder};
+    box-shadow: 0 2px 8px ${token.colorPrimaryBorder};
   `,
   brandText: css`
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
     letter-spacing: 0.01em;
     color: ${token.colorText};
   `,
   newBtn: css`
     width: 100%;
     justify-content: center;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   `,
   section: css`
     display: flex;
@@ -54,7 +56,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 2px;
   `,
   sectionLabel: css`
-    padding: 6px 10px 4px;
+    padding: 6px 10px 5px;
     font-size: 11px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -64,13 +66,16 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 9px 10px;
+    height: 36px;
+    padding: 0 10px;
     border-radius: ${token.borderRadius}px;
     font-size: 13px;
     color: ${token.colorTextSecondary};
     cursor: pointer;
     user-select: none;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
     &:hover {
       background: ${token.colorFillTertiary};
     }
@@ -84,13 +89,13 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: none;
     color: inherit;
   `,
+  rowIconActive: css`
+    color: ${token.colorPrimary};
+  `,
   spacer: css`
     flex: 1;
   `,
   footer: css`
-    padding-top: 10px;
-    margin-top: 6px;
-    border-top: 1px solid ${token.colorBorderSecondary};
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -98,6 +103,11 @@ const useStyles = createStyles(({ token, css }) => ({
   toggle: css`
     width: 100%;
     justify-content: flex-start;
+    height: 36px;
+    color: ${token.colorTextSecondary};
+  `,
+  toggleIcon: css`
+    margin-right: 4px;
   `,
 }));
 
@@ -121,21 +131,28 @@ export default function NavRail({
   const { styles, cx } = useStyles();
   const { isDark, toggle } = useThemeMode();
 
-  const Row = ({ item }: { item: NavItem }) => (
-    <div
-      className={cx(styles.row, view === item.view && styles.rowActive)}
-      onClick={() => onView(item.view)}
-    >
-      <Icon className={styles.rowIcon} icon={item.icon} size={18} />
-      {item.label}
-    </div>
-  );
+  const Row = ({ item }: { item: NavItem }) => {
+    const active = view === item.view;
+    return (
+      <div
+        className={cx(styles.row, active && styles.rowActive)}
+        onClick={() => onView(item.view)}
+      >
+        <Icon
+          className={cx(styles.rowIcon, active && styles.rowIconActive)}
+          icon={item.icon}
+          size={18}
+        />
+        {item.label}
+      </div>
+    );
+  };
 
   return (
     <nav className={styles.rail}>
       <div className={styles.brand}>
         <div className={styles.mark} />
-        <Text className={styles.brandText}>Snowan</Text>
+        <span className={styles.brandText}>Snowan</span>
       </div>
 
       <Button
@@ -162,11 +179,20 @@ export default function NavRail({
           className={cx(styles.row, view === 'settings' && styles.rowActive)}
           onClick={() => onView('settings')}
         >
-          <Icon className={styles.rowIcon} icon={Settings} size={18} />
+          <Icon
+            className={cx(styles.rowIcon, view === 'settings' && styles.rowIconActive)}
+            icon={Settings}
+            size={18}
+          />
           设置
         </div>
         <Button className={styles.toggle} type="text" size="small" onClick={toggle}>
-          {isDark ? '☀️  浅色模式' : '🌙  深色模式'}
+          <Icon
+            className={styles.toggleIcon}
+            icon={isDark ? Sun : Moon}
+            size={16}
+          />
+          {isDark ? '浅色模式' : '深色模式'}
         </Button>
       </div>
     </nav>

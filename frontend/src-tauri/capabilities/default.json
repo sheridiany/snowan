@@ -1,0 +1,9 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema/capabilities/capability.json",
+  "identifier": "default",
+  "description": "Default capability for the Snowan desktop app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

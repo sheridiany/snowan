@@ -11,7 +11,7 @@ const useStyles = createStyles(({ token, css }) => ({
     width: 100%;
     max-width: 760px;
     margin: 0 auto;
-    padding: 36px 24px 32px;
+    padding: 28px 24px 32px;
     display: flex;
     flex-direction: column;
     gap: 20px;

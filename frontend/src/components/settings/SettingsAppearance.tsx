@@ -1,69 +1,44 @@
-import { Block, Segmented, Text } from '@lobehub/ui';
+import { useState } from 'react';
+import { Segmented } from '@lobehub/ui';
+import { Select, Switch } from 'antd';
 import { createStyles } from 'antd-style';
-import { Moon, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { useThemeMode } from '../../theme/ThemeModeContext';
+import { Row, Section } from './_kit';
 
-const ACCENT = '#FF7F16';
+const ACCENTS = ['#FF7F16', '#E5484D', '#3E63DD', '#30A46C', '#8E4EC6', '#F5B400'];
 
-const useStyles = createStyles(({ token, css }) => ({
-  card: css`
-    padding: 20px;
-    border-radius: ${token.borderRadiusLG}px;
+const useStyles = createStyles(({ css }) => ({
+  wrap: css`
     display: flex;
     flex-direction: column;
-    gap: 18px;
-  `,
-  cardTitle: css`
-    font-size: 14px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
-  row: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  `,
-  rowText: css`
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  `,
-  label: css`
-    font-size: 13px;
-    font-weight: 500;
-    color: ${token.colorText};
-  `,
-  sub: css`
-    font-size: 12px;
-    color: ${token.colorTextTertiary};
-  `,
-  divider: css`
-    height: 1px;
-    background: ${token.colorBorderSecondary};
-    margin: 2px 0;
-  `,
-  swatch: css`
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  `,
-  chip: css`
-    width: 24px;
-    height: 24px;
-    border-radius: 7px;
-    background: ${ACCENT};
-    box-shadow: 0 2px 8px ${token.colorPrimaryBorder};
-  `,
-  mono: css`
-    font-family: ${token.fontFamilyCode};
-    font-size: 12px;
-    color: ${token.colorTextSecondary};
+    gap: 28px;
   `,
   seg: css`
     display: inline-flex;
     align-items: center;
     gap: 6px;
+  `,
+  swatches: css`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  `,
+  swatch: css`
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
+    &:hover {
+      transform: scale(1.08);
+    }
   `,
 }));
 
@@ -71,63 +46,130 @@ export default function SettingsAppearance() {
   const { styles } = useStyles();
   const { isDark, toggle } = useThemeMode();
 
+  const [font, setFont] = useState<'inter' | 'system'>('inter');
+  const [lang, setLang] = useState('zh');
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(
+    isDark ? 'dark' : 'light',
+  );
+  const [accent, setAccent] = useState(ACCENTS[0]);
+  const [showProviderIcons, setShowProviderIcons] = useState(true);
+  const [richToolDesc, setRichToolDesc] = useState(true);
+
+  const setMode = (m: 'light' | 'dark' | 'system') => {
+    setThemeMode(m);
+    const wantDark = m === 'dark';
+    if (m !== 'system' && wantDark !== isDark) toggle();
+  };
+
   return (
-    <Block variant="outlined" className={styles.card}>
-      <Text className={styles.cardTitle}>外观</Text>
-
-      <div className={styles.row}>
-        <div className={styles.rowText}>
-          <span className={styles.label}>主题</span>
-          <span className={styles.sub}>选择浅色或深色界面外观</span>
-        </div>
-        <Segmented
-          value={isDark ? 'dark' : 'light'}
-          onChange={(v) => {
-            if ((v === 'dark') !== isDark) toggle();
-          }}
-          options={[
-            {
-              value: 'light',
-              label: (
-                <span className={styles.seg}>
-                  <Sun size={14} /> 浅色
-                </span>
-              ),
-            },
-            {
-              value: 'dark',
-              label: (
-                <span className={styles.seg}>
-                  <Moon size={14} /> 深色
-                </span>
-              ),
-            },
-          ]}
+    <div className={styles.wrap}>
+      <Section>
+        <Row
+          label="字体"
+          subtitle="界面正文与标题使用的字体族"
+          control={
+            <Segmented
+              value={font}
+              onChange={(v) => setFont(v as 'inter' | 'system')}
+              options={[
+                { value: 'inter', label: 'Inter' },
+                { value: 'system', label: '系统' },
+              ]}
+            />
+          }
         />
-      </div>
+        <Row
+          label="语言"
+          subtitle="应用界面的显示语言"
+          control={
+            <Select
+              value={lang}
+              onChange={setLang}
+              style={{ width: 148 }}
+              options={[
+                { value: 'zh', label: '简体中文' },
+                { value: 'en', label: 'English' },
+              ]}
+            />
+          }
+        />
+      </Section>
 
-      <div className={styles.divider} />
+      <Section title="主题" subtitle="外观与强调色">
+        <Row
+          label="外观"
+          subtitle="选择浅色、深色或跟随系统设置"
+          control={
+            <Segmented
+              value={themeMode}
+              onChange={(v) => setMode(v as 'light' | 'dark' | 'system')}
+              options={[
+                {
+                  value: 'light',
+                  label: (
+                    <span className={styles.seg}>
+                      <Sun size={14} /> 浅色
+                    </span>
+                  ),
+                },
+                {
+                  value: 'dark',
+                  label: (
+                    <span className={styles.seg}>
+                      <Moon size={14} /> 深色
+                    </span>
+                  ),
+                },
+                {
+                  value: 'system',
+                  label: (
+                    <span className={styles.seg}>
+                      <Monitor size={14} /> 跟随系统
+                    </span>
+                  ),
+                },
+              ]}
+            />
+          }
+        />
+        <Row
+          label="强调色"
+          subtitle="用于按钮、链接与活跃状态"
+          control={
+            <div className={styles.swatches}>
+              {ACCENTS.map((c) => (
+                <span
+                  key={c}
+                  className={styles.swatch}
+                  style={{
+                    background: c,
+                    boxShadow:
+                      accent === c ? `0 0 0 2px ${c}55, 0 2px 8px ${c}40` : 'none',
+                  }}
+                  onClick={() => setAccent(c)}
+                >
+                  {accent === c && <Check size={15} strokeWidth={3} />}
+                </span>
+              ))}
+            </div>
+          }
+        />
+      </Section>
 
-      <div className={styles.row}>
-        <div className={styles.rowText}>
-          <span className={styles.label}>强调色</span>
-          <span className={styles.sub}>用于按钮、链接与活跃状态</span>
-        </div>
-        <div className={styles.swatch}>
-          <span className={styles.chip} />
-          <span className={styles.mono}>{ACCENT}</span>
-        </div>
-      </div>
-
-      <div className={styles.divider} />
-
-      <div className={styles.row}>
-        <div className={styles.rowText}>
-          <span className={styles.label}>字体</span>
-          <span className={styles.sub}>界面默认字体</span>
-        </div>
-        <span className={styles.mono}>Inter · PingFang SC</span>
-      </div>
-    </Block>
+      <Section title="界面" subtitle="会话与工具的展示细节">
+        <Row
+          label="连接图标"
+          subtitle="在会话列表和模型选择器中显示提供商图标"
+          control={
+            <Switch checked={showProviderIcons} onChange={setShowProviderIcons} />
+          }
+        />
+        <Row
+          label="丰富的工具描述"
+          subtitle="为所有工具调用添加操作名称和意图描述"
+          control={<Switch checked={richToolDesc} onChange={setRichToolDesc} />}
+        />
+      </Section>
+    </div>
   );
 }

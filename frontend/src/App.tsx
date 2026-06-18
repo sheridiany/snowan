@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createStyles } from 'antd-style';
 import { streamChat } from './api/chat';
+import TitleBar from './components/shell/TitleBar';
 import NavRail, { type View } from './components/shell/NavRail';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
@@ -14,8 +15,14 @@ const useStyles = createStyles(({ token, css }) => ({
   app: css`
     height: 100vh;
     display: flex;
+    flex-direction: column;
     background: ${token.colorBgLayout};
     color: ${token.colorText};
+  `,
+  body: css`
+    flex: 1;
+    min-height: 0;
+    display: flex;
   `,
   main: css`
     flex: 1;
@@ -106,28 +113,31 @@ export default function App() {
 
   return (
     <div className={styles.app}>
-      <NavRail view={view} onView={setView} onNewChat={handleNew} />
-      <main className={styles.main}>
-        {view === 'chat' && (
-          <>
-            <ChatView messages={messages} />
-            <Composer busy={busy} onSend={send} />
-          </>
-        )}
-        {view === 'sessions' && (
-          <SessionsView
-            sessions={sessions}
-            activeId={activeId}
-            onSelect={(id) => {
-              setActiveId(id);
-              setView('chat');
-            }}
-          />
-        )}
-        {view === 'sources' && <SourcesView />}
-        {view === 'skills' && <SkillsView />}
-        {view === 'settings' && <SettingsView />}
-      </main>
+      <TitleBar />
+      <div className={styles.body}>
+        <NavRail view={view} onView={setView} onNewChat={handleNew} />
+        <main className={styles.main}>
+          {view === 'chat' && (
+            <>
+              <ChatView messages={messages} />
+              <Composer busy={busy} onSend={send} />
+            </>
+          )}
+          {view === 'sessions' && (
+            <SessionsView
+              sessions={sessions}
+              activeId={activeId}
+              onSelect={(id) => {
+                setActiveId(id);
+                setView('chat');
+              }}
+            />
+          )}
+          {view === 'sources' && <SourcesView />}
+          {view === 'skills' && <SkillsView />}
+          {view === 'settings' && <SettingsView />}
+        </main>
+      </div>
     </div>
   );
 }

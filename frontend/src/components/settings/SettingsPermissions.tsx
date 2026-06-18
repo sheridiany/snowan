@@ -1,6 +1,7 @@
-import { Block, Button, Tag, Text } from '@lobehub/ui';
+import { Button, Tag, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { Pencil, ShieldCheck } from 'lucide-react';
+import { Section } from './_kit';
 
 type Rule = {
   access: 'allow' | 'ask';
@@ -22,10 +23,15 @@ const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 28px;
+  `,
+  block: css`
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   `,
   explainer: css`
-    padding: 16px 18px;
+    padding: 14px 16px;
     border-radius: ${token.borderRadiusLG}px;
     background: ${token.colorFillQuaternary};
     display: flex;
@@ -49,7 +55,7 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorText};
   `,
   explainText: css`
-    font-size: 12px;
+    font-size: 12.5px;
     line-height: 1.7;
     color: ${token.colorTextSecondary};
   `,
@@ -58,28 +64,24 @@ const useStyles = createStyles(({ token, css }) => ({
     cursor: pointer;
     font-weight: 500;
   `,
-  section: css`
-    padding: 18px;
-    border-radius: ${token.borderRadiusLG}px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  `,
   sectionHead: css`
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    padding: 0 2px;
   `,
   sectionTitle: css`
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     color: ${token.colorText};
   `,
   table: css`
     border: 1px solid ${token.colorBorderSecondary};
     border-radius: ${token.borderRadius}px;
     overflow: hidden;
+    background: ${token.colorBgContainer};
   `,
   headRow: css`
     display: grid;
@@ -134,6 +136,18 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
+function SectionHead({ title }: { title: string }) {
+  const { styles } = useStyles();
+  return (
+    <div className={styles.sectionHead}>
+      <Text className={styles.sectionTitle}>{title}</Text>
+      <Button size="small" shape="round" icon={<Pencil size={13} />}>
+        编辑
+      </Button>
+    </div>
+  );
+}
+
 export default function SettingsPermissions() {
   const { styles } = useStyles();
 
@@ -153,55 +167,48 @@ export default function SettingsPermissions() {
         </div>
       </div>
 
-      <Block variant="outlined" className={styles.section}>
-        <div className={styles.sectionHead}>
-          <Text className={styles.sectionTitle}>默认权限</Text>
-          <Button size="small" shape="round" icon={<Pencil size={13} />}>
-            编辑
-          </Button>
-        </div>
-
-        <div className={styles.table}>
-          <div className={styles.headRow}>
-            <span className={styles.th}>访问</span>
-            <span className={styles.th}>类型</span>
-            <span className={styles.th}>模式</span>
-            <span className={styles.th}>注释</span>
-          </div>
-          {DEFAULT_RULES.map((r, i) => (
-            <div className={styles.bodyRow} key={i}>
-              <span className={styles.td}>
-                {r.access === 'allow' ? (
-                  <Tag color="success">允许</Tag>
-                ) : (
-                  <Tag color="warning">询问</Tag>
-                )}
-              </span>
-              <span className={styles.td}>
-                <Tag>{r.type}</Tag>
-              </span>
-              <span className={styles.td}>
-                <code className={styles.mono}>{r.pattern}</code>
-              </span>
-              <span className={styles.td}>
-                <span className={styles.comment}>{r.comment}</span>
-              </span>
+      <Section bare>
+        <div className={styles.block}>
+          <SectionHead title="默认权限" />
+          <div className={styles.table}>
+            <div className={styles.headRow}>
+              <span className={styles.th}>访问</span>
+              <span className={styles.th}>类型</span>
+              <span className={styles.th}>模式</span>
+              <span className={styles.th}>注释</span>
             </div>
-          ))}
+            {DEFAULT_RULES.map((r, i) => (
+              <div className={styles.bodyRow} key={i}>
+                <span className={styles.td}>
+                  {r.access === 'allow' ? (
+                    <Tag color="success">允许</Tag>
+                  ) : (
+                    <Tag color="warning">询问</Tag>
+                  )}
+                </span>
+                <span className={styles.td}>
+                  <Tag>{r.type}</Tag>
+                </span>
+                <span className={styles.td}>
+                  <code className={styles.mono}>{r.pattern}</code>
+                </span>
+                <span className={styles.td}>
+                  <span className={styles.comment}>{r.comment}</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </Block>
+      </Section>
 
-      <Block variant="outlined" className={styles.section}>
-        <div className={styles.sectionHead}>
-          <Text className={styles.sectionTitle}>Workspace 自定义</Text>
-          <Button size="small" shape="round" icon={<Pencil size={13} />}>
-            编辑
-          </Button>
+      <Section bare>
+        <div className={styles.block}>
+          <SectionHead title="Workspace 自定义" />
+          <div className={styles.empty}>
+            当前工作区还没有自定义权限规则。添加规则可针对此项目覆盖默认行为。
+          </div>
         </div>
-        <div className={styles.empty}>
-          当前工作区还没有自定义权限规则。添加规则可针对此项目覆盖默认行为。
-        </div>
-      </Block>
+      </Section>
     </div>
   );
 }

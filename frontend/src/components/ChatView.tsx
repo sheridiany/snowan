@@ -13,10 +13,15 @@ const useStyles = createStyles(({ token, css }) => ({
     width: 100%;
     max-width: 760px;
     margin: 0 auto;
-    padding: 36px 16px 24px;
+    padding: 28px 16px 24px;
     display: flex;
     flex-direction: column;
     gap: 22px;
+  `,
+  emptyScroll: css`
+    flex: 1;
+    min-height: 0;
+    display: flex;
   `,
   empty: css`
     flex: 1;
@@ -73,7 +78,7 @@ export default function ChatView({ messages }: { messages: Message[] }) {
 
   if (messages.length === 0) {
     return (
-      <div className={styles.scroll} ref={scrollRef}>
+      <div className={styles.emptyScroll} ref={scrollRef}>
         <div className={styles.empty}>
           <Text className={styles.emptyTitle}>晚上好</Text>
           <Text className={styles.emptySub}>开启一段新对话,Snowan 在这里。</Text>

@@ -1,64 +1,41 @@
-import { Block, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
+import { Row, Section } from './_kit';
 
 type Shortcut = { action: string; keys: string[] };
 
 const SHORTCUTS: Shortcut[] = [
   { action: '新建会话', keys: ['⌘', 'N'] },
-  { action: '发送消息', keys: ['Enter'] },
+  { action: '发送', keys: ['Enter'] },
   { action: '换行', keys: ['⇧', 'Enter'] },
-  { action: '切换深色模式', keys: ['⌘', '⇧', 'L'] },
+  { action: '切换深色', keys: ['⌘', '⇧', 'L'] },
+  { action: '打开设置', keys: ['⌘', ','] },
 ];
 
 const useStyles = createStyles(({ token, css }) => ({
-  card: css`
-    padding: 18px;
-    border-radius: ${token.borderRadiusLG}px;
+  wrap: css`
     display: flex;
     flex-direction: column;
-    gap: 14px;
-  `,
-  title: css`
-    font-size: 14px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
-  list: css`
-    display: flex;
-    flex-direction: column;
-  `,
-  row: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 4px;
-    border-bottom: 1px solid ${token.colorBorderSecondary};
-    &:last-child {
-      border-bottom: none;
-    }
-  `,
-  action: css`
-    font-size: 13px;
-    color: ${token.colorText};
+    gap: 28px;
   `,
   keys: css`
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
   `,
   key: css`
-    min-width: 24px;
-    height: 24px;
-    padding: 0 7px;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 7px;
-    background: ${token.colorFillQuaternary};
+    background: ${token.colorBgElevated};
     border: 1px solid ${token.colorBorderSecondary};
-    box-shadow: 0 1px 0 ${token.colorBorderSecondary};
+    box-shadow: 0 1px 0 ${token.colorBorder};
     font-family: ${token.fontFamilyCode};
-    font-size: 12px;
+    font-size: 12.5px;
+    font-weight: 500;
     color: ${token.colorTextSecondary};
   `,
 }));
@@ -67,22 +44,24 @@ export default function SettingsShortcuts() {
   const { styles } = useStyles();
 
   return (
-    <Block variant="outlined" className={styles.card}>
-      <Text className={styles.title}>快捷键</Text>
-      <div className={styles.list}>
+    <div className={styles.wrap}>
+      <Section title="快捷键" subtitle="键盘操作一览">
         {SHORTCUTS.map((s) => (
-          <div className={styles.row} key={s.action}>
-            <span className={styles.action}>{s.action}</span>
-            <span className={styles.keys}>
-              {s.keys.map((k, i) => (
-                <kbd className={styles.key} key={i}>
-                  {k}
-                </kbd>
-              ))}
-            </span>
-          </div>
+          <Row
+            key={s.action}
+            label={s.action}
+            control={
+              <span className={styles.keys}>
+                {s.keys.map((k, i) => (
+                  <kbd className={styles.key} key={i}>
+                    {k}
+                  </kbd>
+                ))}
+              </span>
+            }
+          />
         ))}
-      </div>
-    </Block>
+      </Section>
+    </div>
   );
 }
