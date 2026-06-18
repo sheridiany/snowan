@@ -3,6 +3,7 @@ from pydantic_ai import Agent, DeferredToolRequests, Tool
 from ..config import load_prefs, load_settings
 from .providers import build_model
 from .tools.file_tools import append_file, edit_file, read_file, write_file
+from .tools.knowledge_tools import knowledge_search
 from .tools.search_tools import glob_search, grep_search
 from .tools.shell_tools import execute_shell_command
 from .tools.time_tools import get_current_time
@@ -12,7 +13,7 @@ workbench. Be concise and direct. Use tools when they help; otherwise just answe
 
 # Read-only tools are safe to auto-run; mutating + shell tools change the user's
 # machine. The approval_mode preference decides which get gated.
-READONLY_FNS = [get_current_time, read_file, grep_search, glob_search]
+READONLY_FNS = [get_current_time, read_file, grep_search, glob_search, knowledge_search]
 MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command]
 
 
