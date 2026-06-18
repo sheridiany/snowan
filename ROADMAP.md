@@ -56,6 +56,17 @@ Dropped from QwenPaw on purpose (don't let these creep back in):
   read-only/execute switch; the composer is now plain chat (all tools available,
   mutating/shell still gated by approval)._
 
+## ✅ Settings made real
+
+Replaced the placeholder panels with working, agent-backed settings (grounded in
+QwenPaw + Craft's control surface): **工具** (real tool list w/ 只读/可写),
+**权限** (global approval mode auto/ask/strict — the correct form of the dropped
+探索/执行), **运行** (max-iterations, timezone, auto-title, extra system prompt),
+**个人档案** (name/location/notes injected into instructions), **关于** (version /
+model / backend / data dir). Prefs persist in `~/.snowan`. Removed empty
+Workspace + Preferences panels. _Deferred to later phases: per-tool enable/disable,
+fine-grained permission rules, shortcuts editor._
+
 ## ⬜ Phase 2 — Knowledge base  (M — the KM half, highest product value)
 
 Wire the empty 知识库 tabs to a real backend and give the agent a
