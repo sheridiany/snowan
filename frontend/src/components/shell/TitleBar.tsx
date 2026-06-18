@@ -108,15 +108,15 @@ export default function TitleBar({
 
   return (
     <div className={styles.bar} data-tauri-drag-region>
-      <Btn icon={<PanelLeft size={17} />} label="折叠侧栏" onClick={onToggleNav} />
+      <Btn icon={<PanelLeft size={18} />} label="折叠侧栏" onClick={onToggleNav} />
       <Btn
-        icon={<ArrowLeft size={17} />}
+        icon={<ArrowLeft size={18} />}
         label="后退"
         onClick={onBack}
         disabled={!canBack}
       />
       <Btn
-        icon={<ArrowRight size={17} />}
+        icon={<ArrowRight size={18} />}
         label="前进"
         onClick={onForward}
         disabled={!canForward}
@@ -127,7 +127,7 @@ export default function TitleBar({
       </div>
 
       <Btn
-        icon={<PanelRight size={17} />}
+        icon={<PanelRight size={18} />}
         label="折叠右栏"
         onClick={onToggleRight}
         active={rightOpen}
