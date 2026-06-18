@@ -19,9 +19,12 @@ export type Block =
   | { kind: 'tool'; step: ToolStep }
   | { kind: 'approval'; calls: ApprovalCall[]; decided?: boolean; approved?: boolean };
 
+export type Attachment = { name: string; mime: string };
+
 export type Message = {
   role: 'user' | 'assistant';
   blocks: Block[];
+  attachments?: Attachment[]; // shown on user messages
 };
 
 export type SessionStatus = 'active' | 'todo' | 'done';

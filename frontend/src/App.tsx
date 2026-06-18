@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createStyles, useThemeMode } from 'antd-style';
 import { persistThemeMode } from './theme/themes';
-import { streamChat, approveChat, deleteSession, type ChatHandlers } from './api/chat';
+import {
+  streamChat,
+  approveChat,
+  deleteSession,
+  type ChatHandlers,
+  type Attachment as ApiAttachment,
+} from './api/chat';
 import TitleBar from './components/shell/TitleBar';
 import RightPanel from './components/shell/RightPanel';
 import NavRail, { type View } from './components/shell/NavRail';
@@ -178,25 +184,29 @@ export default function App() {
   const abortRef = useRef<AbortController | null>(null);
   const stop = () => abortRef.current?.abort();
 
-  const send = async (text: string) => {
+  const send = async (text: string, attachments: ApiAttachment[] = []) => {
     setBusy(true);
 
     const sid = activeId;
-    if (messages.length === 0) {
+    if (messages.length === 0 && text) {
       const title = text.length > 24 ? text.slice(0, 24) + '…' : text;
       setSessions((s) => s.map((x) => (x.id === sid ? { ...x, title } : x)));
     }
 
     setActiveMessages((prev) => [
       ...prev,
-      { role: 'user', blocks: [{ kind: 'text', text }] },
+      {
+        role: 'user',
+        blocks: [{ kind: 'text', text }],
+        attachments: attachments.map((a) => ({ name: a.name, mime: a.mime })),
+      },
       { role: 'assistant', blocks: [] },
     ]);
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      await streamChat(text, sid, streamHandlers, ctrl.signal);
+      await streamChat(text, sid, attachments, streamHandlers, ctrl.signal);
     } finally {
       setBusy(false);
       abortRef.current = null;

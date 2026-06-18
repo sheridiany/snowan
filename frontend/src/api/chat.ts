@@ -3,6 +3,7 @@ import { api } from './base';
 
 export type ToolCall = { id: string; name: string; args: Record<string, unknown> };
 export type ToolResult = { id: string; name: string; result: string };
+export type Attachment = { name: string; mime: string; data: string }; // data = base64 (no data: prefix)
 
 export type ChatHandlers = {
   onDelta?: (text: string) => void;
@@ -22,6 +23,7 @@ type SSEEvent =
 export async function streamChat(
   message: string,
   sessionId: string,
+  attachments: Attachment[],
   handlers: ChatHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -29,7 +31,7 @@ export async function streamChat(
     const res = await fetch(api('/api/chat/stream'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, session_id: sessionId }),
+      body: JSON.stringify({ message, session_id: sessionId, attachments }),
       signal,
     });
     await consume(res, handlers);

@@ -1,8 +1,20 @@
-import { useState } from 'react';
-import { Button, TextArea } from '@lobehub/ui';
+import { useRef, useState } from 'react';
+import { ActionIcon, Button, TextArea } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { ArrowUp, Square } from 'lucide-react';
+import { ArrowUp, Paperclip, Square, X } from 'lucide-react';
 import ModelSelect from './ModelSelect';
+import type { Attachment } from '../api/chat';
+
+const ACCEPT = 'image/*,text/*,.md,.json,.csv,.log,.py,.ts,.tsx,.js,.yaml,.yml,.toml';
+const MAX_BYTES = 8 * 1024 * 1024;
+
+const readAsBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(((r.result as string) || '').split(',')[1] ?? '');
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
@@ -23,6 +35,42 @@ const useStyles = createStyles(({ token, css }) => ({
     transition: border-color 0.15s ease;
     &:focus-within {
       border-color: ${token.colorPrimaryBorder};
+    }
+  `,
+  chips: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  `,
+  chip: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 220px;
+    height: 26px;
+    padding: 0 4px 0 9px;
+    border-radius: 8px;
+    background: ${token.colorFillTertiary};
+    color: ${token.colorTextSecondary};
+    font-size: 12px;
+  `,
+  chipName: css`
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  chipX: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: ${token.colorTextTertiary};
+    &:hover {
+      background: ${token.colorFill};
+      color: ${token.colorText};
     }
   `,
   ta: css`
@@ -60,24 +108,56 @@ const useStyles = createStyles(({ token, css }) => ({
 
 export interface ComposerProps {
   busy: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, attachments: Attachment[]) => void;
   onStop?: () => void;
 }
 
 export default function Composer({ busy, onSend, onStop }: ComposerProps) {
   const { styles } = useStyles();
   const [value, setValue] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const pickFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const picked: Attachment[] = [];
+    for (const f of Array.from(files)) {
+      if (f.size > MAX_BYTES) continue; // skip oversized files
+      picked.push({ name: f.name, mime: f.type || 'application/octet-stream', data: await readAsBase64(f) });
+    }
+    if (picked.length) setAttachments((prev) => [...prev, ...picked]);
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const submit = () => {
     const text = value.trim();
-    if (!text || busy) return;
+    if ((!text && attachments.length === 0) || busy) return;
+    const atts = attachments;
     setValue('');
-    onSend(text);
+    setAttachments([]);
+    onSend(text, atts);
   };
 
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
+        {attachments.length > 0 && (
+          <div className={styles.chips}>
+            {attachments.map((a, i) => (
+              <span key={i} className={styles.chip} title={a.name}>
+                <Paperclip size={12} />
+                <span className={styles.chipName}>{a.name}</span>
+                <span
+                  className={styles.chipX}
+                  onClick={() => setAttachments((prev) => prev.filter((_, k) => k !== i))}
+                >
+                  <X size={12} />
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
+
         <TextArea
           className={styles.ta}
           value={value}
@@ -91,7 +171,22 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
           autoSize={{ minRows: 1, maxRows: 8 }}
           placeholder="问点什么…"
         />
+
         <div className={styles.bottomRow}>
+          <ActionIcon
+            icon={Paperclip}
+            size="small"
+            title="附件"
+            onClick={() => fileRef.current?.click()}
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            accept={ACCEPT}
+            hidden
+            onChange={(e) => pickFiles(e.target.files)}
+          />
           <span className={styles.spacer} />
           <ModelSelect />
           {busy && onStop ? (

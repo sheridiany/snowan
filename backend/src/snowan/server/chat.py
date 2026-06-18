@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -7,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from pydantic_ai import (
     Agent,
+    BinaryContent,
     DeferredToolRequests,
     DeferredToolResults,
     FunctionToolCallEvent,
@@ -23,9 +25,36 @@ from ..agent.sessions import delete_history, load_history, save_history
 router = APIRouter()
 
 
+class Attachment(BaseModel):
+    name: str
+    mime: str
+    data: str  # base64
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
+    attachments: list[Attachment] = []
+
+
+def _build_prompt(message: str, attachments: list[Attachment]):
+    """Images become vision content; text files are inlined; other binaries noted."""
+    if not attachments:
+        return message
+    parts: list[Any] = [message] if message else []
+    for a in attachments:
+        try:
+            raw = base64.b64decode(a.data)
+        except Exception:  # noqa: BLE001
+            continue
+        if a.mime.startswith("image/"):
+            parts.append(BinaryContent(data=raw, media_type=a.mime))
+        else:
+            try:
+                parts.append(f"\n\n[附件 {a.name}]\n```\n{raw.decode('utf-8')[:20000]}\n```")
+            except UnicodeDecodeError:
+                parts.append(f"\n\n[附件 {a.name}:二进制文件,暂不支持解析]")
+    return parts
 
 
 class ApproveRequest(BaseModel):
@@ -97,10 +126,10 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
     yield _sse({"type": "done"})
 
 
-async def _run_new(message: str, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
+async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
     # Build per-request so a model/key change saved in Settings takes effect at once.
     agent = build_agent()
-    async with agent.iter(message, message_history=history) as run:
+    async with agent.iter(prompt, message_history=history) as run:
         async for chunk in _stream_run(run):
             yield chunk
         save_history(session_id, run.result.all_messages())
@@ -121,8 +150,9 @@ async def _run_resume(
 @router.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest) -> StreamingResponse:
     history = load_history(req.session_id)
+    prompt = _build_prompt(req.message, req.attachments)
     return StreamingResponse(
-        _run_new(req.message, history, req.session_id),
+        _run_new(prompt, history, req.session_id),
         media_type="text/event-stream",
     )
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Empty, Markdown } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
-import { Sparkles } from 'lucide-react';
+import { Paperclip, Sparkles } from 'lucide-react';
 import ToolCallCard from './ToolCallCard';
 import ApprovalCard from './ApprovalCard';
 import type { Message } from './types';
@@ -36,6 +36,26 @@ const useStyles = createStyles(({ token, css }) => ({
     white-space: pre-wrap;
     word-break: break-word;
     box-shadow: 0 4px 14px ${token.colorPrimaryBorder};
+  `,
+  attachRow: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 7px;
+  `,
+  attachChip: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 200px;
+    padding: 2px 8px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.2);
+    font-size: 11.5px;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   `,
   assistant: css`
     align-self: stretch;
@@ -86,6 +106,16 @@ export default function ChatView({ messages, onApprovalDecision }: Props) {
         {messages.map((m, i) =>
           m.role === 'user' ? (
             <div key={i} className={styles.user}>
+              {m.attachments && m.attachments.length > 0 && (
+                <div className={styles.attachRow}>
+                  {m.attachments.map((a, k) => (
+                    <span key={k} className={styles.attachChip} title={a.name}>
+                      <Paperclip size={11} />
+                      {a.name}
+                    </span>
+                  ))}
+                </div>
+              )}
               {m.blocks.map((b) => (b.kind === 'text' ? b.text : '')).join('')}
             </div>
           ) : (
