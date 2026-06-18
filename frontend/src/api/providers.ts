@@ -57,6 +57,9 @@ export const addModel = (id: string, model: { id: string; name?: string }) =>
 export const deleteModel = (id: string, modelId: string) =>
   post(`/api/providers/${id}/models/delete`, { model_id: modelId }).then(j<ProvidersState>);
 
+export const renameModel = (id: string, modelId: string, name: string) =>
+  post(`/api/providers/${id}/models/rename`, { model_id: modelId, name }).then(j<ProvidersState>);
+
 export const discoverModels = (id: string) =>
   post(`/api/providers/${id}/discover`).then(j<{ added: ModelInfo[]; total: number }>);
 

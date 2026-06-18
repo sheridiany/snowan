@@ -2,15 +2,8 @@ import { useState } from 'react';
 import { ActionIcon, Button, TextArea } from '@lobehub/ui';
 import { Select } from 'antd';
 import { createStyles } from 'antd-style';
-import {
-  ArrowUp,
-  Box,
-  Compass,
-  Database,
-  Paperclip,
-  Play,
-  Sparkles,
-} from 'lucide-react';
+import { ArrowUp, Box, Compass, Database, Paperclip, Play } from 'lucide-react';
+import ModelSelect from './ModelSelect';
 
 export type ComposerMode = 'explore' | 'execute';
 
@@ -28,11 +21,6 @@ const DEFAULT_SOURCE_OPTIONS: Option[] = [
   { value: 'calendar', label: '日历' },
 ];
 
-const DEFAULT_MODEL_OPTIONS: Option[] = [
-  { value: 'default', label: '默认模型' },
-  { value: 'fast', label: '快速' },
-  { value: 'reasoning', label: '深度推理' },
-];
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
@@ -157,9 +145,7 @@ export interface ComposerProps {
   mode?: ComposerMode;
   onModeChange?: (mode: ComposerMode) => void;
   sourceOptions?: Option[];
-  modelOptions?: Option[];
   defaultSource?: string;
-  defaultModel?: string;
 }
 
 export default function Composer({
@@ -168,15 +154,12 @@ export default function Composer({
   mode: modeProp,
   onModeChange,
   sourceOptions = DEFAULT_SOURCE_OPTIONS,
-  modelOptions = DEFAULT_MODEL_OPTIONS,
   defaultSource,
-  defaultModel,
 }: ComposerProps) {
   const { styles, cx } = useStyles();
   const [value, setValue] = useState('');
   const [modeState, setModeState] = useState<ComposerMode>(modeProp ?? 'explore');
   const [source, setSource] = useState(defaultSource ?? sourceOptions[0]?.value);
-  const [model, setModel] = useState(defaultModel ?? modelOptions[0]?.value);
 
   const mode = modeProp ?? modeState;
   const setMode = (next: ComposerMode) => {
@@ -254,21 +237,7 @@ export default function Composer({
 
           <span className={styles.spacer} />
 
-          <div className={styles.chip}>
-            <span className={styles.chipIcon}>
-              <Sparkles size={14} />
-            </span>
-            <Select
-              className={styles.chipSelect}
-              value={model}
-              onChange={setModel}
-              options={modelOptions}
-              variant="borderless"
-              popupMatchSelectWidth={false}
-              placement="topLeft"
-              styles={{ popup: { root: { minWidth: 140 } } }}
-            />
-          </div>
+          <ModelSelect />
 
           <Button
             type="primary"

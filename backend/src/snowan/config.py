@@ -239,6 +239,16 @@ def delete_model(pid: str, model_id: str) -> None:
         _write(data)
 
 
+def rename_model(pid: str, model_id: str, name: str) -> None:
+    """Set a model's display alias. An empty alias resets it to the id."""
+    data = _load()
+    for m in data["providers"].get(pid, {}).get("models", []):
+        if m["id"] == model_id:
+            m["name"] = name.strip() or model_id
+            break
+    _write(data)
+
+
 def set_model_vision(pid: str, model_id: str, vision: bool | None, probe: str) -> None:
     data = _load()
     for m in data["providers"].get(pid, {}).get("models", []):

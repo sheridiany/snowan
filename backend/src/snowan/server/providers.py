@@ -36,6 +36,11 @@ class ModelRef(BaseModel):
     model_id: str
 
 
+class ModelRename(BaseModel):
+    model_id: str
+    name: str
+
+
 class ActiveBody(BaseModel):
     provider: str
     model: str
@@ -88,6 +93,12 @@ def add_model(pid: str, body: ModelBody) -> dict:
 @router.post("/{pid}/models/delete")
 def delete_model(pid: str, ref: ModelRef) -> dict:
     config.delete_model(pid, ref.model_id)
+    return config.list_state()
+
+
+@router.post("/{pid}/models/rename")
+def rename_model(pid: str, body: ModelRename) -> dict:
+    config.rename_model(pid, body.model_id, body.name)
     return config.list_state()
 
 

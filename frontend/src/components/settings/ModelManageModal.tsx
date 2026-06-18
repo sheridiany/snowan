@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { App, Button, Input, Modal } from 'antd';
 import { createStyles } from 'antd-style';
-import { Check, Eye, Trash2, Wand2 } from 'lucide-react';
+import { Check, Eye, Pencil, Trash2, Wand2 } from 'lucide-react';
 import {
   addModel,
   deleteModel,
   discoverModels,
   probeVision,
+  renameModel,
   setActive,
   testModel,
   type Active,
@@ -105,6 +106,25 @@ export function ModelManageModal({
   const [adding, setAdding] = useState(false);
   const [discovering, setDiscovering] = useState(false);
   const [busy, setBusy] = useState<{ modelId: string; action: RowAction } | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState('');
+
+  const startEdit = (m: ModelInfo) => {
+    setEditId(m.id);
+    setEditVal(m.name);
+  };
+  const saveEdit = async (m: ModelInfo) => {
+    if (editId !== m.id) return;
+    setEditId(null);
+    const alias = editVal.trim();
+    if (!alias || alias === m.name) return;
+    try {
+      await renameModel(provider.id, m.id, alias);
+      onChanged();
+    } catch (e) {
+      message.error(`重命名失败:${(e as Error).message}`);
+    }
+  };
 
   const canDiscover = provider.kind === 'openai' || provider.kind === 'custom';
 
@@ -247,7 +267,19 @@ export function ModelManageModal({
             return (
               <div key={m.id} className={cx(styles.row, isActive && styles.rowActive)}>
                 <div className={styles.meta}>
-                  <span className={styles.mName}>{m.name}</span>
+                  {editId === m.id ? (
+                    <Input
+                      size="small"
+                      autoFocus
+                      value={editVal}
+                      onChange={(e) => setEditVal(e.target.value)}
+                      onPressEnter={() => saveEdit(m)}
+                      onBlur={() => saveEdit(m)}
+                      placeholder={m.id}
+                    />
+                  ) : (
+                    <span className={styles.mName}>{m.name}</span>
+                  )}
                   {m.name !== m.id && <span className={styles.mId}>{m.id}</span>}
                 </div>
                 <CapabilityTag model={m} />
@@ -262,6 +294,13 @@ export function ModelManageModal({
                   >
                     {isActive ? '默认' : '设为默认'}
                   </Button>
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<Pencil size={14} />}
+                    title="别名"
+                    onClick={() => startEdit(m)}
+                  />
                   <Button
                     size="small"
                     loading={busy?.modelId === m.id && busy.action === 'test'}
