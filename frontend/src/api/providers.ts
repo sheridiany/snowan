@@ -22,24 +22,26 @@ export type ProvidersState = { active: Active; providers: ProviderInfo[] };
 
 export type TestResult = { ok: boolean; message: string };
 
+import { api } from './base';
+
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => '')}`);
   return res.json();
 }
-const post = (url: string, body?: unknown) =>
-  fetch(url, {
+const post = (path: string, body?: unknown) =>
+  fetch(api(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
 
-export const listProviders = () => fetch('/api/providers').then(j<ProvidersState>);
+export const listProviders = () => fetch(api('/api/providers')).then(j<ProvidersState>);
 
 export const configureProvider = (
   id: string,
   patch: { name?: string; base_url?: string; api_key?: string },
 ) =>
-  fetch(`/api/providers/${id}/config`, {
+  fetch(api(`/api/providers/${id}/config`), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
@@ -49,7 +51,7 @@ export const createCustom = (body: { name: string; base_url: string; api_key?: s
   post('/api/providers/custom', body).then(j<{ id: string }>);
 
 export const deleteProvider = (id: string) =>
-  fetch(`/api/providers/${id}`, { method: 'DELETE' }).then(j<ProvidersState>);
+  fetch(api(`/api/providers/${id}`), { method: 'DELETE' }).then(j<ProvidersState>);
 
 export const addModel = (id: string, model: { id: string; name?: string }) =>
   post(`/api/providers/${id}/models`, model).then(j<ModelInfo>);
@@ -75,7 +77,7 @@ export const probeVision = (id: string, modelId: string) =>
   );
 
 export const setActive = (provider: string, model: string) =>
-  fetch('/api/providers/active', {
+  fetch(api('/api/providers/active'), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider, model }),

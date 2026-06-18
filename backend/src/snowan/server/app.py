@@ -11,7 +11,9 @@ from .providers import router as providers_router  # noqa: E402
 app = FastAPI(title="Snowan")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "tauri://localhost"],
+    # Local single-user app: the dev server, the packaged Tauri webview
+    # (tauri://localhost / *.tauri.localhost), all hit this on localhost.
+    allow_origin_regex=r"^(http://localhost:5173|tauri://localhost|https?://[a-z.]*tauri\.localhost)$",
     allow_methods=["*"],
     allow_headers=["*"],
 )

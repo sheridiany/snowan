@@ -1,4 +1,6 @@
 // SSE client for POST /api/chat/stream — parses the typed event protocol.
+import { api } from './base';
+
 export type ToolCall = { id: string; name: string; args: Record<string, unknown> };
 export type ToolResult = { id: string; name: string; result: string };
 
@@ -22,7 +24,7 @@ export async function streamChat(
   sessionId: string,
   handlers: ChatHandlers,
 ): Promise<void> {
-  const res = await fetch('/api/chat/stream', {
+  const res = await fetch(api('/api/chat/stream'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, session_id: sessionId }),
@@ -37,7 +39,7 @@ export async function approveChat(
   decisions: Record<string, boolean>,
   handlers: ChatHandlers,
 ): Promise<void> {
-  const res = await fetch('/api/chat/approve', {
+  const res = await fetch(api('/api/chat/approve'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, decisions }),
