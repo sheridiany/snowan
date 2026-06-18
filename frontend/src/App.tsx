@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { createStyles } from 'antd-style';
+import { useEffect, useState } from 'react';
+import { createStyles, useThemeMode } from 'antd-style';
+import { persistThemeMode } from './theme/themes';
 import { streamChat, approveChat, type ChatHandlers } from './api/chat';
 import TitleBar from './components/shell/TitleBar';
 import NavRail, { type View } from './components/shell/NavRail';
@@ -46,6 +47,11 @@ function appendDelta(blocks: Block[], text: string): Block[] {
 
 export default function App() {
   const { styles } = useStyles();
+  const { themeMode } = useThemeMode();
+  // antd-style does not persist themeMode; mirror it to localStorage so the
+  // light/dark/auto choice is restored as defaultThemeMode on the next reload.
+  useEffect(() => persistThemeMode(themeMode), [themeMode]);
+
   const [view, setView] = useState<View>('chat');
   const [sessions, setSessions] = useState<Session[]>(() => [newSession()]);
   const [activeId, setActiveId] = useState(() => sessions[0].id);

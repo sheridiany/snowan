@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Block, Text } from '@lobehub/ui';
+import { Block, Highlighter, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import type { ToolStep } from './types';
 
@@ -65,17 +65,8 @@ const useStyles = createStyles(({ token, css }) => ({
     text-transform: uppercase;
     color: ${token.colorTextTertiary};
   `,
-  pre: css`
-    margin: 0;
-    padding: 8px 10px;
-    border-radius: ${token.borderRadius}px;
-    background: ${token.colorFillQuaternary};
-    font-family: ${token.fontFamilyCode};
+  code: css`
     font-size: 12px;
-    line-height: 1.6;
-    color: ${token.colorTextSecondary};
-    white-space: pre-wrap;
-    word-break: break-word;
     max-height: 240px;
     overflow: auto;
   `,
@@ -87,6 +78,11 @@ function pretty(value: unknown): string {
   } catch {
     return String(value);
   }
+}
+
+function looksLikeJson(text: string): boolean {
+  const t = text.trim();
+  return (t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'));
 }
 
 export default function ToolCallCard({ step }: { step: ToolStep }) {
@@ -107,11 +103,29 @@ export default function ToolCallCard({ step }: { step: ToolStep }) {
           {hasArgs && (
             <>
               <span className={styles.label}>参数</span>
-              <pre className={styles.pre}>{pretty(step.args)}</pre>
+              <Highlighter
+                language="json"
+                variant="filled"
+                copyable={false}
+                className={styles.code}
+              >
+                {pretty(step.args)}
+              </Highlighter>
             </>
           )}
           <span className={styles.label}>{running ? '运行中…' : '结果'}</span>
-          <pre className={styles.pre}>{running ? '…' : step.result}</pre>
+          {running ? (
+            <Text className={styles.label}>…</Text>
+          ) : (
+            <Highlighter
+              language={looksLikeJson(step.result ?? '') ? 'json' : 'text'}
+              variant="filled"
+              copyable
+              className={styles.code}
+            >
+              {step.result ?? ''}
+            </Highlighter>
+          )}
         </div>
       )}
     </Block>

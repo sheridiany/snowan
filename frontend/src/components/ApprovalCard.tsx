@@ -1,4 +1,4 @@
-import { Block, Button, Text } from '@lobehub/ui';
+import { Block, Button, Highlighter, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import type { ApprovalCall } from './types';
 
@@ -62,17 +62,8 @@ const useStyles = createStyles(({ token, css }) => ({
     text-transform: uppercase;
     color: ${token.colorTextTertiary};
   `,
-  pre: css`
-    margin: 0;
-    padding: 8px 10px;
-    border-radius: ${token.borderRadius}px;
-    background: ${token.colorFillQuaternary};
-    font-family: ${token.fontFamilyCode};
+  code: css`
     font-size: 12px;
-    line-height: 1.6;
-    color: ${token.colorTextSecondary};
-    white-space: pre-wrap;
-    word-break: break-word;
     max-height: 240px;
     overflow: auto;
   `,
@@ -121,7 +112,14 @@ export default function ApprovalCard({ calls, decided, approved, onDecide }: Pro
               {hasArgs && (
                 <>
                   <span className={styles.label}>参数</span>
-                  <pre className={styles.pre}>{pretty(call.args)}</pre>
+                  <Highlighter
+                    language="json"
+                    variant="filled"
+                    copyable={false}
+                    className={styles.code}
+                  >
+                    {pretty(call.args)}
+                  </Highlighter>
                 </>
               )}
             </div>

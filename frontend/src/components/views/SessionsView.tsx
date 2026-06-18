@@ -1,4 +1,4 @@
-import { Block, Text } from '@lobehub/ui';
+import { Empty, ListItem, Tag, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { MessageSquare } from 'lucide-react';
 
@@ -33,26 +33,9 @@ const useStyles = createStyles(({ token, css }) => ({
   list: css`
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   `,
-  item: css`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    cursor: pointer;
-    transition:
-      border-color 0.15s ease,
-      background 0.15s ease;
-    &:hover {
-      border-color: ${token.colorPrimaryBorder};
-    }
-  `,
-  itemActive: css`
-    border-color: ${token.colorPrimary};
-    background: ${token.colorPrimaryBg};
-  `,
-  iconWrap: css`
+  avatar: css`
     width: 34px;
     height: 34px;
     flex: none;
@@ -63,56 +46,9 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorFillTertiary};
     color: ${token.colorTextSecondary};
   `,
-  iconWrapActive: css`
+  avatarActive: css`
     background: ${token.colorPrimary};
     color: #fff;
-  `,
-  itemTitle: css`
-    flex: 1;
-    min-width: 0;
-    font-size: 14px;
-    font-weight: 500;
-    color: ${token.colorText};
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  `,
-  badge: css`
-    flex: none;
-    font-size: 11px;
-    font-weight: 600;
-    color: ${token.colorPrimary};
-  `,
-  empty: css`
-    margin-top: 8px;
-    padding: 56px 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    border-radius: ${token.borderRadiusLG}px;
-    border: 1px dashed ${token.colorBorderSecondary};
-    text-align: center;
-  `,
-  emptyIcon: css`
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: ${token.colorFillTertiary};
-    color: ${token.colorTextTertiary};
-    margin-bottom: 4px;
-  `,
-  emptyTitle: css`
-    font-size: 15px;
-    font-weight: 600;
-    color: ${token.colorTextSecondary};
-  `,
-  emptySub: css`
-    font-size: 13px;
-    color: ${token.colorTextTertiary};
   `,
 }));
 
@@ -140,33 +76,30 @@ export default function SessionsView({
         </div>
 
         {sessions.length === 0 ? (
-          <div className={styles.empty}>
-            <div className={styles.emptyIcon}>
-              <MessageSquare size={22} strokeWidth={1.8} />
-            </div>
-            <Text className={styles.emptyTitle}>还没有会话</Text>
-            <Text className={styles.emptySub}>开始一段新对话,它会出现在这里。</Text>
-          </div>
+          <Empty
+            icon={MessageSquare}
+            title="还没有会话"
+            description="开始一段新对话,它会出现在这里。"
+            paddingBlock={48}
+          />
         ) : (
           <div className={styles.list}>
             {sessions.map((s) => {
               const active = s.id === activeId;
               return (
-                <Block
+                <ListItem
                   key={s.id}
-                  variant="outlined"
-                  className={cx(styles.item, active && styles.itemActive)}
-                  onClick={() => onSelect(s.id)}
+                  active={active}
                   title={s.title}
-                >
-                  <div
-                    className={cx(styles.iconWrap, active && styles.iconWrapActive)}
-                  >
-                    <MessageSquare size={18} strokeWidth={1.8} />
-                  </div>
-                  <Text className={styles.itemTitle}>{s.title}</Text>
-                  {active && <Text className={styles.badge}>当前</Text>}
-                </Block>
+                  onClick={() => onSelect(s.id)}
+                  avatar={
+                    <div className={cx(styles.avatar, active && styles.avatarActive)}>
+                      <MessageSquare size={18} strokeWidth={1.8} />
+                    </div>
+                  }
+                  actions={active ? <Tag color="success">当前</Tag> : undefined}
+                  showAction={active}
+                />
               );
             })}
           </div>

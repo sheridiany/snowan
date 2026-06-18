@@ -1,4 +1,4 @@
-import { Block, Button, Flexbox, Text } from '@lobehub/ui';
+import { Block, Button, Empty, Flexbox, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { Calendar, Database, FolderOpen, Globe, Plus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -30,35 +30,6 @@ const useStyles = createStyles(({ token, css }) => ({
   sub: css`
     font-size: 13px;
     color: ${token.colorTextTertiary};
-  `,
-  empty: css`
-    padding: 40px 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-  `,
-  emptyIcon: css`
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: ${token.colorFillTertiary};
-    color: ${token.colorTextTertiary};
-    margin-bottom: 6px;
-  `,
-  emptyTitle: css`
-    font-size: 15px;
-    font-weight: 600;
-    color: ${token.colorTextSecondary};
-  `,
-  emptySub: css`
-    font-size: 13px;
-    color: ${token.colorTextTertiary};
-    margin-bottom: 8px;
   `,
   sectionLabel: css`
     margin-top: 4px;
@@ -141,17 +112,17 @@ export default function SourcesView() {
           <Text className={styles.sub}>把外部内容接入 Snowan,作为对话的上下文。</Text>
         </div>
 
-        <Block variant="outlined">
-          <div className={styles.empty}>
-            <div className={styles.emptyIcon}>
-              <Database size={22} strokeWidth={1.8} />
-            </div>
-            <Text className={styles.emptyTitle}>还没有数据源</Text>
-            <Text className={styles.emptySub}>添加一个数据源,让助手参考你的资料。</Text>
-            <Button type="primary" shape="round" icon={<Plus size={16} />}>
-              添加数据源
-            </Button>
-          </div>
+        <Block variant="outlined" paddingBlock={32}>
+          <Empty
+            icon={Database}
+            title="还没有数据源"
+            description="添加一个数据源,让助手参考你的资料。"
+            action={
+              <Button type="primary" shape="round" icon={<Plus size={16} />}>
+                添加数据源
+              </Button>
+            }
+          />
         </Block>
 
         <Text className={styles.sectionLabel}>支持的类型</Text>

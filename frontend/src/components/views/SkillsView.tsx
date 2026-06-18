@@ -1,4 +1,4 @@
-import { Block, Button, Flexbox, Text } from '@lobehub/ui';
+import { Block, Button, Empty, Flexbox, Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { Chrome, Compass, FileText, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -30,35 +30,6 @@ const useStyles = createStyles(({ token, css }) => ({
   sub: css`
     font-size: 13px;
     color: ${token.colorTextTertiary};
-  `,
-  empty: css`
-    padding: 40px 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-  `,
-  emptyIcon: css`
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: ${token.colorFillTertiary};
-    color: ${token.colorTextTertiary};
-    margin-bottom: 6px;
-  `,
-  emptyTitle: css`
-    font-size: 15px;
-    font-weight: 600;
-    color: ${token.colorTextSecondary};
-  `,
-  emptySub: css`
-    font-size: 13px;
-    color: ${token.colorTextTertiary};
-    margin-bottom: 8px;
   `,
   sectionLabel: css`
     margin-top: 4px;
@@ -141,17 +112,17 @@ export default function SkillsView() {
           <Text className={styles.sub}>为 Snowan 安装技能,扩展它能做的事。</Text>
         </div>
 
-        <Block variant="outlined">
-          <div className={styles.empty}>
-            <div className={styles.emptyIcon}>
-              <Sparkles size={22} strokeWidth={1.8} />
-            </div>
-            <Text className={styles.emptyTitle}>还没有安装技能</Text>
-            <Text className={styles.emptySub}>从技能库里挑选,扩展助手的能力。</Text>
-            <Button type="primary" shape="round" icon={<Compass size={16} />}>
-              浏览技能
-            </Button>
-          </div>
+        <Block variant="outlined" paddingBlock={32}>
+          <Empty
+            icon={Sparkles}
+            title="还没有安装技能"
+            description="从技能库里挑选,扩展助手的能力。"
+            action={
+              <Button type="primary" shape="round" icon={<Compass size={16} />}>
+                浏览技能
+              </Button>
+            }
+          />
         </Block>
 
         <Text className={styles.sectionLabel}>推荐技能</Text>

@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Segmented } from '@lobehub/ui';
+import { Segmented, ThemeSwitch } from '@lobehub/ui';
 import { Select, Switch } from 'antd';
 import { createStyles } from 'antd-style';
-import { Check, Monitor, Moon, Sun } from 'lucide-react';
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { useThemeMode } from 'antd-style';
 import { Row, Section } from './_kit';
-
-const ACCENTS = ['#FF7F16', '#E5484D', '#3E63DD', '#30A46C', '#8E4EC6', '#F5B400'];
+import { THEME_PRESETS, useThemePreset } from '../../theme/themes';
 
 const useStyles = createStyles(({ css }) => ({
   wrap: css`
@@ -19,36 +18,20 @@ const useStyles = createStyles(({ css }) => ({
     align-items: center;
     gap: 6px;
   `,
-  swatches: css`
+  accentRow: css`
     display: flex;
     align-items: center;
-    gap: 10px;
-  `,
-  swatch: css`
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    transition:
-      transform 0.12s ease,
-      box-shadow 0.12s ease;
-    &:hover {
-      transform: scale(1.08);
-    }
+    gap: 14px;
   `,
 }));
 
 export default function SettingsAppearance() {
   const { styles } = useStyles();
   const { themeMode, setThemeMode } = useThemeMode();
+  const [themeId, setThemeId] = useThemePreset();
 
   const [font, setFont] = useState<'inter' | 'system'>('inter');
   const [lang, setLang] = useState('zh');
-  const [accent, setAccent] = useState(ACCENTS[0]);
   const [showProviderIcons, setShowProviderIcons] = useState(true);
   const [richToolDesc, setRichToolDesc] = useState(true);
 
@@ -91,58 +74,56 @@ export default function SettingsAppearance() {
           label="外观"
           subtitle="选择浅色、深色或跟随系统设置"
           control={
-            <Segmented
-              value={themeMode}
-              onChange={(v) => setThemeMode(v as 'light' | 'dark' | 'auto')}
-              options={[
-                {
-                  value: 'light',
-                  label: (
-                    <span className={styles.seg}>
-                      <Sun size={14} /> 浅色
-                    </span>
-                  ),
-                },
-                {
-                  value: 'dark',
-                  label: (
-                    <span className={styles.seg}>
-                      <Moon size={14} /> 深色
-                    </span>
-                  ),
-                },
-                {
-                  value: 'auto',
-                  label: (
-                    <span className={styles.seg}>
-                      <Monitor size={14} /> 跟随系统
-                    </span>
-                  ),
-                },
-              ]}
-            />
+            <div className={styles.accentRow}>
+              <Segmented
+                value={themeMode}
+                onChange={(v) => setThemeMode(v as 'light' | 'dark' | 'auto')}
+                options={[
+                  {
+                    value: 'light',
+                    label: (
+                      <span className={styles.seg}>
+                        <Sun size={14} /> 浅色
+                      </span>
+                    ),
+                  },
+                  {
+                    value: 'dark',
+                    label: (
+                      <span className={styles.seg}>
+                        <Moon size={14} /> 深色
+                      </span>
+                    ),
+                  },
+                  {
+                    value: 'auto',
+                    label: (
+                      <span className={styles.seg}>
+                        <Monitor size={14} /> 跟随系统
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+              <ThemeSwitch
+                themeMode={themeMode}
+                onThemeSwitch={setThemeMode}
+              />
+            </div>
           }
         />
         <Row
-          label="强调色"
-          subtitle="用于按钮、链接与活跃状态"
+          label="主题"
+          subtitle="整套配色方案,作用于整个应用"
           control={
-            <div className={styles.swatches}>
-              {ACCENTS.map((c) => (
-                <span
-                  key={c}
-                  className={styles.swatch}
-                  style={{
-                    background: c,
-                    boxShadow:
-                      accent === c ? `0 0 0 2px ${c}55, 0 2px 8px ${c}40` : 'none',
-                  }}
-                  onClick={() => setAccent(c)}
-                >
-                  {accent === c && <Check size={15} strokeWidth={3} />}
-                </span>
-              ))}
-            </div>
+            <Select
+              value={themeId}
+              onChange={setThemeId}
+              showSearch
+              optionFilterProp="label"
+              style={{ width: 180 }}
+              options={THEME_PRESETS.map((t) => ({ value: t.id, label: t.name }))}
+            />
           }
         />
       </Section>

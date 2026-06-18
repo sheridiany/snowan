@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Markdown, Text } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
+import { Empty, Markdown } from '@lobehub/ui';
+import { createStyles, useTheme } from 'antd-style';
+import { Sparkles } from 'lucide-react';
 import ToolCallCard from './ToolCallCard';
 import ApprovalCard from './ApprovalCard';
 import type { Message } from './types';
@@ -23,24 +24,6 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: 1;
     min-height: 0;
     display: flex;
-  `,
-  empty: css`
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 24px;
-  `,
-  emptyTitle: css`
-    font-size: 24px;
-    font-weight: 700;
-    color: ${token.colorText};
-  `,
-  emptySub: css`
-    font-size: 14px;
-    color: ${token.colorTextTertiary};
   `,
   user: css`
     align-self: flex-end;
@@ -75,6 +58,7 @@ type Props = {
 
 export default function ChatView({ messages, onApprovalDecision }: Props) {
   const { styles } = useStyles();
+  const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,10 +69,13 @@ export default function ChatView({ messages, onApprovalDecision }: Props) {
   if (messages.length === 0) {
     return (
       <div className={styles.emptyScroll} ref={scrollRef}>
-        <div className={styles.empty}>
-          <Text className={styles.emptyTitle}>晚上好</Text>
-          <Text className={styles.emptySub}>开启一段新对话,Snowan 在这里。</Text>
-        </div>
+        <Empty
+          flex={1}
+          icon={Sparkles}
+          iconColor={theme.colorPrimary}
+          title="晚上好"
+          description="开启一段新对话,Snowan 在这里。"
+        />
       </div>
     );
   }
