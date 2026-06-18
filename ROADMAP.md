@@ -45,17 +45,16 @@ Dropped from QwenPaw on purpose (don't let these creep back in):
 
 ---
 
-## ⬜ Phase 1 — Chat solidification  (S–M)
+## ✅ Phase 1 — Chat solidification
 
-Connect pieces that already half-exist; make the chat feel complete.
-
-- **探索/执行 mode → tool guard**: `探索` = read-only tools, no approval;
-  `执行` = mutating/shell enabled, approval required. _QwenPaw approval levels in
-  `AgentsRunningConfig`, `security/tool_guard`._
-- **Session management**: rename / delete / set status+tags from the list;
-  stop-generation. _QwenPaw `/chats` CRUD, `pages/Control/Sessions`._
-- **Attachments**: paperclip → upload a file into the turn. _QwenPaw
-  `/console/upload`._
+- **Session management**: rename (inline) + delete (hover ⋯ menu) + status cycle
+  from the list; the on-disk history is deleted too.
+- **Stop generation**: send button becomes a stop button mid-stream (AbortController).
+- **Attachments**: composer paperclip picks files (chips, 8MB cap); images go to the
+  model as vision (`BinaryContent`), text files are inlined.
+- _Dropped: the 探索/执行 mode distinction — it was a placeholder, not a real
+  read-only/execute switch; the composer is now plain chat (all tools available,
+  mutating/shell still gated by approval)._
 
 ## ⬜ Phase 2 — Knowledge base  (M — the KM half, highest product value)
 
