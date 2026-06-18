@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -37,8 +38,50 @@ class ChatRequest(BaseModel):
     attachments: list[Attachment] = []
 
 
+def _extract_text(name: str, mime: str, raw: bytes) -> str | None:
+    """Extract readable text from office/pdf documents. None if not a known doc."""
+    ext = name.lower().rsplit(".", 1)[-1] if "." in name else ""
+    try:
+        if ext in ("xlsx", "xlsm") or "spreadsheetml" in mime:
+            from openpyxl import load_workbook
+
+            wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+            out: list[str] = []
+            for ws in wb.worksheets:
+                out.append(f"## {ws.title}")
+                for row in ws.iter_rows(values_only=True):
+                    cells = [str(c) for c in row if c is not None]
+                    if cells:
+                        out.append(" | ".join(cells))
+            return "\n".join(out)
+        if ext == "docx" or "wordprocessingml" in mime:
+            import docx
+
+            d = docx.Document(io.BytesIO(raw))
+            return "\n".join(p.text for p in d.paragraphs if p.text.strip())
+        if ext == "pdf" or mime == "application/pdf":
+            from pypdf import PdfReader
+
+            reader = PdfReader(io.BytesIO(raw))
+            return "\n\n".join((pg.extract_text() or "") for pg in reader.pages)
+        if ext == "pptx" or "presentationml" in mime:
+            from pptx import Presentation
+
+            prs = Presentation(io.BytesIO(raw))
+            out2: list[str] = []
+            for i, slide in enumerate(prs.slides, 1):
+                out2.append(f"## Slide {i}")
+                for shape in slide.shapes:
+                    if shape.has_text_frame and shape.text_frame.text.strip():
+                        out2.append(shape.text_frame.text)
+            return "\n".join(out2)
+    except Exception:  # noqa: BLE001 — an unparseable doc just falls through
+        return None
+    return None
+
+
 def _build_prompt(message: str, attachments: list[Attachment]):
-    """Images become vision content; text files are inlined; other binaries noted."""
+    """Images -> vision content; documents -> extracted text; text files inlined."""
     if not attachments:
         return message
     parts: list[Any] = [message] if message else []
@@ -49,11 +92,17 @@ def _build_prompt(message: str, attachments: list[Attachment]):
             continue
         if a.mime.startswith("image/"):
             parts.append(BinaryContent(data=raw, media_type=a.mime))
-        else:
+            continue
+        text = _extract_text(a.name, a.mime, raw)
+        if text is None:
             try:
-                parts.append(f"\n\n[附件 {a.name}]\n```\n{raw.decode('utf-8')[:20000]}\n```")
+                text = raw.decode("utf-8")
             except UnicodeDecodeError:
-                parts.append(f"\n\n[附件 {a.name}:二进制文件,暂不支持解析]")
+                text = None
+        if text is not None:
+            parts.append(f"\n\n[附件 {a.name}]\n```\n{text[:50000]}\n```")
+        else:
+            parts.append(f"\n\n[附件 {a.name}:无法解析的二进制文件]")
     return parts
 
 

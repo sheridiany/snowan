@@ -5,8 +5,8 @@ import { ArrowUp, Paperclip, Square, X } from 'lucide-react';
 import ModelSelect from './ModelSelect';
 import type { Attachment } from '../api/chat';
 
-const ACCEPT = 'image/*,text/*,.md,.json,.csv,.log,.py,.ts,.tsx,.js,.yaml,.yml,.toml';
-const MAX_BYTES = 8 * 1024 * 1024;
+const ACCEPT = 'image/*,.txt,.md,.json,.csv,.log,.py,.ts,.tsx,.js,.yaml,.yml,.toml,.pdf,.docx,.xlsx,.xlsm,.pptx';
+const MAX_BYTES = 16 * 1024 * 1024;
 
 const readAsBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -32,10 +32,15 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorBgElevated};
     border: 1px solid ${token.colorBorderSecondary};
     box-shadow: ${token.boxShadowTertiary};
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     &:focus-within {
       border-color: ${token.colorPrimaryBorder};
     }
+  `,
+  dragging: css`
+    border-color: ${token.colorPrimary};
+    box-shadow: inset 0 0 0 1px ${token.colorPrimary};
+    background: ${token.colorPrimaryBg};
   `,
   chips: css`
     display: flex;
@@ -45,14 +50,27 @@ const useStyles = createStyles(({ token, css }) => ({
   chip: css`
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     max-width: 220px;
-    height: 26px;
-    padding: 0 4px 0 9px;
-    border-radius: 8px;
+    height: 30px;
+    padding: 0 4px 0 6px;
+    border-radius: 9px;
     background: ${token.colorFillTertiary};
     color: ${token.colorTextSecondary};
     font-size: 12px;
+  `,
+  thumb: css`
+    width: 22px;
+    height: 22px;
+    flex: none;
+    border-radius: 5px;
+    object-fit: cover;
+  `,
+  chipIcon: css`
+    flex: none;
+    display: inline-flex;
+    color: ${token.colorTextTertiary};
+    padding-left: 3px;
   `,
   chipName: css`
     overflow: hidden;
@@ -106,6 +124,9 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
+const isGenericImageName = (f: File) =>
+  (f.type || '').startsWith('image/') && (!f.name || /^(image|blob)/i.test(f.name));
+
 export interface ComposerProps {
   busy: boolean;
   onSend: (text: string, attachments: Attachment[]) => void;
@@ -113,20 +134,54 @@ export interface ComposerProps {
 }
 
 export default function Composer({ busy, onSend, onStop }: ComposerProps) {
-  const { styles } = useStyles();
+  const { styles, cx } = useStyles();
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
 
-  const pickFiles = async (files: FileList | null) => {
+  const addFiles = async (files: FileList | File[] | null) => {
     if (!files) return;
     const picked: Attachment[] = [];
     for (const f of Array.from(files)) {
-      if (f.size > MAX_BYTES) continue; // skip oversized files
-      picked.push({ name: f.name, mime: f.type || 'application/octet-stream', data: await readAsBase64(f) });
+      if (f.size > MAX_BYTES) continue;
+      const ext = (f.type.split('/')[1] || 'png').replace('+xml', '');
+      const name = isGenericImageName(f)
+        ? `粘贴图片-${Date.now().toString().slice(-5)}.${ext}`
+        : f.name;
+      picked.push({ name, mime: f.type || 'application/octet-stream', data: await readAsBase64(f) });
     }
     if (picked.length) setAttachments((prev) => [...prev, ...picked]);
     if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const onPaste = (e: React.ClipboardEvent) => {
+    const files = e.clipboardData?.files;
+    if (files && files.length) {
+      e.preventDefault();
+      addFiles(files);
+    }
+  };
+
+  const onDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current += 1;
+    if (e.dataTransfer.types.includes('Files')) setDragging(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current -= 1;
+    if (dragDepth.current <= 0) {
+      dragDepth.current = 0;
+      setDragging(false);
+    }
+  };
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragging(false);
+    addFiles(e.dataTransfer.files);
   };
 
   const submit = () => {
@@ -140,12 +195,24 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.card}>
+      <div
+        className={cx(styles.card, dragging && styles.dragging)}
+        onDragEnter={onDragEnter}
+        onDragLeave={onDragLeave}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDrop}
+      >
         {attachments.length > 0 && (
           <div className={styles.chips}>
             {attachments.map((a, i) => (
               <span key={i} className={styles.chip} title={a.name}>
-                <Paperclip size={12} />
+                {a.mime.startsWith('image/') ? (
+                  <img className={styles.thumb} src={`data:${a.mime};base64,${a.data}`} alt={a.name} />
+                ) : (
+                  <span className={styles.chipIcon}>
+                    <Paperclip size={12} />
+                  </span>
+                )}
                 <span className={styles.chipName}>{a.name}</span>
                 <span
                   className={styles.chipX}
@@ -162,6 +229,7 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
           className={styles.ta}
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          onPaste={onPaste}
           onPressEnter={(e) => {
             if (!e.shiftKey) {
               e.preventDefault();
@@ -169,7 +237,7 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
             }
           }}
           autoSize={{ minRows: 1, maxRows: 8 }}
-          placeholder="问点什么…"
+          placeholder="问点什么…(可粘贴或拖拽图片、文档)"
         />
 
         <div className={styles.bottomRow}>
@@ -185,7 +253,7 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
             multiple
             accept={ACCEPT}
             hidden
-            onChange={(e) => pickFiles(e.target.files)}
+            onChange={(e) => addFiles(e.target.files)}
           />
           <span className={styles.spacer} />
           <ModelSelect />
@@ -211,7 +279,7 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
           )}
         </div>
       </div>
-      <div className={styles.hint}>Enter 发送 · Shift + Enter 换行</div>
+      <div className={styles.hint}>Enter 发送 · Shift + Enter 换行 · 支持图片 / 文档</div>
     </div>
   );
 }
