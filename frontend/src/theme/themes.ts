@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { theme as antdTheme, type ThemeConfig } from 'antd';
 import type { ThemeAppearance, ThemeMode } from 'antd-style';
 
@@ -129,22 +129,37 @@ export function persistThemeMode(mode: ThemeMode) {
   if (typeof window !== 'undefined') window.localStorage.setItem(MODE_KEY, mode);
 }
 
+// Shared external store so EVERY consumer (Root + the settings dropdown) sees the
+// same theme id and re-renders together — a per-hook useState would split the
+// state and the live switch wouldn't reach Root.
+let currentTheme =
+  (typeof window !== 'undefined' && window.localStorage.getItem(THEME_KEY)) ||
+  DEFAULT_THEME_ID;
+const themeListeners = new Set<() => void>();
+
+export function setThemePreset(id: string) {
+  currentTheme = id;
+  if (typeof window !== 'undefined') window.localStorage.setItem(THEME_KEY, id);
+  themeListeners.forEach((l) => l());
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === THEME_KEY && e.newValue && e.newValue !== currentTheme) {
+      currentTheme = e.newValue;
+      themeListeners.forEach((l) => l());
+    }
+  });
+}
+
 export function useThemePreset(): [string, (id: string) => void] {
-  const [id, setId] = useState(
-    () =>
-      (typeof window !== 'undefined' && window.localStorage.getItem(THEME_KEY)) ||
-      DEFAULT_THEME_ID,
+  const id = useSyncExternalStore(
+    (cb) => {
+      themeListeners.add(cb);
+      return () => themeListeners.delete(cb);
+    },
+    () => currentTheme,
+    () => DEFAULT_THEME_ID,
   );
-  useEffect(() => {
-    const sync = (e: StorageEvent) => {
-      if (e.key === THEME_KEY && e.newValue) setId(e.newValue);
-    };
-    window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
-  }, []);
-  const set = (next: string) => {
-    setId(next);
-    if (typeof window !== 'undefined') window.localStorage.setItem(THEME_KEY, next);
-  };
-  return [id, set];
+  return [id, setThemePreset];
 }
