@@ -14,7 +14,7 @@ pub fn run() {
             {
                 let win = app.get_webview_window("main").unwrap();
                 win.create_overlay_titlebar().unwrap();
-                win.set_traffic_lights_inset(16.0, 16.0).unwrap();
+                win.set_traffic_lights_inset(16.0, 19.0).unwrap();
             }
             Ok(())
         })
