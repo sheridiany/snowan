@@ -9,7 +9,8 @@ def build_model(settings: Settings):
 
         return TestModel()
 
-    if settings.provider in ("openai", "openrouter"):
+    # "custom" is an OpenAI-compatible endpoint (base_url + key + any model name).
+    if settings.provider in ("openai", "openrouter", "custom"):
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.providers.openai import OpenAIProvider
 

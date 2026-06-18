@@ -20,7 +20,6 @@ from pydantic_ai.messages import ModelMessage
 from ..agent.build import build_agent
 
 router = APIRouter()
-_agent = build_agent()
 
 # In-memory conversation history per session. Disk persistence (ModelMessagesTypeAdapter)
 # arrives with the session-store phase.
@@ -102,7 +101,9 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
 
 
 async def _run_new(message: str, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
-    async with _agent.iter(message, message_history=history) as run:
+    # Build per-request so a model/key change saved in Settings takes effect at once.
+    agent = build_agent()
+    async with agent.iter(message, message_history=history) as run:
         async for chunk in _stream_run(run):
             yield chunk
         _sessions[session_id] = run.result.all_messages()
@@ -113,7 +114,8 @@ async def _run_resume(
     results: DeferredToolResults,
     session_id: str,
 ) -> AsyncIterator[str]:
-    async with _agent.iter(message_history=history, deferred_tool_results=results) as run:
+    agent = build_agent()
+    async with agent.iter(message_history=history, deferred_tool_results=results) as run:
         async for chunk in _stream_run(run):
             yield chunk
         _sessions[session_id] = run.result.all_messages()

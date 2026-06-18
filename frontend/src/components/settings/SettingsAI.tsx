@@ -1,118 +1,321 @@
-import { useState } from 'react';
-import { Button, Tag, Text } from '@lobehub/ui';
-import { Select } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { App, Modal } from 'antd';
 import { createStyles } from 'antd-style';
-import { Info } from 'lucide-react';
-import { Row, Section } from './_kit';
-
-type Provider = {
-  id: string;
-  name: string;
-  desc: string;
-  brand: string;
-  configured: boolean;
-};
-
-const PROVIDERS: Provider[] = [
-  { id: 'openai', name: 'OpenAI', desc: 'GPT 系列模型', brand: '#10A37F', configured: true },
-  { id: 'anthropic', name: 'Anthropic', desc: 'Claude 系列模型', brand: '#D97757', configured: true },
-  { id: 'gemini', name: 'Gemini', desc: 'Google 多模态模型', brand: '#4285F4', configured: false },
-  { id: 'openrouter', name: 'OpenRouter', desc: '聚合多家模型路由', brand: '#8E8EA0', configured: false },
-];
-
-const MODELS = [
-  { value: 'claude-opus-4', label: 'Claude Opus 4' },
-  { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
-  { value: 'gpt-4o', label: 'GPT-4o' },
-  { value: 'gemini-2-flash', label: 'Gemini 2.0 Flash' },
-];
+import { Check, Plus, Settings2, Trash2 } from 'lucide-react';
+import {
+  deleteProvider,
+  listProviders,
+  type Active,
+  type ProviderInfo,
+  type ProvidersState,
+} from '../../api/providers';
+import { ProviderIcon } from './providerIcon';
+import { ModelManageModal } from './ModelManageModal';
+import { ProviderConfigModal } from './ProviderConfigModal';
+import { CustomProviderModal } from './CustomProviderModal';
 
 const useStyles = createStyles(({ token, css }) => ({
-  wrap: css`
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
+  head: css`
+    margin-bottom: 16px;
   `,
-  note: css`
-    display: flex;
-    align-items: flex-start;
+  title: css`
+    font-size: 16px;
+    font-weight: 600;
+    color: ${token.colorText};
+  `,
+  sub: css`
+    font-size: 13px;
+    color: ${token.colorTextTertiary};
+    margin-top: 2px;
+  `,
+  grid: css`
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    padding: 14px 16px;
+  `,
+  tile: css`
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
     border-radius: ${token.borderRadiusLG}px;
     background: ${token.colorFillQuaternary};
+    cursor: pointer;
+    transition: background 0.12s ease, box-shadow 0.12s ease;
+    &:hover {
+      background: ${token.colorFillTertiary};
+    }
   `,
-  noteIcon: css`
+  tileActive: css`
+    box-shadow: inset 0 0 0 1.5px ${token.colorPrimary};
+    background: ${token.colorPrimaryBg};
+    &:hover {
+      background: ${token.colorPrimaryBg};
+    }
+  `,
+  icon: css`
     flex: none;
-    margin-top: 1px;
-    color: ${token.colorPrimary};
     display: inline-flex;
   `,
-  noteText: css`
-    font-size: 12.5px;
-    line-height: 1.65;
-    color: ${token.colorTextSecondary};
+  body: css`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
   `,
-  dot: css`
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+  nameRow: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  `,
+  name: css`
+    font-size: 14px;
+    font-weight: 600;
+    color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  desc: css`
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  badge: css`
     flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+  `,
+  badgeActive: css`
+    color: ${token.colorPrimary};
+    background: ${token.colorPrimaryBgHover};
+  `,
+  badgeReady: css`
+    color: ${token.colorSuccess};
+    background: ${token.colorSuccessBg};
+  `,
+  badgeIdle: css`
+    color: ${token.colorTextTertiary};
+    background: ${token.colorFillSecondary};
+  `,
+  actions: css`
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  `,
+  actBtn: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 9px;
+    border-radius: ${token.borderRadius}px;
+    border: none;
+    background: ${token.colorBgContainer};
+    color: ${token.colorTextSecondary};
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorText};
+    }
+  `,
+  iconBtn: css`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: ${token.borderRadius}px;
+    border: none;
+    background: ${token.colorBgContainer};
+    color: ${token.colorTextTertiary};
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+    &:hover {
+      background: ${token.colorErrorBg};
+      color: ${token.colorError};
+    }
+  `,
+  addTile: css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    min-height: 72px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px dashed ${token.colorBorder};
+    color: ${token.colorTextTertiary};
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    &:hover {
+      background: ${token.colorFillQuaternary};
+      border-color: ${token.colorPrimary};
+      color: ${token.colorPrimary};
+    }
   `,
 }));
 
+const EMPTY: ProvidersState = { active: { provider: null, model: '' }, providers: [] };
+
 export default function SettingsAI() {
-  const { styles } = useStyles();
-  const [defaultModel, setDefaultModel] = useState('claude-opus-4');
+  const { styles, cx } = useStyles();
+  const { message } = App.useApp();
+  const [state, setState] = useState<ProvidersState>(EMPTY);
+  const [manageId, setManageId] = useState<string | null>(null);
+  const [configId, setConfigId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const refresh = () => listProviders().then(setState).catch(() => {});
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  // built-ins first, customs after — stable ordering for the grid.
+  const ordered = useMemo(
+    () => [...state.providers].sort((a, b) => Number(a.is_custom) - Number(b.is_custom)),
+    [state.providers],
+  );
+
+  const byId = (id: string | null) =>
+    id ? state.providers.find((p) => p.id === id) ?? null : null;
+
+  const active: Active = state.active;
+
+  const handleDelete = (p: ProviderInfo) => {
+    Modal.confirm({
+      title: `删除 ${p.name}?`,
+      content: '将移除该端点及其全部模型配置,此操作无法撤销。',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await deleteProvider(p.id);
+          message.success(`已删除 ${p.name}`);
+          refresh();
+        } catch (e) {
+          message.error(`删除失败:${(e as Error).message}`);
+        }
+      },
+    });
+  };
+
+  const manageProvider = byId(manageId);
+  const configProvider = byId(configId);
 
   return (
-    <div className={styles.wrap}>
-      <div className={styles.note}>
-        <span className={styles.noteIcon}>
-          <Info size={16} />
-        </span>
-        <Text className={styles.noteText}>
-          密钥目前保存在后端 <code>.env</code> 中,前端仅展示连接状态。配置面板用于查看每个
-          提供商的连接情况,实际密钥写入由后端负责。
-        </Text>
+    <div>
+      <div className={styles.head}>
+        <div className={styles.title}>模型提供商</div>
+        <div className={styles.sub}>连接你的模型来源 · 当前使用的会用于所有新会话</div>
       </div>
 
-      <Section title="提供商" subtitle="连接你的模型提供方">
-        {PROVIDERS.map((p) => (
-          <Row
-            key={p.id}
-            icon={<span className={styles.dot} style={{ background: p.brand }} />}
-            label={p.name}
-            subtitle={p.desc}
-            control={
-              <>
-                {p.configured ? (
-                  <Tag color="success">已连接</Tag>
-                ) : (
-                  <Tag>未配置</Tag>
+      <div className={styles.grid}>
+        {ordered.map((p) => {
+          const isActive = active.provider === p.id;
+          const ready = p.has_api_key;
+          const sub = isActive && active.model ? active.model : `${p.models.length} 个模型`;
+          return (
+            <div
+              key={p.id}
+              className={cx(styles.tile, isActive && styles.tileActive)}
+              onClick={() => setManageId(p.id)}
+            >
+              <span className={styles.icon}>
+                <ProviderIcon kind={p.kind} size={40} />
+              </span>
+              <div className={styles.body}>
+                <div className={styles.nameRow}>
+                  <span className={styles.name}>{p.name}</span>
+                  <span
+                    className={cx(
+                      styles.badge,
+                      isActive
+                        ? styles.badgeActive
+                        : ready
+                          ? styles.badgeReady
+                          : styles.badgeIdle,
+                    )}
+                  >
+                    {isActive && <Check size={11} />}
+                    {isActive ? '使用中' : ready ? '已配置' : '未配置'}
+                  </span>
+                </div>
+                <span className={styles.desc}>{sub}</span>
+              </div>
+              <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
+                <button className={styles.actBtn} onClick={() => setManageId(p.id)}>
+                  模型
+                </button>
+                <button className={styles.actBtn} onClick={() => setConfigId(p.id)}>
+                  <Settings2 size={13} />
+                  设置
+                </button>
+                {p.is_custom && (
+                  <button
+                    className={styles.iconBtn}
+                    title="删除端点"
+                    onClick={() => handleDelete(p)}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 )}
-                <Button size="small">
-                  配置
-                </Button>
-              </>
-            }
-          />
-        ))}
-      </Section>
+              </div>
+            </div>
+          );
+        })}
 
-      <Section title="默认模型" subtitle="新会话默认使用的模型">
-        <Row
-          label="默认模型"
-          subtitle="可在单个会话中临时切换"
-          control={
-            <Select
-              value={defaultModel}
-              onChange={setDefaultModel}
-              style={{ width: 200 }}
-              options={MODELS}
-            />
-          }
+        <div className={styles.addTile} onClick={() => setAddOpen(true)}>
+          <Plus size={16} />
+          添加自定义端点
+        </div>
+      </div>
+
+      {manageProvider && (
+        <ModelManageModal
+          provider={manageProvider}
+          active={active}
+          open={!!manageId}
+          onClose={() => setManageId(null)}
+          onChanged={refresh}
         />
-      </Section>
+      )}
+
+      <ProviderConfigModal
+        provider={configProvider}
+        open={!!configId}
+        onClose={() => setConfigId(null)}
+        onSaved={() => {
+          setConfigId(null);
+          refresh();
+        }}
+      />
+
+      <CustomProviderModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setAddOpen(false);
+          refresh();
+        }}
+      />
     </div>
   );
 }
