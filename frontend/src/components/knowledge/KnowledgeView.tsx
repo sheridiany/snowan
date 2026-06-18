@@ -248,7 +248,7 @@ const useStyles = createStyles(({ token, css }) => ({
   cardIcon: css`
     width: 40px;
     height: 40px;
-    border-radius: 11px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -306,7 +306,7 @@ export default function KnowledgeView() {
       <div className={styles.detail}>
         <div className={styles.detailHeader}>
           <span className={styles.detailTitle}>{active.label}</span>
-          <Button type="primary" shape="round" size="small" icon={<Icon icon={active.action.icon} size={15} />}>
+          <Button type="primary" size="small" icon={<Icon icon={active.action.icon} size={15} />}>
             {active.action.label}
           </Button>
         </div>

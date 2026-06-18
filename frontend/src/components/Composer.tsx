@@ -46,7 +46,7 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 8px;
     padding: 10px 12px 8px;
-    border-radius: ${token.borderRadiusLG + 6}px;
+    border-radius: 12px;
     background: ${token.colorBgContainer};
     border: 1px solid ${token.colorBorderSecondary};
     box-shadow: 0 6px 24px ${token.colorFillQuaternary};
@@ -66,7 +66,7 @@ const useStyles = createStyles(({ token, css }) => ({
     display: inline-flex;
     padding: 2px;
     gap: 2px;
-    border-radius: 999px;
+    border-radius: 8px;
     background: ${token.colorFillQuaternary};
     border: 1px solid ${token.colorBorderSecondary};
   `,
@@ -76,7 +76,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 5px;
     height: 26px;
     padding: 0 11px;
-    border-radius: 999px;
+    border-radius: 6px;
     font-size: 12px;
     font-weight: 500;
     color: ${token.colorTextSecondary};
@@ -98,7 +98,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 6px;
     height: 30px;
     padding: 0 6px 0 10px;
-    border-radius: 999px;
+    border-radius: 8px;
     background: ${token.colorFillQuaternary};
     border: 1px solid ${token.colorBorderSecondary};
     color: ${token.colorTextSecondary};
@@ -148,9 +148,9 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: 1;
   `,
   send: css`
-    width: 34px;
-    height: 34px;
-    border-radius: 999px !important;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px !important;
     display: inline-flex !important;
     align-items: center;
     justify-content: center;

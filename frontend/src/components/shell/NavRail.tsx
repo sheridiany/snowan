@@ -158,7 +158,6 @@ export default function NavRail({
       <Button
         className={styles.newBtn}
         type="primary"
-        shape="round"
         icon={<Icon icon={SquarePen} size={16} />}
         onClick={onNewChat}
       >

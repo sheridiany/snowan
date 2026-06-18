@@ -141,7 +141,7 @@ function SectionHead({ title }: { title: string }) {
   return (
     <div className={styles.sectionHead}>
       <Text className={styles.sectionTitle}>{title}</Text>
-      <Button size="small" shape="round" icon={<Pencil size={13} />}>
+      <Button size="small" icon={<Pencil size={13} />}>
         编辑
       </Button>
     </div>

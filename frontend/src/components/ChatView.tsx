@@ -29,7 +29,7 @@ const useStyles = createStyles(({ token, css }) => ({
     align-self: flex-end;
     max-width: 80%;
     padding: 11px 15px;
-    border-radius: 18px 18px 5px 18px;
+    border-radius: 16px;
     background: ${token.colorPrimary};
     color: #fff;
     line-height: 1.6;

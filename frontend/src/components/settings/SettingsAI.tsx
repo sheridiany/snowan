@@ -90,7 +90,7 @@ export default function SettingsAI() {
                 ) : (
                   <Tag>未配置</Tag>
                 )}
-                <Button size="small" shape="round">
+                <Button size="small">
                   配置
                 </Button>
               </>

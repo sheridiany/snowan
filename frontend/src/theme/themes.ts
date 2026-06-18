@@ -108,7 +108,8 @@ export function makeThemeConfig(themeId: string) {
         colorTextQuaternary: p.textTertiary,
         colorBorder: p.border,
         colorBorderSecondary: p.borderSecondary,
-        borderRadius: 12,
+        // Craft-style small radii: base 6 derives sm 4 / base 6 / lg 8.
+        borderRadius: 6,
         fontFamily: FONT,
       },
       components: { Button: { primaryColor: onAccent(p.accent) } },

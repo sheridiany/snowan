@@ -58,7 +58,7 @@ const useStyles = createStyles(({ token, css }) => ({
   cardIcon: css`
     width: 40px;
     height: 40px;
-    border-radius: 11px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -118,7 +118,7 @@ export default function SkillsView() {
             title="还没有安装技能"
             description="从技能库里挑选,扩展助手的能力。"
             action={
-              <Button type="primary" shape="round" icon={<Compass size={16} />}>
+              <Button type="primary" icon={<Compass size={16} />}>
                 浏览技能
               </Button>
             }

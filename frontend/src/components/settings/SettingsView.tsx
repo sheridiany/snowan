@@ -118,7 +118,7 @@ const useStyles = createStyles(({ token, css }) => ({
     width: 34px;
     height: 34px;
     flex: none;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
