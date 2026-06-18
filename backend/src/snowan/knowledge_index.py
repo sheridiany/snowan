@@ -148,7 +148,7 @@ def all_chunks() -> list[sqlite3.Row]:
     try:
         return conn.execute(
             """SELECT c.id, c.document_id, c.heading, c.text, c.embedding,
-                      d.title, d.updated_at
+                      d.title, d.updated_at, d.source_type
                FROM chunks c JOIN documents d ON d.id = c.document_id
                WHERE c.embedding IS NOT NULL"""
         ).fetchall()

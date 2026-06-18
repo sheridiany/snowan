@@ -14,6 +14,19 @@ from . import embeddings, knowledge_index
 
 _RRF_K = 60
 
+# A deliberately-saved/generated note is higher-signal than a passively captured
+# page or chat, so notes outrank other sources at equal relevance. Weighting is by
+# source_type (manual vs chat-generated notes both rank as notes — provenance, not
+# weight, distinguishes them). Future sources slot in here.
+_SOURCE_WEIGHTS = {
+    "note": 1.0,
+    "file": 0.85,
+    "ai_chat": 0.7,
+    "web_page": 0.7,
+    "calendar": 0.6,
+    "email": 0.6,
+}
+
 _STOPWORDS = {
     "一下", "什么", "怎么", "如何", "我的", "这个", "那个", "可以", "需要", "没有",
     "知道", "告诉", "帮我", "看看", "关于", "记得", "之前", "现在", "哪些", "一些",
@@ -81,12 +94,14 @@ def search(query: str, limit: int = 8) -> list[dict]:
     sims = (mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-9)) @ qn
     vec_ranked = [int(i) for i in np.argsort(-sims)[:50]]
 
-    # Reciprocal Rank Fusion
+    # Reciprocal Rank Fusion, then weight by source so notes outrank other sources.
     fused: dict[int, float] = {}
     for rank, i in enumerate(kw_ranked):
         fused[i] = fused.get(i, 0.0) + 1.0 / (_RRF_K + rank + 1)
     for rank, i in enumerate(vec_ranked):
         fused[i] = fused.get(i, 0.0) + 1.0 / (_RRF_K + rank + 1)
+    for i in fused:
+        fused[i] *= _SOURCE_WEIGHTS.get(rows[i]["source_type"], 0.6)
 
     results: list[dict] = []
     seen: set[str] = set()

@@ -67,6 +67,10 @@ def _parse(path: Path) -> dict | None:
         "body": body,
         "created_at": str(fm["created"]) if fm.get("created") else mtime,
         "updated_at": str(fm["updated"]) if fm.get("updated") else mtime,
+        # Provenance: "manual" or "chat" (a 生成笔记 distilled from a conversation).
+        # `source` keeps the chat/message refs so the note can cite + jump back.
+        "origin": str(fm["origin"]) if fm.get("origin") else "manual",
+        "source": fm["source"] if isinstance(fm.get("source"), dict) else None,
         "_path": path,
     }
 
@@ -78,12 +82,20 @@ def _serialize(note: dict) -> str:
         "created": note["created_at"],
         "updated": note["updated_at"],
     }
+    if note.get("origin") and note["origin"] != "manual":
+        front["origin"] = note["origin"]
+    if note.get("source"):
+        front["source"] = note["source"]
     fm = yaml.safe_dump(front, allow_unicode=True, sort_keys=False).strip()
     return f"---\n{fm}\n---\n\n{note['body']}\n"
 
 
 def _public(note: dict) -> dict:
-    return {k: note[k] for k in ("id", "title", "body", "created_at", "updated_at")}
+    out = {k: note[k] for k in ("id", "title", "body", "created_at", "updated_at")}
+    out["origin"] = note.get("origin", "manual")
+    if note.get("source"):
+        out["source"] = note["source"]
+    return out
 
 
 def _all() -> list[dict]:
@@ -147,7 +159,7 @@ def get_note(note_id: str) -> dict | None:
     return _public(n) if n else None
 
 
-def create_note(body: str, title: str = "") -> dict:
+def create_note(body: str, title: str = "", origin: str = "manual", source: dict | None = None) -> dict:
     _ensure_vault()
     now = _now()
     note = {
@@ -156,6 +168,8 @@ def create_note(body: str, title: str = "") -> dict:
         "body": body,
         "created_at": now,
         "updated_at": now,
+        "origin": origin,
+        "source": source,
     }
     _free_path(note["title"], note["id"]).write_text(_serialize(note), encoding="utf-8")
     knowledge_index.index_document({**note, "source_type": "note"})
