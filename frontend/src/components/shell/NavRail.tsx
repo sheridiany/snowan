@@ -36,7 +36,7 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 22px;
     border-radius: 7px;
     flex: none;
-    background: linear-gradient(135deg, ${token.colorPrimary}, #ffb066);
+    background: linear-gradient(135deg, ${token.colorPrimaryHover}, ${token.colorPrimary});
     box-shadow: 0 2px 8px ${token.colorPrimaryBorder};
   `,
   brandText: css`
