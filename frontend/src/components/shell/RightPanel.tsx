@@ -4,21 +4,22 @@ import { PanelRightClose, Info } from 'lucide-react';
 
 const useStyles = createStyles(({ token, css }) => ({
   panel: css`
-    width: 300px;
+    width: 288px;
     flex: none;
     display: flex;
     flex-direction: column;
     background: ${token.colorBgContainer};
-    border-left: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${token.borderRadiusLG}px;
+    box-shadow: ${token.boxShadowTertiary};
+    overflow: hidden;
   `,
   header: css`
-    height: 46px;
+    height: 52px;
     flex: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 10px 0 16px;
-    border-bottom: 1px solid ${token.colorBorderSecondary};
     font-size: 13px;
     font-weight: 600;
     color: ${token.colorText};

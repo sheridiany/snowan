@@ -26,22 +26,16 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextTertiary};
   `,
   card: css`
-    padding: 6px 20px;
-    border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorBgContainer};
-    box-shadow: ${token.boxShadowTertiary};
+    display: flex;
+    flex-direction: column;
   `,
   row: css`
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    min-height: 56px;
-    padding: 12px 0;
-    border-bottom: 1px solid ${token.colorBorderSecondary};
-    &:last-child {
-      border-bottom: none;
-    }
+    min-height: 52px;
+    padding: 10px 0;
   `,
   rowText: css`
     display: flex;

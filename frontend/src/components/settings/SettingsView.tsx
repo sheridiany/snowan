@@ -47,19 +47,15 @@ const CATEGORIES: Category[] = [
 ];
 
 const useStyles = createStyles(({ token, css }) => ({
-  root: css`
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    height: 100%;
-  `,
   detail: css`
     flex: 1;
     min-width: 0;
-    height: 100%;
     display: flex;
     flex-direction: column;
-    background: ${token.colorBgLayout};
+    background: ${token.colorBgContainer};
+    border-radius: ${token.borderRadiusLG}px;
+    box-shadow: ${token.boxShadowTertiary};
+    overflow: hidden;
   `,
   detailHeader: css`
     flex: none;
@@ -89,7 +85,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-export default function SettingsView() {
+export default function SettingsView({ listCollapsed }: { listCollapsed?: boolean }) {
   const { styles } = useStyles();
   const [activeId, setActiveId] = useState<CategoryId>('appearance');
 
@@ -97,19 +93,21 @@ export default function SettingsView() {
   const Panel = active.panel;
 
   return (
-    <div className={styles.root}>
-      <ListPane title="设置">
-        {CATEGORIES.map((c) => (
-          <ListRow
-            key={c.id}
-            icon={c.icon}
-            label={c.title}
-            sub={c.subtitle}
-            active={c.id === activeId}
-            onClick={() => setActiveId(c.id)}
-          />
-        ))}
-      </ListPane>
+    <>
+      {!listCollapsed && (
+        <ListPane title="设置">
+          {CATEGORIES.map((c) => (
+            <ListRow
+              key={c.id}
+              icon={c.icon}
+              label={c.title}
+              sub={c.subtitle}
+              active={c.id === activeId}
+              onClick={() => setActiveId(c.id)}
+            />
+          ))}
+        </ListPane>
+      )}
 
       <div className={styles.detail}>
         <div className={styles.detailHeader}>
@@ -122,6 +120,6 @@ export default function SettingsView() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

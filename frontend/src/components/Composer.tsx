@@ -47,9 +47,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 8px;
     padding: 10px 12px 8px;
     border-radius: 12px;
-    background: ${token.colorBgElevated};
-    box-shadow: ${token.boxShadowSecondary};
-    transition: box-shadow 0.15s ease;
+    background: transparent;
   `,
   topRow: css`
     display: flex;
@@ -62,8 +60,7 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 2px;
     gap: 2px;
     border-radius: 8px;
-    background: ${token.colorFillQuaternary};
-    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillTertiary};
   `,
   modeItem: css`
     display: inline-flex;
@@ -94,13 +91,8 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 30px;
     padding: 0 6px 0 10px;
     border-radius: 8px;
-    background: ${token.colorFillQuaternary};
-    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillTertiary};
     color: ${token.colorTextSecondary};
-    transition: border-color 0.15s ease;
-    &:hover {
-      border-color: ${token.colorPrimaryBorder};
-    }
   `,
   chipIcon: css`
     display: inline-flex;

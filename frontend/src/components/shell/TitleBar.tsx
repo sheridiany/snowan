@@ -15,8 +15,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 2px;
     /* Reserve 78px on the left for macOS traffic lights (close/minimize/zoom). */
     padding: 0 10px 0 78px;
-    background: ${token.colorBgContainer};
-    border-bottom: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgLayout};
     user-select: none;
   `,
   spacer: css`

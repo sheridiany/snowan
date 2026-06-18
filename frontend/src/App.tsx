@@ -25,19 +25,24 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: 1;
     min-height: 0;
     display: flex;
+    background: ${token.colorBgLayout};
   `,
-  main: css`
+  stage: css`
     flex: 1;
     min-width: 0;
     display: flex;
-    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
   `,
   detail: css`
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: ${token.colorBgLayout};
+    background: ${token.colorBgContainer};
+    border-radius: ${token.borderRadiusLG}px;
+    box-shadow: ${token.boxShadowTertiary};
+    overflow: hidden;
   `,
   detailHeader: css`
     flex: none;
@@ -94,7 +99,8 @@ export default function App() {
   const canBack = hi > 0;
   const canForward = hi < hist.length - 1;
 
-  const [navCollapsed, setNavCollapsed] = useState(false);
+  // The thin icon rail is always shown; ◫ collapses the list pane (column 2).
+  const [listCollapsed, setListCollapsed] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
 
   const [sessions, setSessions] = useState<Session[]>(() => [newSession()]);
@@ -204,44 +210,48 @@ export default function App() {
   return (
     <div className={styles.app}>
       <TitleBar
-        navCollapsed={navCollapsed}
+        navCollapsed={listCollapsed}
         rightOpen={rightOpen}
         canBack={canBack}
         canForward={canForward}
-        onToggleNav={() => setNavCollapsed((c) => !c)}
+        onToggleNav={() => setListCollapsed((c) => !c)}
         onToggleRight={() => setRightOpen((o) => !o)}
         onBack={() => setHi((i) => Math.max(0, i - 1))}
         onForward={() => setHi((i) => Math.min(hist.length - 1, i + 1))}
       />
       <div className={styles.body}>
-        {!navCollapsed && <NavRail view={view} onView={go} onNewChat={handleNew} />}
-        {view === 'conversations' && (
-          <>
-            <SessionsView
-              sessions={sessions}
-              activeId={activeId}
-              onSelect={setActiveId}
-              onSetStatus={(id, status) =>
-                setSessions((prev) =>
-                  prev.map((s) =>
-                    s.id === id ? { ...s, status, updatedAt: Date.now() } : s,
-                  ),
-                )
-              }
-            />
-            <section className={styles.detail}>
-              <header className={styles.detailHeader}>
-                <span className={styles.detailTitle}>{activeTitle}</span>
-              </header>
-              <ChatView messages={messages} onApprovalDecision={handleApprovalDecision} />
-              <Composer busy={busy} onSend={send} />
-            </section>
-          </>
-        )}
-        {view === 'knowledge' && <KnowledgeView />}
-        {view === 'skills' && <SkillsView />}
-        {view === 'settings' && <SettingsView />}
-        {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
+        <NavRail view={view} onView={go} onNewChat={handleNew} />
+        <main className={styles.stage}>
+          {view === 'conversations' && (
+            <>
+              {!listCollapsed && (
+                <SessionsView
+                  sessions={sessions}
+                  activeId={activeId}
+                  onSelect={setActiveId}
+                  onSetStatus={(id, status) =>
+                    setSessions((prev) =>
+                      prev.map((s) =>
+                        s.id === id ? { ...s, status, updatedAt: Date.now() } : s,
+                      ),
+                    )
+                  }
+                />
+              )}
+              <section className={styles.detail}>
+                <header className={styles.detailHeader}>
+                  <span className={styles.detailTitle}>{activeTitle}</span>
+                </header>
+                <ChatView messages={messages} onApprovalDecision={handleApprovalDecision} />
+                <Composer busy={busy} onSend={send} />
+              </section>
+            </>
+          )}
+          {view === 'knowledge' && <KnowledgeView listCollapsed={listCollapsed} />}
+          {view === 'skills' && <SkillsView listCollapsed={listCollapsed} />}
+          {view === 'settings' && <SettingsView listCollapsed={listCollapsed} />}
+          {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
+        </main>
       </div>
     </div>
   );

@@ -39,19 +39,15 @@ const SKILLS: Skill[] = [
 ];
 
 const useStyles = createStyles(({ token, css }) => ({
-  root: css`
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    display: flex;
-  `,
   detail: css`
     flex: 1;
     min-width: 0;
-    height: 100%;
     display: flex;
     flex-direction: column;
-    background: ${token.colorBgLayout};
+    background: ${token.colorBgContainer};
+    border-radius: ${token.borderRadiusLG}px;
+    box-shadow: ${token.boxShadowTertiary};
+    overflow: hidden;
   `,
   detailHeader: css`
     flex: none;
@@ -111,8 +107,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   card: css`
     border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorBgContainer};
-    box-shadow: ${token.boxShadowTertiary};
+    background: ${token.colorFillQuaternary};
     padding: 18px 20px;
     font-size: 13px;
     line-height: 1.7;
@@ -120,25 +115,27 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-export default function SkillsView() {
+export default function SkillsView({ listCollapsed }: { listCollapsed?: boolean }) {
   const { styles } = useStyles();
   const [activeId, setActiveId] = useState(SKILLS[0].id);
   const active = SKILLS.find((s) => s.id === activeId) ?? SKILLS[0];
 
   return (
-    <div className={styles.root}>
-      <ListPane title="技能">
-        {SKILLS.map((s) => (
-          <ListRow
-            key={s.id}
-            icon={s.icon}
-            label={s.name}
-            sub={s.short}
-            active={s.id === activeId}
-            onClick={() => setActiveId(s.id)}
-          />
-        ))}
-      </ListPane>
+    <>
+      {!listCollapsed && (
+        <ListPane title="技能">
+          {SKILLS.map((s) => (
+            <ListRow
+              key={s.id}
+              icon={s.icon}
+              label={s.name}
+              sub={s.short}
+              active={s.id === activeId}
+              onClick={() => setActiveId(s.id)}
+            />
+          ))}
+        </ListPane>
+      )}
 
       <div className={styles.detail}>
         <div className={styles.detailHeader}>
@@ -165,6 +162,6 @@ export default function SkillsView() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

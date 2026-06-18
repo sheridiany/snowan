@@ -77,19 +77,15 @@ const FOLDER_TYPES = [
 ];
 
 const useStyles = createStyles(({ token, css }) => ({
-  root: css`
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    display: flex;
-  `,
   detail: css`
     flex: 1;
     min-width: 0;
-    height: 100%;
     display: flex;
     flex-direction: column;
-    background: ${token.colorBgLayout};
+    background: ${token.colorBgContainer};
+    border-radius: ${token.borderRadiusLG}px;
+    box-shadow: ${token.boxShadowTertiary};
+    overflow: hidden;
   `,
   detailHeader: css`
     flex: none;
@@ -118,10 +114,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 20px;
   `,
   emptyCard: css`
-    border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorBgContainer};
-    box-shadow: ${token.boxShadowTertiary};
-    padding: 40px 24px;
+    padding: 48px 24px;
   `,
   sectionLabel: css`
     font-size: 11px;
@@ -136,18 +129,15 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 14px;
   `,
   card: css`
-    padding: 18px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 10px;
     cursor: pointer;
-    border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorBgContainer};
-    box-shadow: ${token.boxShadowTertiary};
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    border-radius: ${token.borderRadius}px;
+    transition: background 0.12s ease;
     &:hover {
-      box-shadow: ${token.boxShadowSecondary};
-      transform: translateY(-1px);
+      background: ${token.colorFillQuaternary};
     }
   `,
   cardIcon: css`
@@ -172,25 +162,27 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-export default function KnowledgeView() {
+export default function KnowledgeView({ listCollapsed }: { listCollapsed?: boolean }) {
   const { styles } = useStyles();
   const [tab, setTab] = useState<TabKey>('notes');
   const active = CATEGORIES.find((c) => c.key === tab) ?? CATEGORIES[0];
 
   return (
-    <div className={styles.root}>
-      <ListPane title="知识库">
-        {CATEGORIES.map((c) => (
-          <ListRow
-            key={c.key}
-            icon={c.icon}
-            label={c.label}
-            sub={c.sub}
-            active={c.key === tab}
-            onClick={() => setTab(c.key)}
-          />
-        ))}
-      </ListPane>
+    <>
+      {!listCollapsed && (
+        <ListPane title="知识库">
+          {CATEGORIES.map((c) => (
+            <ListRow
+              key={c.key}
+              icon={c.icon}
+              label={c.label}
+              sub={c.sub}
+              active={c.key === tab}
+              onClick={() => setTab(c.key)}
+            />
+          ))}
+        </ListPane>
+      )}
 
       <div className={styles.detail}>
         <div className={styles.detailHeader}>
@@ -230,6 +222,6 @@ export default function KnowledgeView() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -8,12 +8,14 @@ import type { ReactNode } from 'react';
 // visually identical everywhere.
 const useStyles = createStyles(({ token, css }) => ({
   col: css`
-    width: 280px;
+    width: 272px;
     flex: none;
-    height: 100%;
     display: flex;
     flex-direction: column;
     background: ${token.colorBgContainer};
+    border-radius: ${token.borderRadiusLG}px;
+    box-shadow: ${token.boxShadowTertiary};
+    overflow: hidden;
   `,
   header: css`
     position: relative;
