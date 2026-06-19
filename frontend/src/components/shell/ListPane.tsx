@@ -2,22 +2,21 @@ import { Icon } from '@lobehub/ui';
 import { Tooltip } from 'antd';
 import { createStyles, useThemeMode } from 'antd-style';
 import {
-  Library,
   MessageSquare,
   Moon,
   Newspaper,
   PenTool,
   Settings,
   Shapes,
-  SquarePen,
   Sun,
   type LucideIcon,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { SquarePenRounded } from './craftIcons';
+import { useResizableWidth } from './useResizableWidth';
 
 export type View =
   | 'conversations'
-  | 'knowledge'
   | 'draw'
   | 'design'
   | 'news'
@@ -33,7 +32,6 @@ export type NavProps = {
 
 const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
   { view: 'conversations', label: '对话', icon: MessageSquare },
-  { view: 'knowledge', label: '知识库', icon: Library },
   { view: 'draw', label: '画图', icon: Shapes },
   { view: 'design', label: '设计', icon: PenTool },
   { view: 'news', label: '新闻', icon: Newspaper },
@@ -45,7 +43,7 @@ const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
 // column is visually identical everywhere.
 const useStyles = createStyles(({ token, css }) => ({
   col: css`
-    width: 272px;
+    position: relative;
     flex: none;
     display: flex;
     flex-direction: column;
@@ -53,6 +51,26 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusLG}px;
     box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
+  `,
+  handle: css`
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    right: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 5;
+    &:hover::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: 2px;
+      border-radius: 2px;
+      background: ${token.colorPrimary};
+      opacity: 0.5;
+    }
   `,
   nav: css`
     flex: none;
@@ -168,7 +186,7 @@ function SideNav({ view, onView, onNewChat }: NavProps) {
       <div className={styles.navSpacer} />
       <Tooltip title="新建对话">
         <div className={styles.newBtn} onClick={onNewChat}>
-          <Icon icon={SquarePen} size={17} />
+          <SquarePenRounded size={17} />
         </div>
       </Tooltip>
     </nav>
@@ -207,11 +225,19 @@ export function ListPane({
   children,
 }: NavProps & { children: ReactNode }) {
   const { styles } = useStyles();
+  const { width, onResizeStart } = useResizableWidth({
+    key: 'snowan.listWidth',
+    initial: 272,
+    min: 220,
+    max: 440,
+    side: 'right',
+  });
   return (
-    <div className={styles.col}>
+    <div className={styles.col} style={{ width }}>
       <SideNav view={view} onView={onView} onNewChat={onNewChat} />
       <div className={styles.scroll}>{children}</div>
       <SideFooter view={view} onView={onView} />
+      <div className={styles.handle} onPointerDown={onResizeStart} />
     </div>
   );
 }

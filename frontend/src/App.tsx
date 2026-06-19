@@ -16,7 +16,6 @@ import Composer from './components/Composer';
 import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
 import SessionsView from './components/views/SessionsView';
-import KnowledgeView from './components/knowledge/KnowledgeView';
 import ComingSoonView from './components/views/ComingSoonView';
 import SettingsView from './components/settings/SettingsView';
 import type { Block, Message, Session, ToolStep } from './components/types';
@@ -381,14 +380,6 @@ export default function App() {
               </section>
             </>
           )}
-          {view === 'knowledge' && (
-            <KnowledgeView
-              view={view}
-              onView={go}
-              onNewChat={handleNew}
-              listCollapsed={listCollapsed}
-            />
-          )}
           {(view === 'draw' || view === 'design' || view === 'news') && (
             <ComingSoonView
               view={view}
@@ -405,7 +396,7 @@ export default function App() {
               listCollapsed={listCollapsed}
             />
           )}
-          {rightOpen && <RightPanel onClose={() => setRightOpen(false)} />}
+          {rightOpen && <RightPanel />}
         </main>
       </div>
       <NoteDraftModal

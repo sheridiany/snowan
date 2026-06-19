@@ -1,10 +1,6 @@
 import { createStyles, cx } from 'antd-style';
-import {
-  PanelLeft,
-  PanelRight,
-  ArrowLeft,
-  ArrowRight,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { PanelLeftRounded, PanelRightRounded } from './craftIcons';
 
 const useStyles = createStyles(({ token, css }) => ({
   bar: css`
@@ -107,15 +103,15 @@ export default function TitleBar({
 
   return (
     <div className={styles.bar} data-tauri-drag-region>
-      <Btn icon={<PanelLeft size={18} />} label="折叠侧栏" onClick={onToggleNav} />
+      <Btn icon={<PanelLeftRounded size={18} />} label="折叠侧栏" onClick={onToggleNav} />
       <Btn
-        icon={<ArrowLeft size={18} />}
+        icon={<ChevronLeft size={18} strokeWidth={1.5} />}
         label="后退"
         onClick={onBack}
         disabled={!canBack}
       />
       <Btn
-        icon={<ArrowRight size={18} />}
+        icon={<ChevronRight size={18} strokeWidth={1.5} />}
         label="前进"
         onClick={onForward}
         disabled={!canForward}
@@ -126,7 +122,7 @@ export default function TitleBar({
       </div>
 
       <Btn
-        icon={<PanelRight size={18} />}
+        icon={<PanelRightRounded size={18} />}
         label="折叠右栏"
         onClick={onToggleRight}
         active={rightOpen}
