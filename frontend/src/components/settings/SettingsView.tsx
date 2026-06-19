@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActionIcon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import {
+  Globe,
   Info,
   Keyboard,
   MoreHorizontal,
@@ -21,6 +22,7 @@ import { ListPane, ListRow, type NavProps } from '../shell/ListPane';
 import SettingsAppearance from './SettingsAppearance';
 import SettingsAI from './SettingsAI';
 import SettingsKnowledge from './SettingsKnowledge';
+import SettingsWeb from './SettingsWeb';
 import SettingsTools from './SettingsTools';
 import SettingsPermissions from './SettingsPermissions';
 import SettingsRun from './SettingsRun';
@@ -33,6 +35,7 @@ type CategoryId =
   | 'appearance'
   | 'ai'
   | 'knowledge'
+  | 'web'
   | 'tools'
   | 'permissions'
   | 'run'
@@ -53,6 +56,7 @@ const CATEGORIES: Category[] = [
   { id: 'appearance', title: '外观', subtitle: '主题与字体', icon: Palette, panel: SettingsAppearance },
   { id: 'ai', title: 'AI', subtitle: '模型与连接', icon: Sparkles, panel: SettingsAI },
   { id: 'knowledge', title: '知识库', subtitle: '本地语义检索', icon: Library, panel: SettingsKnowledge },
+  { id: 'web', title: '联网', subtitle: '网页搜索与抓取', icon: Globe, panel: SettingsWeb },
   { id: 'tools', title: '工具', subtitle: '可用工具', icon: Wrench, panel: SettingsTools },
   { id: 'permissions', title: '权限', subtitle: '审批模式', icon: ShieldCheck, panel: SettingsPermissions },
   { id: 'run', title: '运行', subtitle: '模型行为', icon: SlidersHorizontal, panel: SettingsRun },

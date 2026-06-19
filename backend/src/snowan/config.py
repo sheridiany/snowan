@@ -286,6 +286,12 @@ PREF_DEFAULTS: dict = {
     "auto_title": True,
     "system_prompt": "",  # extra instructions appended to the agent's system prompt
     "profile": {"name": "", "location": "", "notes": ""},
+    # web tools: provider for web_search + BYO keys. "duckduckgo" is keyless so the
+    # tool works on first run with no setup.
+    "web_search_provider": "duckduckgo",  # duckduckgo | tavily | brave
+    "tavily_api_key": "",
+    "brave_api_key": "",
+    "jina_api_key": "",  # optional, higher r.jina.ai rate limit for web_fetch
 }
 
 

@@ -19,6 +19,10 @@ class PrefsPatch(BaseModel):
     auto_title: bool | None = None
     system_prompt: str | None = None
     profile: dict | None = None
+    web_search_provider: str | None = None
+    tavily_api_key: str | None = None
+    brave_api_key: str | None = None
+    jina_api_key: str | None = None
 
 
 @router.get("/api/tools")

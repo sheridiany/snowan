@@ -9,6 +9,10 @@ export type Prefs = {
   auto_title: boolean;
   system_prompt: string;
   profile: Profile;
+  web_search_provider: string; // 'duckduckgo' | 'tavily' | 'brave'
+  tavily_api_key: string;
+  brave_api_key: string;
+  jina_api_key: string;
 };
 export type About = {
   version: string;

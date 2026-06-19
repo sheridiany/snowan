@@ -7,13 +7,22 @@ from .tools.knowledge_tools import knowledge_search
 from .tools.search_tools import glob_search, grep_search
 from .tools.shell_tools import execute_shell_command
 from .tools.time_tools import get_current_time
+from .tools.web_tools import web_fetch, web_search
 
 INSTRUCTIONS = """You are Snowan, a local-first personal AI assistant and knowledge \
 workbench. Be concise and direct. Use tools when they help; otherwise just answer."""
 
 # Read-only tools are safe to auto-run; mutating + shell tools change the user's
 # machine. The approval_mode preference decides which get gated.
-READONLY_FNS = [get_current_time, read_file, grep_search, glob_search, knowledge_search]
+READONLY_FNS = [
+    get_current_time,
+    read_file,
+    grep_search,
+    glob_search,
+    knowledge_search,
+    web_search,
+    web_fetch,
+]
 MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command]
 
 
