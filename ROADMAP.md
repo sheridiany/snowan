@@ -125,7 +125,7 @@ single-user extensibility (don't add QwenPaw's PluginRegistry framework yet).
   Paste-JSON / form add, per-server enable, live probe (connected · N tools).
   stdio confirm-before-spawn, only explicit env, MCP tools gated by approval_mode,
   static Bearer only (OAuth deferred). _QwenPaw `app/mcp/`; pydantic-ai `load_mcp_servers`._
-- **C3 Skills** — `SKILL.md` (YAML frontmatter name+description) + `skills.json`
+- **C3 Skills** — _done ✅_. `SKILL.md` (YAML frontmatter name+description) + `skills.json`
   manifest in `~/.snowan/skills/`; 3-level progressive disclosure via
   `pydantic-ai-skills` (or a ~150-line clone); enabled meta injected via
   `@agent.instructions`; `load_skill` / `read_skill_resource` tools; starter set;
