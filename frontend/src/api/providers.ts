@@ -4,6 +4,7 @@ export type ModelInfo = {
   id: string;
   name: string;
   vision: boolean | null; // null = unknown / not probed
+  image_gen?: boolean | null; // null = unknown; true = can generate images
   probe: string; // 'heuristic' | 'probed' | 'manual'
 };
 
@@ -18,7 +19,11 @@ export type ProviderInfo = {
 };
 
 export type Active = { provider: string | null; model: string };
-export type ProvidersState = { active: Active; providers: ProviderInfo[] };
+export type ProvidersState = {
+  active: Active;
+  active_image: Active;
+  providers: ProviderInfo[];
+};
 
 export type TestResult = { ok: boolean; message: string };
 
@@ -78,6 +83,13 @@ export const probeVision = (id: string, modelId: string) =>
 
 export const setActive = (provider: string, model: string) =>
   fetch(api('/api/providers/active'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, model }),
+  }).then(j<ProvidersState>);
+
+export const setActiveImage = (provider: string, model: string) =>
+  fetch(api('/api/providers/active-image'), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider, model }),

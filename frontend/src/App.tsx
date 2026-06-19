@@ -10,6 +10,7 @@ import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
 import SessionsView from './components/views/SessionsView';
 import ComingSoonView from './components/views/ComingSoonView';
+import DrawView from './components/views/DrawView';
 import SettingsView from './components/settings/SettingsView';
 import type { Block, Message } from './components/types';
 import { useViewHistory } from './hooks/useViewHistory';
@@ -156,7 +157,15 @@ export default function App() {
               </DetailPane>
             </>
           )}
-          {(nav.view === 'draw' || nav.view === 'design' || nav.view === 'news') && (
+          {nav.view === 'draw' && (
+            <DrawView
+              view={nav.view}
+              onView={nav.go}
+              onNewChat={handleNew}
+              listCollapsed={nav.listCollapsed}
+            />
+          )}
+          {(nav.view === 'design' || nav.view === 'news') && (
             <ComingSoonView
               view={nav.view}
               onView={nav.go}
@@ -172,7 +181,7 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.rightOpen && (
+          {nav.rightOpen && nav.view !== 'draw' && (
             <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
           )}
         </main>

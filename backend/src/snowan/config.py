@@ -38,6 +38,13 @@ _VISION_HINTS = (
 )
 _TEXT_HINTS = ("gpt-3.5", "text-", "-instruct-text", "embedding", "whisper", "tts", "moderation")
 
+# Model-id substrings that imply image generation. Distinct from vision: a
+# vision/chat model only reads images, these produce them.
+_IMAGE_HINTS = (
+    "gpt-image", "dall-e", "dalle", "imagen", "-image", "flux",
+    "stable-diffusion", "sd3", "seedream", "cogview", "wanx", "wan2",
+)
+
 
 def guess_vision(model_id: str) -> bool | None:
     """Heuristic vision capability from the model id. None = unknown."""
@@ -45,6 +52,14 @@ def guess_vision(model_id: str) -> bool | None:
     if any(h in m for h in _TEXT_HINTS):
         return False
     if any(h in m for h in _VISION_HINTS):
+        return True
+    return None
+
+
+def guess_image_gen(model_id: str) -> bool | None:
+    """Heuristic image-generation capability from the model id. None = unknown."""
+    m = model_id.lower()
+    if any(h in m for h in _IMAGE_HINTS):
         return True
     return None
 
@@ -62,6 +77,7 @@ def _model(model_id: str, name: str | None = None) -> dict:
         "id": model_id,
         "name": name or model_id,
         "vision": guess_vision(model_id),
+        "image_gen": guess_image_gen(model_id),
         "probe": "heuristic",
     }
 
@@ -116,6 +132,7 @@ def _migrate(data: dict) -> dict:
         first = (providers or {}).get(pid, {}).get("models", [])
         data["active"] = {"provider": pid, "model": first[0]["id"] if first else ""}
     data.setdefault("active", {"provider": None, "model": ""})
+    data.setdefault("active_image", {"provider": None, "model": ""})
     data["providers"] = providers or {}
     return data
 
@@ -155,6 +172,7 @@ def list_state() -> dict:
     data = _load()
     return {
         "active": data["active"],
+        "active_image": data.get("active_image", {"provider": None, "model": ""}),
         "providers": [
             {
                 "id": pid,
@@ -265,6 +283,13 @@ def set_active(pid: str, model_id: str) -> None:
         _write(data)
 
 
+def set_active_image(pid: str, model_id: str) -> None:
+    data = _load()
+    if pid in data["providers"]:
+        data["active_image"] = {"provider": pid, "model": model_id}
+        _write(data)
+
+
 def provider_settings(pid: str, model_id: str = "") -> Settings:
     """Resolve a Settings for a specific provider+model (used by test/probe)."""
     cfg = get_provider(pid) or {}
@@ -274,6 +299,13 @@ def provider_settings(pid: str, model_id: str = "") -> Settings:
         api_key=cfg.get("api_key"),
         base_url=cfg.get("base_url"),
     )
+
+
+def image_settings() -> Settings:
+    """Resolve Settings for the active image-generation provider+model."""
+    data = _load()
+    active = data.get("active_image") or {}
+    return provider_settings(active.get("provider") or "", active.get("model") or "")
 
 
 # --- app preferences -------------------------------------------------------

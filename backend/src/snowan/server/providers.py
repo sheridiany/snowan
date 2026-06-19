@@ -108,6 +108,12 @@ def set_active(body: ActiveBody) -> dict:
     return config.list_state()
 
 
+@router.put("/active-image")
+def set_active_image(body: ActiveBody) -> dict:
+    config.set_active_image(body.provider, body.model)
+    return config.list_state()
+
+
 # --- network ---------------------------------------------------------------
 
 @router.post("/{pid}/discover")

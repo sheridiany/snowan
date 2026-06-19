@@ -172,7 +172,11 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-const EMPTY: ProvidersState = { active: { provider: null, model: '' }, providers: [] };
+const EMPTY: ProvidersState = {
+  active: { provider: null, model: '' },
+  active_image: { provider: null, model: '' },
+  providers: [],
+};
 
 export default function SettingsAI() {
   const { styles, cx } = useStyles();
