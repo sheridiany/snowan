@@ -209,7 +209,7 @@ def sync_index() -> None:
     """Reconcile the SQLite index with the vault — call on startup so notes edited
     directly in the vault (Obsidian/git) get (re)indexed and deletions pruned."""
     _ensure_vault()
-    knowledge_index.sync([{**_public(n), "source_type": "note"} for n in _all()])
+    knowledge_index.reconcile("note", [{**_public(n), "source_type": "note"} for n in _all()])
 
 
 def search_notes(query: str, limit: int = 8) -> list[dict]:

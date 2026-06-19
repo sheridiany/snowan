@@ -131,21 +131,35 @@ def remove_document(doc_id: str) -> None:
         conn.close()
 
 
-def sync(docs: list[dict]) -> None:
-    """Reconcile the index with the current document set: (re)index everything
-    (hash-guarded) and drop any document whose id is gone — e.g. a note deleted or
-    edited directly in the vault outside the app."""
+def reconcile(source_type: str, docs: list[dict]) -> None:
+    """Reconcile ONE source type: (re)index its docs (hash-guarded) and drop any
+    document of THAT type whose id is gone — so notes and files (and later web /
+    chat sources) never prune each other from the shared index."""
     for d in docs:
         index_document(d)
     keep = {d["id"] for d in docs}
     conn = _conn()
     try:
-        existing = [r["id"] for r in conn.execute("SELECT id FROM documents")]
+        existing = [
+            r["id"]
+            for r in conn.execute(
+                "SELECT id FROM documents WHERE source_type=?", (source_type,)
+            )
+        ]
     finally:
         conn.close()
     for did in existing:
         if did not in keep:
             remove_document(did)
+
+
+def file_docs() -> list[sqlite3.Row]:
+    """(id, uri) of indexed file documents — for per-folder counts."""
+    conn = _conn()
+    try:
+        return conn.execute("SELECT id, uri FROM documents WHERE source_type='file'").fetchall()
+    finally:
+        conn.close()
 
 
 def all_chunks() -> list[sqlite3.Row]:

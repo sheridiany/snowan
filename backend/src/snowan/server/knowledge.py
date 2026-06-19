@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .. import embeddings, knowledge, knowledge_draft
+from .. import embeddings, knowledge, knowledge_draft, knowledge_folders
 
 router = APIRouter(prefix="/api/knowledge")
 
@@ -32,6 +32,10 @@ class DraftRequest(BaseModel):
     entries: list[DraftEntry]
     topic: str = ""
     title: str = ""
+
+
+class FolderAdd(BaseModel):
+    path: str
 
 
 @router.get("/notes")
@@ -82,6 +86,30 @@ def search(q: str = "", limit: int = 8) -> dict:
     return {"results": knowledge.search_notes(q, limit)}
 
 
+@router.get("/folders")
+def list_folders() -> dict:
+    return knowledge_folders.list_folders()
+
+
+@router.post("/folders")
+def add_folder(req: FolderAdd) -> dict:
+    try:
+        return knowledge_folders.add_folder(req.path)
+    except ValueError:
+        raise HTTPException(400, "路径不存在或不是文件夹")
+
+
+@router.delete("/folders/{folder_id}")
+def remove_folder(folder_id: str) -> dict:
+    return knowledge_folders.remove_folder(folder_id)
+
+
+@router.post("/folders/reindex")
+def reindex_folders() -> dict:
+    knowledge_folders.reindex_async()
+    return knowledge_folders.list_folders()
+
+
 @router.get("/embedding")
 def embedding_status() -> dict:
     """Local semantic-search model status, for the Settings download UI."""
@@ -104,6 +132,7 @@ def embedding_download() -> dict:
         def _run() -> None:
             embeddings.download()
             knowledge.sync_index()  # back-fill vectors for already-saved notes
+            knowledge_folders.reindex()  # …and for indexed files
 
         threading.Thread(target=_run, daemon=True).start()
     return {"ready": False, "downloading": True}
