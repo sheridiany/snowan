@@ -1,6 +1,7 @@
 import { api } from './base';
 
-export type ToolInfo = { name: string; description: string; mutating: boolean };
+export type ToolInfo = { name: string; description: string; mutating: boolean; enabled: boolean };
+export type AuditEntry = { ts: string; tool: string; summary: string; status: string };
 export type Profile = { name: string; location: string; notes: string };
 export type Prefs = {
   approval_mode: string; // 'auto' | 'ask' | 'strict'
@@ -13,6 +14,7 @@ export type Prefs = {
   tavily_api_key: string;
   brave_api_key: string;
   jina_api_key: string;
+  disabled_tools: string[];
 };
 export type About = {
   version: string;
@@ -28,6 +30,8 @@ const j = <T>(r: Response): Promise<T> => {
 };
 
 export const getTools = () => fetch(api('/api/tools')).then((r) => j<ToolInfo[]>(r));
+export const getAudit = (limit = 100) =>
+  fetch(api(`/api/audit?limit=${limit}`)).then((r) => j<AuditEntry[]>(r));
 export const getPrefs = () => fetch(api('/api/prefs')).then((r) => j<Prefs>(r));
 export const savePrefs = (patch: Partial<Prefs>) =>
   fetch(api('/api/prefs'), {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { App, Tag } from 'antd';
+import { App, Switch, Tag } from 'antd';
 import { createStyles } from 'antd-style';
 import { Row, Section } from './_kit';
-import { getTools, type ToolInfo } from '../../api/system';
+import { getTools, savePrefs, type ToolInfo } from '../../api/system';
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
@@ -14,6 +14,11 @@ const useStyles = createStyles(({ token, css }) => ({
     font-family: ${token.fontFamilyCode};
     font-size: 13px;
     color: ${token.colorText};
+  `,
+  control: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
   `,
 }));
 
@@ -28,11 +33,21 @@ export default function SettingsTools() {
       .catch(() => message.error('加载工具列表失败'));
   }, [message]);
 
+  const toggle = async (t: ToolInfo) => {
+    const next = tools.map((x) => (x.name === t.name ? { ...x, enabled: !x.enabled } : x));
+    setTools(next);
+    try {
+      await savePrefs({ disabled_tools: next.filter((x) => !x.enabled).map((x) => x.name) });
+    } catch {
+      message.error('保存失败');
+    }
+  };
+
   return (
     <div className={styles.wrap}>
       <Section
         title="可用工具"
-        subtitle="可写工具是否需要确认由「权限」里的审批模式决定。"
+        subtitle="关掉的工具助手就用不了;可写工具是否需要确认由「权限」的审批模式决定。"
       >
         {tools.map((tool) => (
           <Row
@@ -40,11 +55,10 @@ export default function SettingsTools() {
             label={<span className={styles.toolName}>{tool.name}</span>}
             subtitle={tool.description}
             control={
-              tool.mutating ? (
-                <Tag color="warning">可写</Tag>
-              ) : (
-                <Tag color="success">只读</Tag>
-              )
+              <span className={styles.control}>
+                {tool.mutating ? <Tag color="warning">可写</Tag> : <Tag color="success">只读</Tag>}
+                <Switch size="small" checked={tool.enabled} onChange={() => toggle(tool)} />
+              </span>
             }
           />
         ))}

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { App } from 'antd';
 import { Text } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
-import { Check, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
+import { createStyles, useTheme } from 'antd-style';
+import { Check, RotateCw, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
 import { Section } from './_kit';
-import { getPrefs, savePrefs } from '../../api/system';
+import { getPrefs, savePrefs, getAudit, type AuditEntry } from '../../api/system';
 
 type Mode = 'auto' | 'ask' | 'strict';
 
@@ -119,17 +119,92 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorPrimary};
     display: inline-flex;
   `,
+  auditHead: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  `,
+  refresh: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+    cursor: pointer;
+    &:hover {
+      color: ${token.colorText};
+    }
+  `,
+  auditList: css`
+    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorFillQuaternary};
+    overflow: hidden;
+    margin-top: 10px;
+  `,
+  auditRow: css`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    & + & {
+      border-top: 1px solid ${token.colorBorderSecondary};
+    }
+  `,
+  dot: css`
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex: none;
+  `,
+  auditTool: css`
+    font-family: ${token.fontFamilyCode};
+    font-size: 12.5px;
+    font-weight: 600;
+    color: ${token.colorText};
+    flex: none;
+  `,
+  auditSummary: css`
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  auditTime: css`
+    flex: none;
+    font-size: 11.5px;
+    color: ${token.colorTextQuaternary};
+  `,
+  auditEmpty: css`
+    font-size: 12.5px;
+    color: ${token.colorTextQuaternary};
+    padding: 12px 2px;
+  `,
 }));
+
+function auditTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
 export default function SettingsPermissions() {
   const { styles, cx } = useStyles();
+  const theme = useTheme();
   const { message } = App.useApp();
   const [mode, setMode] = useState<Mode>('ask');
+  const [audit, setAudit] = useState<AuditEntry[]>([]);
+
+  const loadAudit = () => getAudit(50).then(setAudit).catch(() => {});
 
   useEffect(() => {
     getPrefs()
       .then((p) => setMode((p.approval_mode as Mode) || 'ask'))
       .catch(() => {});
+    loadAudit();
   }, []);
 
   const select = async (next: Mode) => {
@@ -191,6 +266,35 @@ export default function SettingsPermissions() {
             );
           })}
         </div>
+      </Section>
+
+      <Section bare>
+        <div className={styles.auditHead}>
+          <Text className={styles.title} style={{ fontSize: 15, fontWeight: 700 }}>
+            最近的工具调用
+          </Text>
+          <span className={styles.refresh} onClick={loadAudit}>
+            <RotateCw size={13} />
+            刷新
+          </span>
+        </div>
+        {audit.length === 0 ? (
+          <div className={styles.auditEmpty}>还没有记录。助手每次调用工具都会记在这里。</div>
+        ) : (
+          <div className={styles.auditList}>
+            {audit.map((e, i) => (
+              <div key={i} className={styles.auditRow}>
+                <span
+                  className={styles.dot}
+                  style={{ background: e.status === 'denied' ? theme.colorError : theme.colorSuccess }}
+                />
+                <span className={styles.auditTool}>{e.tool}</span>
+                <span className={styles.auditSummary}>{e.summary}</span>
+                <span className={styles.auditTime}>{auditTime(e.ts)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
     </div>
   );
