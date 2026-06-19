@@ -1,6 +1,7 @@
 import base64
 import json
 from collections.abc import AsyncIterator
+from contextlib import AsyncExitStack
 from typing import Any
 
 from fastapi import APIRouter
@@ -21,6 +22,7 @@ from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import UsageLimits
 
 from ..agent.build import build_agent
+from ..agent.mcp import build_toolsets
 from ..agent.sessions import delete_history, load_history, save_history
 from .. import audit
 from ..config import load_prefs
@@ -145,12 +147,27 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
     yield _sse({"type": "done"})
 
 
+async def _live_mcp(stack: AsyncExitStack) -> list:
+    """Enter each enabled MCP server (starts its stdio subprocess) resiliently — a
+    server that fails to start is skipped, never fatal to the chat turn."""
+    live = []
+    for srv in build_toolsets():
+        try:
+            await stack.enter_async_context(srv)
+            live.append(srv)
+        except Exception:  # noqa: BLE001 — bad/unreachable server: skip, keep the rest
+            pass
+    return live
+
+
 async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
     # Build per-request so a model/key change saved in Settings takes effect at once.
-    # `async with agent` starts/stops any enabled MCP servers (stdio subprocesses).
     agent = build_agent()
-    async with agent:
-        async with agent.iter(prompt, message_history=history, usage_limits=_limits()) as run:
+    async with AsyncExitStack() as stack:
+        toolsets = await _live_mcp(stack)
+        async with agent.iter(
+            prompt, message_history=history, usage_limits=_limits(), toolsets=toolsets
+        ) as run:
             async for chunk in _stream_run(run):
                 yield chunk
             save_history(session_id, run.result.all_messages())
@@ -162,9 +179,13 @@ async def _run_resume(
     session_id: str,
 ) -> AsyncIterator[str]:
     agent = build_agent()
-    async with agent:
+    async with AsyncExitStack() as stack:
+        toolsets = await _live_mcp(stack)
         async with agent.iter(
-            message_history=history, deferred_tool_results=results, usage_limits=_limits()
+            message_history=history,
+            deferred_tool_results=results,
+            usage_limits=_limits(),
+            toolsets=toolsets,
         ) as run:
             async for chunk in _stream_run(run):
                 yield chunk
