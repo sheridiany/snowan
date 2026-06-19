@@ -141,11 +141,13 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
 
 async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
     # Build per-request so a model/key change saved in Settings takes effect at once.
+    # `async with agent` starts/stops any enabled MCP servers (stdio subprocesses).
     agent = build_agent()
-    async with agent.iter(prompt, message_history=history, usage_limits=_limits()) as run:
-        async for chunk in _stream_run(run):
-            yield chunk
-        save_history(session_id, run.result.all_messages())
+    async with agent:
+        async with agent.iter(prompt, message_history=history, usage_limits=_limits()) as run:
+            async for chunk in _stream_run(run):
+                yield chunk
+            save_history(session_id, run.result.all_messages())
 
 
 async def _run_resume(
@@ -154,12 +156,13 @@ async def _run_resume(
     session_id: str,
 ) -> AsyncIterator[str]:
     agent = build_agent()
-    async with agent.iter(
-        message_history=history, deferred_tool_results=results, usage_limits=_limits()
-    ) as run:
-        async for chunk in _stream_run(run):
-            yield chunk
-        save_history(session_id, run.result.all_messages())
+    async with agent:
+        async with agent.iter(
+            message_history=history, deferred_tool_results=results, usage_limits=_limits()
+        ) as run:
+            async for chunk in _stream_run(run):
+                yield chunk
+            save_history(session_id, run.result.all_messages())
 
 
 @router.post("/api/chat/stream")

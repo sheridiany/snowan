@@ -1,6 +1,7 @@
 from pydantic_ai import Agent, DeferredToolRequests, Tool
 
 from ..config import load_prefs, load_settings
+from .mcp import build_toolsets
 from .providers import build_model
 from .tools.file_tools import append_file, edit_file, read_file, write_file
 from .tools.knowledge_tools import knowledge_search
@@ -73,5 +74,6 @@ def build_agent() -> Agent:
         build_model(load_settings()),
         instructions=_instructions(prefs),
         tools=tools,
+        toolsets=build_toolsets(),  # enabled MCP servers, per-tool policy applied
         output_type=[str, DeferredToolRequests],
     )
