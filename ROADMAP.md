@@ -131,9 +131,10 @@ single-user extensibility (don't add QwenPaw's PluginRegistry framework yet).
   `@agent.instructions`; `load_skill` / `read_skill_resource` tools; starter set;
   `create_skill` authoring. Keep the SKILL.md format portable; DROP QwenPaw's
   hub / pool / channel machinery (~6000 → ~200 lines). _QwenPaw `agents/skill_system/`._
-- **C4 Tool control + audit** — per-tool enable/disable; append every tool call to
-  `~/.snowan/audit.jsonl`, surfaced in 权限/详情; optional ToolGuard rules
-  (rm -rf / DROP TABLE / shell-evasion). _QwenPaw `security/tool_guard`._
+- **C4 Tool control + audit** — _done ✅_. Per-tool enable/disable (disabled_tools
+  pref filters the agent + 工具 toggles); every tool call (native + MCP) appended to
+  `~/.snowan/audit.jsonl`, shown as a recent-calls list in 权限. _Deferred: ToolGuard
+  pattern rules (rm -rf / DROP TABLE / shell-evasion)._ _QwenPaw `security/tool_guard`._
 
 Adjacent high-value (from the gap analysis; after the capability track):
 `update_todos` — long-task plan rendered in the 详情 panel (S, best value/effort);
