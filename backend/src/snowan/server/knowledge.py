@@ -1,9 +1,12 @@
-"""Knowledge base: notes CRUD, hybrid search, and chat -> note drafting."""
+"""Knowledge base: notes CRUD, hybrid search, chat -> note drafting, and the
+local embedding model (status + explicit download)."""
+import threading
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .. import knowledge, knowledge_draft
+from .. import embeddings, knowledge, knowledge_draft
 
 router = APIRouter(prefix="/api/knowledge")
 
@@ -77,3 +80,30 @@ def delete_note(note_id: str) -> Response:
 @router.get("/search")
 def search(q: str = "", limit: int = 8) -> dict:
     return {"results": knowledge.search_notes(q, limit)}
+
+
+@router.get("/embedding")
+def embedding_status() -> dict:
+    """Local semantic-search model status, for the Settings download UI."""
+    return {
+        "model": embeddings.MODEL_ID,
+        "size_mb": embeddings.SIZE_MB,
+        "ready": embeddings.is_ready(),
+        "downloading": embeddings.is_downloading(),
+    }
+
+
+@router.post("/embedding/download")
+def embedding_download() -> dict:
+    """Kick off the one-time model download (background), then re-embed any notes
+    that were saved before it landed. Poll GET /embedding for `ready`."""
+    if embeddings.is_ready():
+        return {"ready": True, "downloading": False}
+    if not embeddings.is_downloading():
+
+        def _run() -> None:
+            embeddings.download()
+            knowledge.sync_index()  # back-fill vectors for already-saved notes
+
+        threading.Thread(target=_run, daemon=True).start()
+    return {"ready": False, "downloading": True}

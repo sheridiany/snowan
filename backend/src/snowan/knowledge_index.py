@@ -71,23 +71,28 @@ def _split(title: str, body: str) -> list[tuple[str, str]]:
 
 
 def index_document(doc: dict) -> None:
-    """Insert/refresh one document's chunks. No-op when content + model unchanged
-    (hash diff), so re-indexing the whole vault is cheap."""
+    """Insert/refresh one document's chunks. No-op when content + model unchanged.
+    If the embedding model isn't downloaded yet, chunks are stored WITHOUT vectors
+    (still keyword-searchable) and tagged model="" so they re-embed once it lands —
+    indexing never triggers the model download."""
+    ready = embeddings.is_ready()
+    desired_model = embeddings.MODEL_ID if ready else ""
     h = _hash(doc["title"], doc.get("body", ""))
     conn = _conn()
     try:
         row = conn.execute(
             "SELECT content_hash, model FROM documents WHERE id=?", (doc["id"],)
         ).fetchone()
-        if row and row["content_hash"] == h and row["model"] == embeddings.MODEL_ID:
+        if row and row["content_hash"] == h and row["model"] == desired_model:
             return
         chunks = _split(doc["title"], doc.get("body", ""))
         # Embed with title + heading as lightweight context for better recall.
-        vectors = (
-            embeddings.embed_passages([f"{doc['title']} / {hd}\n{tx}" for hd, tx in chunks])
-            if chunks
-            else []
-        )
+        if ready and chunks:
+            vectors: list[bytes | None] = embeddings.embed_passages(
+                [f"{doc['title']} / {hd}\n{tx}" for hd, tx in chunks]
+            )
+        else:
+            vectors = [None] * len(chunks)
         conn.execute("DELETE FROM chunks WHERE document_id=?", (doc["id"],))
         conn.execute(
             """INSERT INTO documents(id, source_type, title, uri, created_at, updated_at, content_hash, model)
@@ -104,7 +109,7 @@ def index_document(doc: dict) -> None:
                 "created_at": doc.get("created_at", ""),
                 "updated_at": doc.get("updated_at", ""),
                 "hash": h,
-                "model": embeddings.MODEL_ID,
+                "model": desired_model,
             },
         )
         conn.executemany(
@@ -146,11 +151,12 @@ def sync(docs: list[dict]) -> None:
 def all_chunks() -> list[sqlite3.Row]:
     conn = _conn()
     try:
+        # All chunks (embedding may be NULL until the model is downloaded); the
+        # keyword leg works on every row, the vector leg only on embedded rows.
         return conn.execute(
             """SELECT c.id, c.document_id, c.heading, c.text, c.embedding,
                       d.title, d.updated_at, d.source_type
-               FROM chunks c JOIN documents d ON d.id = c.document_id
-               WHERE c.embedding IS NOT NULL"""
+               FROM chunks c JOIN documents d ON d.id = c.document_id"""
         ).fetchall()
     finally:
         conn.close()

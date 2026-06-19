@@ -85,14 +85,18 @@ def search(query: str, limit: int = 8) -> list[dict]:
         ]
         kw_ranked = [i for i, s in sorted(scored, key=lambda x: x[1], reverse=True) if s > 0][:50]
 
-    # semantic leg
-    mat = np.frombuffer(b"".join(r["embedding"] for r in rows), dtype=np.float32).reshape(
-        len(rows), embeddings.DIM
-    )
-    qv = embeddings.embed_query(query)
-    qn = qv / (np.linalg.norm(qv) + 1e-9)
-    sims = (mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-9)) @ qn
-    vec_ranked = [int(i) for i in np.argsort(-sims)[:50]]
+    # semantic leg — only when the model is downloaded and some chunks are embedded
+    # (chunks saved before the download carry no vector); otherwise keyword-only.
+    vec_ranked: list[int] = []
+    embedded = [i for i, r in enumerate(rows) if r["embedding"]]
+    if embedded and embeddings.is_ready():
+        mat = np.frombuffer(
+            b"".join(rows[i]["embedding"] for i in embedded), dtype=np.float32
+        ).reshape(len(embedded), embeddings.DIM)
+        qv = embeddings.embed_query(query)
+        qn = qv / (np.linalg.norm(qv) + 1e-9)
+        sims = (mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-9)) @ qn
+        vec_ranked = [embedded[int(k)] for k in np.argsort(-sims)[:50]]
 
     # Reciprocal Rank Fusion, then weight by source so notes outrank other sources.
     fused: dict[int, float] = {}

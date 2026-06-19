@@ -16,12 +16,12 @@ from .system import router as system_router  # noqa: E402
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Warm the local embedding model and reconcile the index with the note vault
-    # in the background, so startup is not blocked by the model load/download.
+    # Reconcile the index with the note vault in the background. This stays
+    # keyword-only until the user downloads the embedding model from Settings —
+    # it never triggers the download itself.
     def _bootstrap() -> None:
-        from .. import embeddings, knowledge
+        from .. import knowledge
 
-        embeddings.warm()
         knowledge.sync_index()
 
     threading.Thread(target=_bootstrap, daemon=True).start()
