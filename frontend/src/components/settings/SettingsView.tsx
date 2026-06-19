@@ -7,6 +7,7 @@ import {
   Keyboard,
   MoreHorizontal,
   Palette,
+  Plug,
   ShieldCheck,
   SlidersHorizontal,
   Library,
@@ -23,6 +24,7 @@ import SettingsAppearance from './SettingsAppearance';
 import SettingsAI from './SettingsAI';
 import SettingsKnowledge from './SettingsKnowledge';
 import SettingsWeb from './SettingsWeb';
+import SettingsMcp from './SettingsMcp';
 import SettingsTools from './SettingsTools';
 import SettingsPermissions from './SettingsPermissions';
 import SettingsRun from './SettingsRun';
@@ -36,6 +38,7 @@ type CategoryId =
   | 'ai'
   | 'knowledge'
   | 'web'
+  | 'mcp'
   | 'tools'
   | 'permissions'
   | 'run'
@@ -57,6 +60,7 @@ const CATEGORIES: Category[] = [
   { id: 'ai', title: 'AI', subtitle: '模型与连接', icon: Sparkles, panel: SettingsAI },
   { id: 'knowledge', title: '知识库', subtitle: '本地语义检索', icon: Library, panel: SettingsKnowledge },
   { id: 'web', title: '联网', subtitle: '网页搜索与抓取', icon: Globe, panel: SettingsWeb },
+  { id: 'mcp', title: 'MCP', subtitle: '外部工具服务器', icon: Plug, panel: SettingsMcp },
   { id: 'tools', title: '工具', subtitle: '可用工具', icon: Wrench, panel: SettingsTools },
   { id: 'permissions', title: '权限', subtitle: '审批模式', icon: ShieldCheck, panel: SettingsPermissions },
   { id: 'run', title: '运行', subtitle: '模型行为', icon: SlidersHorizontal, panel: SettingsRun },
