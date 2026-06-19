@@ -15,13 +15,12 @@ pub fn run() {
             // the collapse/back/forward buttons. Our own titlebar carries the
             // drag region, so we skip create_overlay_titlebar() entirely.
             //
-            // Light center (per decorum's math) = y/2 + button_height/2 + 4; with
-            // macOS button height 14–16, y = 21 centers them on the 44px titlebar
-            // icons (center y = 22) within half a pixel.
+            // y = 21 centers the lights on the 44px titlebar icon row; the user
+            // prefers them sitting a touch lower, so we inset a few px more.
             #[cfg(target_os = "macos")]
             {
                 let win = app.get_webview_window("main").unwrap();
-                win.set_traffic_lights_inset(16.0, 21.0).unwrap();
+                win.set_traffic_lights_inset(16.0, 23.0).unwrap();
             }
             Ok(())
         })
