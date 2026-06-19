@@ -114,13 +114,13 @@ fetch, pydantic-ai MCP, the SKILL.md pattern). Build in this order; each ships
 then a desktop build for testing. **Plugins deferred** — MCP + skills cover
 single-user extensibility (don't add QwenPaw's PluginRegistry framework yet).
 
-- **C1 Web tools** — `web_search` + `web_fetch` (Claude Code's split). Search:
+- **C1 Web tools** — _done ✅_. `web_search` + `web_fetch` (Claude Code's split). Search:
   Tavily (BYO key, 1k free/mo, agent-tuned) default, keyless DuckDuckGo (`ddgs`)
   fallback, Brave optional. Fetch: local `trafilatura`, `r.jina.ai` for JS pages
   (no headless browser). ≤5 results / ~100KB cap / 15-min URL cache / same-host
   redirects / SSRF guard. pydantic-ai `@agent.tool` returning compact typed
   objects; provider + key in Settings. _≈ QwenPaw web tools, leaner._
-- **C2 MCP** — store `~/.snowan/mcp.json` in the Claude Code `{"mcpServers":{…}}`
+- **C2 MCP** — _done ✅_. store `~/.snowan/mcp.json` in the Claude Code `{"mcpServers":{…}}`
   shape; `load_mcp_servers()` → `Agent(toolsets=[…])`, per-run `async with agent:`.
   Paste-JSON / form add, per-server enable, live probe (connected · N tools).
   stdio confirm-before-spawn, only explicit env, MCP tools gated by approval_mode,
