@@ -2,9 +2,29 @@ import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Empty, Markdown } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
 import { Check, Copy, NotebookPen, Paperclip, Sparkles } from 'lucide-react';
-import ToolCallCard from './ToolCallCard';
+import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
-import type { Message } from './types';
+import type { Block, Message, ToolStep } from './types';
+
+// Render blocks in order, but coalesce consecutive tool calls into one run so
+// they can collapse into a single grouped card.
+type RenderItem =
+  | { kind: 'text'; key: string; text: string }
+  | { kind: 'tools'; key: string; steps: ToolStep[] };
+
+function groupBlocks(blocks: Block[]): RenderItem[] {
+  const items: RenderItem[] = [];
+  blocks.forEach((b, j) => {
+    if (b.kind === 'tool') {
+      const last = items[items.length - 1];
+      if (last && last.kind === 'tools') last.steps.push(b.step);
+      else items.push({ kind: 'tools', key: b.step.id || `t${j}`, steps: [b.step] });
+    } else if (b.kind === 'text') {
+      items.push({ kind: 'text', key: `x${j}`, text: b.text });
+    }
+  });
+  return items;
+}
 
 const useStyles = createStyles(({ token, css }) => ({
   scroll: css`
@@ -225,23 +245,19 @@ export default function ChatView({ messages, busy, onApprovalDecision, onSaveNot
 
               return (
                 <div key={i} className={styles.assistant}>
-                  {m.blocks.map((b, j) => {
-                    if (b.kind === 'text') {
-                      return b.text ? (
-                        <Markdown key={j} variant="chat">
-                          {b.text}
+                  {groupBlocks(m.blocks).map((item) =>
+                    item.kind === 'text' ? (
+                      item.text ? (
+                        <Markdown key={item.key} variant="chat">
+                          {item.text}
                         </Markdown>
-                      ) : null;
-                    }
-                    if (b.kind === 'tool') {
-                      return (
-                        <div key={j} className={styles.tool}>
-                          <ToolCallCard step={b.step} />
-                        </div>
-                      );
-                    }
-                    return null; // legacy block shape from threads saved before this schema
-                  })}
+                      ) : null
+                    ) : (
+                      <div key={item.key} className={styles.tool}>
+                        <ToolGroup steps={item.steps} />
+                      </div>
+                    ),
+                  )}
 
                   {showThinking && (
                     <div className={styles.thinking}>

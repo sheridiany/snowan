@@ -113,7 +113,7 @@ const useStyles = createStyles(({ token, css }) => ({
 // `execute_shell_command  ls -la /tmp` without expanding.
 const SUMMARY_KEYS = ['command', 'path', 'file_path', 'pattern', 'query', 'url', 'timezone'];
 
-function summarize(step: ToolStep): string {
+export function summarize(step: ToolStep): string {
   const args = step.args ?? {};
   for (const k of SUMMARY_KEYS) {
     const v = args[k];
