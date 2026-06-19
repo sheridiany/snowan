@@ -52,7 +52,7 @@ export default function SettingsWeb() {
     <div className={styles.wrap}>
       <Section
         title="网页搜索"
-        subtitle="助手联网搜索时用的引擎。没填 key 时默认用免费的 DuckDuckGo,首次即可用。改动会自动保存。"
+        subtitle="助手联网搜索时用的引擎。没填 key 时默认用免费的 DuckDuckGo,首次即可用。"
       >
         <Row
           label="搜索引擎"

@@ -31,14 +31,22 @@ const useStyles = createStyles(({ token, css }) => ({
   card: css`
     display: flex;
     flex-direction: column;
+    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorFillQuaternary};
+    overflow: hidden;
+    /* hairline divider between rows, macOS / Linear grouped-settings style */
+    & > * + * {
+      border-top: 1px solid ${token.colorBorderSecondary};
+    }
   `,
   row: css`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    min-height: 52px;
-    padding: 10px 0;
+    gap: 24px;
+    min-height: 56px;
+    padding: 13px 16px;
   `,
   rowText: css`
     display: flex;

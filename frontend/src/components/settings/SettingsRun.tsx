@@ -77,6 +77,7 @@ export default function SettingsRun() {
       <Section
         title="附加系统指令"
         subtitle="追加到系统提示,影响助手的风格与行为"
+        bare
       >
         <Input.TextArea
           className={styles.textarea}

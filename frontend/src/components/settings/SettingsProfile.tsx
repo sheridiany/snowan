@@ -61,7 +61,7 @@ export default function SettingsProfile() {
         />
       </Section>
 
-      <Section title="备注">
+      <Section title="备注" bare>
         <Input.TextArea
           value={profile.notes}
           autoSize={{ minRows: 3, maxRows: 6 }}
