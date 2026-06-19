@@ -55,3 +55,18 @@ export const getEmbeddingStatus = () =>
 
 export const downloadEmbedding = () =>
   post<{ ready: boolean; downloading: boolean }>('/api/knowledge/embedding/download', {});
+
+export type KbFolder = { id: string; path: string; file_count: number };
+export type FoldersState = { folders: KbFolder[]; indexing: boolean };
+
+export const listFolders = () =>
+  fetch(api('/api/knowledge/folders')).then((r) => j<FoldersState>(r));
+
+export const addFolder = (path: string) =>
+  post<FoldersState>('/api/knowledge/folders', { path });
+
+export const removeFolder = (id: string) =>
+  fetch(api(`/api/knowledge/folders/${id}`), { method: 'DELETE' }).then((r) => j<FoldersState>(r));
+
+export const reindexFolders = () =>
+  post<FoldersState>('/api/knowledge/folders/reindex', {});
