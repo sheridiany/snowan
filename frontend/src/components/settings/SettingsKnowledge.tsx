@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Text } from '@lobehub/ui';
-import { App, Input, Tag } from 'antd';
+import { App, Dropdown, Input, Tag } from 'antd';
 import { createStyles } from 'antd-style';
-import { Check, Download, FolderPlus, RotateCw, Trash2 } from 'lucide-react';
+import {
+  Check,
+  Download,
+  Folder,
+  FolderPlus,
+  Lock,
+  MoreHorizontal,
+  RotateCw,
+} from 'lucide-react';
 import { Row, Section } from './_kit';
 import {
   getEmbeddingStatus,
@@ -14,6 +22,7 @@ import {
   type EmbeddingStatus,
   type FoldersState,
 } from '../../api/knowledge';
+import { isTauri, pickFolder } from '../../lib/tauri';
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
@@ -33,29 +42,109 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 12.5px;
     line-height: 1.6;
     color: ${token.colorTextTertiary};
+  `,
+  privacy: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: ${token.colorSuccess};
+  `,
+  head: css`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     padding: 0 2px;
   `,
-  folderName: css`
-    font-family: ${token.fontFamilyCode};
-    font-size: 12px;
-    color: ${token.colorTextTertiary};
-    word-break: break-all;
+  title: css`
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: ${token.colorText};
   `,
-  addRow: css`
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-  `,
-  sectionHeadRow: css`
+  toolbar: css`
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
+    margin: 14px 0 4px;
+  `,
+  grid: css`
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  `,
+  card: css`
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 12px 12px 13px;
+    border-radius: ${token.borderRadiusLG}px;
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorBgContainer};
+    transition: border-color 0.15s ease, background 0.15s ease;
+    &:hover {
+      border-color: ${token.colorBorder};
+      background: ${token.colorFillQuaternary};
+    }
+  `,
+  cardIcon: css`
+    flex: none;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: ${token.colorPrimaryBg};
+    color: ${token.colorPrimary};
+  `,
+  cardBody: css`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  `,
+  cardName: css`
+    font-size: 13.5px;
+    font-weight: 600;
+    color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  cardPath: css`
+    font-size: 11.5px;
+    color: ${token.colorTextTertiary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  cardMenu: css`
+    flex: none;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: ${token.borderRadiusSM}px;
+    color: ${token.colorTextTertiary};
+    cursor: pointer;
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorText};
+    }
   `,
   empty: css`
     font-size: 12.5px;
     color: ${token.colorTextQuaternary};
-    padding: 8px 2px;
+    padding: 10px 2px;
+  `,
+  pathRow: css`
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
   `,
 }));
 
@@ -65,6 +154,7 @@ export default function SettingsKnowledge() {
   const [st, setSt] = useState<EmbeddingStatus | null>(null);
   const [folders, setFolders] = useState<FoldersState | null>(null);
   const [path, setPath] = useState('');
+  const [showPath, setShowPath] = useState(false);
   const [adding, setAdding] = useState(false);
   const embTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const fldTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
@@ -81,14 +171,12 @@ export default function SettingsKnowledge() {
     };
   }, []);
 
-  // Poll while the model downloads.
   useEffect(() => {
     clearInterval(embTimer.current);
     if (st?.downloading) embTimer.current = setInterval(loadEmb, 2000);
     return () => clearInterval(embTimer.current);
   }, [st?.downloading]);
 
-  // Poll while folders are indexing (file counts settle when it finishes).
   useEffect(() => {
     clearInterval(fldTimer.current);
     if (folders?.indexing) fldTimer.current = setInterval(loadFolders, 2000);
@@ -105,18 +193,27 @@ export default function SettingsKnowledge() {
     }
   };
 
-  const add = async () => {
-    const p = path.trim();
-    if (!p) return;
+  const doAdd = async (p: string) => {
     setAdding(true);
     try {
       setFolders(await addFolder(p));
       setPath('');
+      setShowPath(false);
       message.success('已添加,正在索引该文件夹…');
     } catch (e) {
       message.error((e as Error).message === '400' ? '路径不存在或不是文件夹' : '添加失败');
     } finally {
       setAdding(false);
+    }
+  };
+
+  // Desktop → native folder chooser; dev browser → reveal a path input.
+  const onAddClick = async () => {
+    if (isTauri()) {
+      const p = await pickFolder();
+      if (p) doAdd(p);
+    } else {
+      setShowPath((v) => !v);
     }
   };
 
@@ -165,7 +262,7 @@ export default function SettingsKnowledge() {
         />
       </Section>
 
-      <Text className={styles.note}>
+      <Text className={styles.note} style={{ padding: '0 2px' }}>
         没下载也能用:知识库会以关键词检索工作。下载这个本地模型后,会额外启用语义检索(换种说法也能搜到),
         并自动为已存的笔记和文件补建索引。
       </Text>
@@ -176,61 +273,81 @@ export default function SettingsKnowledge() {
       )}
 
       <Section bare>
-        <div className={styles.sectionHeadRow}>
-          <div>
-            <Text style={{ fontSize: 15, fontWeight: 700 }}>本地文件夹</Text>
-            <div className={styles.note}>
-              选定文件夹里的文件(md / txt / pdf / docx / xlsx / pptx / 代码等)会进入知识库,可被搜索和引用。
-            </div>
-          </div>
-          <Button
-            size="small"
-            icon={<RotateCw size={14} />}
-            loading={folders?.indexing}
-            onClick={reindex}
-          >
-            {folders?.indexing ? '索引中…' : '重新索引'}
-          </Button>
+        <div className={styles.head}>
+          <Text className={styles.title}>本地文件夹</Text>
+          <Text className={styles.note}>
+            搜索文件并从多个文档中提取洞察。支持 PDF、Word、PowerPoint、Excel、Markdown、文本与代码等格式。
+          </Text>
+          <span className={styles.privacy}>
+            <Lock size={13} />
+            所有数据本地存储
+          </span>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          {!folders || folders.folders.length === 0 ? (
-            <div className={styles.empty}>还没有添加文件夹。</div>
-          ) : (
-            folders.folders.map((f) => (
-              <Row
-                key={f.id}
-                label={f.path.split('/').filter(Boolean).pop() || f.path}
-                subtitle={
-                  <span className={styles.folderName}>
-                    {f.path} · {f.file_count} 个文件
-                  </span>
-                }
-                control={
-                  <Button
-                    size="small"
-                    type="text"
-                    danger
-                    icon={<Trash2 size={14} />}
-                    onClick={() => remove(f.id)}
-                  />
-                }
-              />
-            ))
+        <div className={styles.toolbar}>
+          <Button type="primary" icon={<FolderPlus size={15} />} loading={adding} onClick={onAddClick}>
+            添加文件夹
+          </Button>
+          {folders && folders.folders.length > 0 && (
+            <Button
+              size="small"
+              type="text"
+              icon={<RotateCw size={14} />}
+              loading={folders.indexing}
+              onClick={reindex}
+            >
+              {folders.indexing ? '索引中…' : '重新索引'}
+            </Button>
           )}
         </div>
 
-        <div className={styles.addRow}>
-          <Input
-            value={path}
-            onChange={(e) => setPath(e.target.value)}
-            onPressEnter={add}
-            placeholder="粘贴文件夹绝对路径,如 /Users/你/Documents/notes"
-          />
-          <Button type="primary" icon={<FolderPlus size={15} />} loading={adding} onClick={add}>
-            添加
-          </Button>
-        </div>
+        {showPath && (
+          <div className={styles.pathRow}>
+            <Input
+              value={path}
+              autoFocus
+              onChange={(e) => setPath(e.target.value)}
+              onPressEnter={() => path.trim() && doAdd(path.trim())}
+              placeholder="粘贴文件夹绝对路径,如 /Users/你/Documents/notes"
+            />
+            <Button type="primary" loading={adding} onClick={() => path.trim() && doAdd(path.trim())}>
+              添加
+            </Button>
+          </div>
+        )}
+
+        {!folders || folders.folders.length === 0 ? (
+          <div className={styles.empty}>还没有添加文件夹。</div>
+        ) : (
+          <div className={styles.grid}>
+            {folders.folders.map((f) => (
+              <div key={f.id} className={styles.card}>
+                <span className={styles.cardIcon}>
+                  <Folder size={18} />
+                </span>
+                <div className={styles.cardBody}>
+                  <span className={styles.cardName}>
+                    {f.path.split('/').filter(Boolean).pop() || f.path}
+                  </span>
+                  <span className={styles.cardPath}>
+                    {f.path} · {f.file_count} 个文件
+                  </span>
+                </div>
+                <Dropdown
+                  trigger={['click']}
+                  menu={{
+                    items: [{ key: 'remove', label: '移除', danger: true }],
+                    onClick: ({ key }) => key === 'remove' && remove(f.id),
+                  }}
+                >
+                  <span className={styles.cardMenu}>
+                    <MoreHorizontal size={16} />
+                  </span>
+                </Dropdown>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
     </div>
   );

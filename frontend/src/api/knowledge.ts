@@ -56,7 +56,7 @@ export const getEmbeddingStatus = () =>
 export const downloadEmbedding = () =>
   post<{ ready: boolean; downloading: boolean }>('/api/knowledge/embedding/download', {});
 
-export type KbFolder = { id: string; path: string; file_count: number };
+export type KbFolder = { id: string; path: string; file_count: number; added_at?: string };
 export type FoldersState = { folders: KbFolder[]; indexing: boolean };
 
 export const listFolders = () =>

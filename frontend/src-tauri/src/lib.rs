@@ -6,6 +6,7 @@ use tauri_plugin_decorum::WebviewWindowExt;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_decorum::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // The window already uses titleBarStyle "Overlay" (tauri.conf), so we
             // only need decorum to reposition the native traffic lights — NOT its

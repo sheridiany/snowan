@@ -73,7 +73,12 @@ def list_folders() -> dict:
                 break
     return {
         "folders": [
-            {"id": f["id"], "path": f["path"], "file_count": counts.get(f["id"], 0)}
+            {
+                "id": f["id"],
+                "path": f["path"],
+                "file_count": counts.get(f["id"], 0),
+                "added_at": f.get("added_at", ""),
+            }
             for f in folders
         ],
         "indexing": _indexing,

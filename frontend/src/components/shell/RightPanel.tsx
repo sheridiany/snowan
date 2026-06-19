@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Empty, Markdown } from '@lobehub/ui';
+import { ActionIcon, Button, Empty, Markdown } from '@lobehub/ui';
 import { Dropdown } from 'antd';
 import { createStyles } from 'antd-style';
 import {
@@ -16,12 +16,18 @@ import type { LucideIcon } from 'lucide-react';
 
 import { ListRow } from './ListPane';
 import { useResizableWidth } from './useResizableWidth';
-import { listNotes, getEmbeddingStatus, type Note } from '../../api/knowledge';
+import {
+  listNotes,
+  listFolders,
+  getEmbeddingStatus,
+  type Note,
+  type KbFolder,
+} from '../../api/knowledge';
 
 // The right panel is the in-context knowledge browser (remio-style): a source
-// dropdown in the header, a list below, and click-to-open detail in place. Only
-// 笔记 is wired to the backend today; the rest are placeholders until their
-// list endpoints land.
+// dropdown in the header, a list below, and click-to-open detail in place. 笔记
+// and 文件夹 are wired to the backend; the rest are placeholders until their list
+// endpoints land.
 type SourceKey = 'notes' | 'web' | 'aichat' | 'folders' | 'calendar';
 type Source = { key: SourceKey; label: string; icon: LucideIcon; ready: boolean };
 
@@ -29,7 +35,7 @@ const SOURCES: Source[] = [
   { key: 'notes', label: '笔记', icon: StickyNote, ready: true },
   { key: 'web', label: '网页', icon: Globe, ready: false },
   { key: 'aichat', label: 'AI 对话', icon: MessagesSquare, ready: false },
-  { key: 'folders', label: '文件夹', icon: FolderOpen, ready: false },
+  { key: 'folders', label: '文件夹', icon: FolderOpen, ready: true },
   { key: 'calendar', label: '日程', icon: Calendar, ready: false },
 ];
 
@@ -183,6 +189,12 @@ const useStyles = createStyles(({ token, css }) => ({
     cursor: pointer;
     white-space: nowrap;
   `,
+  folderEmpty: css`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  `,
 }));
 
 export default function RightPanel({
@@ -202,6 +214,7 @@ export default function RightPanel({
   });
   const [source, setSource] = useState<SourceKey>('notes');
   const [notes, setNotes] = useState<Note[]>([]);
+  const [folders, setFolders] = useState<KbFolder[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState<Note | null>(null);
   const [embReady, setEmbReady] = useState<boolean | null>(null);
@@ -212,12 +225,19 @@ export default function RightPanel({
       .then(setNotes)
       .catch(() => setNotes([]))
       .finally(() => setLoading(false));
+    listFolders()
+      .then((s) => setFolders(s.folders))
+      .catch(() => setFolders([]));
     getEmbeddingStatus()
       .then((s) => setEmbReady(s.ready))
       .catch(() => setEmbReady(null));
   };
 
   useEffect(refresh, [refreshKey]); // re-fetch when a note is saved elsewhere
+  // re-fetch folders each time that source is opened (they change in Settings)
+  useEffect(() => {
+    if (source === 'folders') listFolders().then((s) => setFolders(s.folders)).catch(() => {});
+  }, [source]);
 
   const active = SOURCES.find((s) => s.key === source) ?? SOURCES[0];
 
@@ -292,6 +312,30 @@ export default function RightPanel({
             description={`${active.label}还在规划中。`}
             paddingBlock={36}
           />
+        ) : source === 'folders' ? (
+          folders.length === 0 ? (
+            <div className={styles.folderEmpty}>
+              <Empty
+                icon={FolderOpen}
+                title="还没有文件夹"
+                description="在设置里添加本地文件夹,里面的文件会进入知识库。"
+                paddingBlock={28}
+              />
+              <Button size="small" onClick={onOpenSettings}>
+                去设置添加
+              </Button>
+            </div>
+          ) : (
+            folders.map((f) => (
+              <ListRow
+                key={f.id}
+                icon={FolderOpen}
+                label={f.path.split('/').filter(Boolean).pop() || f.path}
+                sub={f.path}
+                right={`${f.file_count} 文件`}
+              />
+            ))
+          )
         ) : notes.length === 0 ? (
           <Empty
             icon={StickyNote}
