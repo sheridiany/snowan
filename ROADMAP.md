@@ -107,25 +107,44 @@ portable Markdown vault as source of truth; a derived SQLite index; hybrid
   _QwenPaw `agents/memory/reme_light_memory_manager.py`._ Wrap `reme-ai` or a
   lean home-grown markdown+embedding store.
 
-## ⬜ Phase 4 — Skills  (M)
+## 🟡 Agent capabilities — current focus
 
-- `SKILL.md` (md + YAML frontmatter) store in `~/.snowan/skills/`; CRUD,
-  enable/disable, tags; enabled skills inject into the agent instructions; ship a
-  small built-in set. (No pool / hub.) _QwenPaw `agents/skill_system/`,
-  `routers/skills.py`._
+Grounded in a survey of QwenPaw + Claude Code / current practice (web search &
+fetch, pydantic-ai MCP, the SKILL.md pattern). Build in this order; each ships
+then a desktop build for testing. **Plugins deferred** — MCP + skills cover
+single-user extensibility (don't add QwenPaw's PluginRegistry framework yet).
 
-## ⬜ Phase 5 — MCP  (M)
+- **C1 Web tools** — `web_search` + `web_fetch` (Claude Code's split). Search:
+  Tavily (BYO key, 1k free/mo, agent-tuned) default, keyless DuckDuckGo (`ddgs`)
+  fallback, Brave optional. Fetch: local `trafilatura`, `r.jina.ai` for JS pages
+  (no headless browser). ≤5 results / ~100KB cap / 15-min URL cache / same-host
+  redirects / SSRF guard. pydantic-ai `@agent.tool` returning compact typed
+  objects; provider + key in Settings. _≈ QwenPaw web tools, leaner._
+- **C2 MCP** — store `~/.snowan/mcp.json` in the Claude Code `{"mcpServers":{…}}`
+  shape; `load_mcp_servers()` → `Agent(toolsets=[…])`, per-run `async with agent:`.
+  Paste-JSON / form add, per-server enable, live probe (connected · N tools).
+  stdio confirm-before-spawn, only explicit env, MCP tools gated by approval_mode,
+  static Bearer only (OAuth deferred). _QwenPaw `app/mcp/`; pydantic-ai `load_mcp_servers`._
+- **C3 Skills** — `SKILL.md` (YAML frontmatter name+description) + `skills.json`
+  manifest in `~/.snowan/skills/`; 3-level progressive disclosure via
+  `pydantic-ai-skills` (or a ~150-line clone); enabled meta injected via
+  `@agent.instructions`; `load_skill` / `read_skill_resource` tools; starter set;
+  `create_skill` authoring. Keep the SKILL.md format portable; DROP QwenPaw's
+  hub / pool / channel machinery (~6000 → ~200 lines). _QwenPaw `agents/skill_system/`._
+- **C4 Tool control + audit** — per-tool enable/disable; append every tool call to
+  `~/.snowan/audit.jsonl`, surfaced in 权限/详情; optional ToolGuard rules
+  (rm -rf / DROP TABLE / shell-evasion). _QwenPaw `security/tool_guard`._
 
-- Add/configure MCP servers (stdio + streamable-http); paste-JSON import; live
-  tool discovery; agent loads them as PydanticAI toolsets (`MCPServerStdio` /
-  `FastMCPToolset`). OAuth deferred. _QwenPaw `app/mcp/`, `routers/mcp.py`._
+Adjacent high-value (from the gap analysis; after the capability track):
+`update_todos` — long-task plan rendered in the 详情 panel (S, best value/effort);
+per-session scratch dir `~/.snowan/scratch/` as the shell/file tools' cwd (unlocks
+code/file/image gen + skill scripts, M); `delegate(task)` read-only subagent for
+context isolation (M). **Out of scope:** scheduled / proactive / cron tasks.
 
-## ⬜ Phase 6 — Permissions & polish  (S–M)
+## ⬜ Phase — polish
 
-- Configurable, persisted tool-guard rules (which tools need approval; sensitive
-  path guard) wiring the 权限 page; persist 偏好/workspace settings. _QwenPaw
-  `security/tool_guard`._
-- Make the right "详情" panel useful (sources/context for the active chat).
+- Make the right "详情" panel useful (sources/context, todos, audit for the
+  active chat); persist 偏好/workspace settings.
 
 ## ⬜ Phase 7 — Engineering / real desktop  (M–L)
 
