@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActionIcon, Empty, Markdown } from '@lobehub/ui';
-import { createStyles, useTheme } from 'antd-style';
+import { ActionIcon, Markdown } from '@lobehub/ui';
+import { createStyles } from 'antd-style';
 import { Check, Copy, NotebookPen, Paperclip, Sparkles } from 'lucide-react';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
@@ -45,6 +45,85 @@ const useStyles = createStyles(({ token, css }) => ({
     min-height: 0;
     display: flex;
   `,
+  hero: css`
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+  `,
+  orb: css`
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: ${token.colorBrandGradient};
+    box-shadow: 0 0 40px ${token.colorBrandGlow};
+    animation: orbfloat 6s ease-in-out infinite;
+    @keyframes orbfloat {
+      0%,
+      100% {
+        transform: translateY(-4px);
+      }
+      50% {
+        transform: translateY(4px);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  `,
+  greeting: css`
+    font-size: 24px;
+    font-weight: 600;
+    color: ${token.colorText};
+  `,
+  heroDesc: css`
+    font-size: 14px;
+    color: ${token.colorTextSecondary};
+  `,
+  chips: css`
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    max-width: 420px;
+    margin-top: 6px;
+  `,
+  chip: css`
+    padding: 7px 14px;
+    border: none;
+    border-radius: 999px;
+    background: ${token.colorFillTertiary};
+    color: ${token.colorText};
+    font-size: 13px;
+    cursor: pointer;
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease;
+    animation: chipin 0.32s ease-out both;
+    &:hover {
+      transform: translateY(-2px);
+      background: ${token.colorFillSecondary};
+    }
+    @keyframes chipin {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  `,
   user: css`
     align-self: flex-end;
     max-width: 80%;
@@ -55,7 +134,10 @@ const useStyles = createStyles(({ token, css }) => ({
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.18);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+      0 2px 6px -2px ${token.colorBrandGlow},
+      0 8px 20px -8px ${token.colorBrandGlow};
   `,
   attachRow: css`
     display: flex;
@@ -145,6 +227,22 @@ const useStyles = createStyles(({ token, css }) => ({
       }
     }
   `,
+  rise: css`
+    animation: msgrise 0.28s ease-out both;
+    @keyframes msgrise {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  `,
 }));
 
 function CopyAction({ text }: { text: string }) {
@@ -173,11 +271,24 @@ type Props = {
   busy?: boolean;
   onApprovalDecision?: (messageIndex: number, approve: boolean) => void;
   onSaveNote?: (messageIndex: number) => void;
+  onPickPrompt?: (text: string) => void;
 };
 
-export default function ChatView({ messages, busy, onApprovalDecision, onSaveNote }: Props) {
+const SUGGESTED_PROMPTS = [
+  '帮我把这段对话存成笔记',
+  '总结一下今天的工作',
+  '搜索最新的 AI 进展',
+  '解释一段代码',
+];
+
+export default function ChatView({
+  messages,
+  busy,
+  onApprovalDecision,
+  onSaveNote,
+  onPickPrompt,
+}: Props) {
   const { styles } = useStyles();
-  const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
   // Stick to the bottom only while the user is already there; if they scroll up
   // to read history, streamed updates must not yank them back down.
@@ -198,15 +309,31 @@ export default function ChatView({ messages, busy, onApprovalDecision, onSaveNot
   }, [messages]);
 
   if (messages.length === 0) {
+    const h = new Date().getHours();
+    const greeting =
+      h < 6 ? '晚上好' : h < 11 ? '早上好' : h < 13 ? '上午好' : h < 18 ? '下午好' : '晚上好';
     return (
       <div className={styles.emptyScroll} ref={scrollRef}>
-        <Empty
-          flex={1}
-          icon={Sparkles}
-          iconColor={theme.colorPrimary}
-          title="晚上好"
-          description="开启一段新对话,Snowan 在这里。"
-        />
+        <div className={styles.hero}>
+          <div className={styles.orb}>
+            <Sparkles size={34} color="#fff" />
+          </div>
+          <div className={styles.greeting}>{greeting}</div>
+          <div className={styles.heroDesc}>开启一段新对话,Snowan 在这里。</div>
+          <div className={styles.chips}>
+            {SUGGESTED_PROMPTS.map((p, i) => (
+              <button
+                key={p}
+                type="button"
+                className={styles.chip}
+                style={{ animationDelay: `${i * 60}ms` }}
+                onClick={() => onPickPrompt?.(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -216,7 +343,10 @@ export default function ChatView({ messages, busy, onApprovalDecision, onSaveNot
       <div className={styles.list}>
         {messages.map((m, i) =>
           m.role === 'user' ? (
-            <div key={i} className={styles.user}>
+            <div
+              key={i}
+              className={`${styles.user}${i === messages.length - 1 ? ` ${styles.rise}` : ''}`}
+            >
               {m.attachments && m.attachments.length > 0 && (
                 <div className={styles.attachRow}>
                   {m.attachments.map((a, k) => (
@@ -244,7 +374,12 @@ export default function ChatView({ messages, busy, onApprovalDecision, onSaveNot
               ).length;
 
               return (
-                <div key={i} className={styles.assistant}>
+                <div
+                  key={i}
+                  className={`${styles.assistant}${
+                    i === messages.length - 1 ? ` ${styles.rise}` : ''
+                  }`}
+                >
                   {groupBlocks(m.blocks).map((item) =>
                     item.kind === 'text' ? (
                       item.text ? (

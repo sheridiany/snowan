@@ -4,6 +4,7 @@ import { Newspaper, PenTool, Shapes } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { ListPane, type NavProps, type View } from '../shell/ListPane';
+import DetailPane from '../../ui/DetailPane';
 
 type PlaceholderView = Extract<View, 'draw' | 'design' | 'news'>;
 
@@ -25,30 +26,7 @@ const SPEC: Record<PlaceholderView, { label: string; icon: LucideIcon; descripti
   },
 };
 
-const useStyles = createStyles(({ token, css }) => ({
-  detail: css`
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: ${token.boxShadowTertiary};
-    overflow: hidden;
-  `,
-  detailHeader: css`
-    flex: none;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 16px;
-  `,
-  detailTitle: css`
-    font-size: 14px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
+const useStyles = createStyles(({ css }) => ({
   detailBody: css`
     flex: 1;
     display: flex;
@@ -80,14 +58,11 @@ export default function ComingSoonView({
         </ListPane>
       )}
 
-      <div className={styles.detail}>
-        <div className={styles.detailHeader}>
-          <span className={styles.detailTitle}>{spec.label}</span>
-        </div>
+      <DetailPane title={spec.label}>
         <div className={styles.detailBody}>
           <Empty icon={spec.icon} title={`${spec.label}即将上线`} description={spec.description} />
         </div>
-      </div>
+      </DetailPane>
     </>
   );
 }

@@ -13,6 +13,7 @@ import RightPanel from './components/shell/RightPanel';
 import type { View } from './components/shell/ListPane';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
+import DetailPane from './ui/DetailPane';
 import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
 import SessionsView from './components/views/SessionsView';
@@ -47,6 +48,15 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => ({
       opacity: ${isDarkMode ? 0.1 : 0.065};
       mix-blend-mode: ${isDarkMode ? 'screen' : 'multiply'};
     }
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
   `,
   body: css`
     flex: 1;
@@ -60,32 +70,6 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => ({
     display: flex;
     gap: 8px;
     padding: 8px;
-  `,
-  detail: css`
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: ${token.boxShadowTertiary};
-    overflow: hidden;
-  `,
-  detailHeader: css`
-    flex: none;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 16px;
-  `,
-  detailTitle: css`
-    font-size: 14px;
-    font-weight: 600;
-    color: ${token.colorText};
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   `,
 }));
 
@@ -370,18 +354,16 @@ export default function App() {
                   onDelete={handleDeleteSession}
                 />
               )}
-              <section className={styles.detail}>
-                <header className={styles.detailHeader}>
-                  <span className={styles.detailTitle}>{activeTitle}</span>
-                </header>
+              <DetailPane title={activeTitle} leadingOrb glow>
                 <ChatView
                   messages={messages}
                   busy={busy}
                   onApprovalDecision={handleApprovalDecision}
                   onSaveNote={handleSaveNote}
+                  onPickPrompt={(t) => send(t)}
                 />
                 <Composer busy={busy} onSend={send} onStop={stop} />
-              </section>
+              </DetailPane>
             </>
           )}
           {(view === 'draw' || view === 'design' || view === 'news') && (

@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import { ListRow } from './ListPane';
 import { useResizableWidth } from './useResizableWidth';
+import { LAYOUT } from '../../theme/themes';
 import {
   listNotes,
   listFolders,
@@ -69,7 +70,7 @@ const useStyles = createStyles(({ token, css }) => ({
     top: 8px;
     bottom: 8px;
     left: 0;
-    width: 6px;
+    width: ${LAYOUT.handle}px;
     cursor: col-resize;
     z-index: 5;
     &:hover::after {
@@ -86,7 +87,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   header: css`
     flex: none;
-    height: 52px;
+    height: ${LAYOUT.headerHeight}px;
     display: flex;
     align-items: center;
     justify-content: space-between;

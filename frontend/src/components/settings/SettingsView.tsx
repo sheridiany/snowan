@@ -20,6 +20,7 @@ import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { ListPane, ListRow, type NavProps } from '../shell/ListPane';
+import DetailPane from '../../ui/DetailPane';
 import SettingsAppearance from './SettingsAppearance';
 import SettingsAI from './SettingsAI';
 import SettingsKnowledge from './SettingsKnowledge';
@@ -70,31 +71,7 @@ const CATEGORIES: Category[] = [
   { id: 'about', title: '关于', subtitle: '版本与数据', icon: Info, panel: SettingsAbout },
 ];
 
-const useStyles = createStyles(({ token, css }) => ({
-  detail: css`
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: ${token.boxShadowTertiary};
-    overflow: hidden;
-  `,
-  detailHeader: css`
-    flex: none;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 0 24px;
-  `,
-  detailTitle: css`
-    font-size: 14px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
+const useStyles = createStyles(({ css }) => ({
   detailScroll: css`
     flex: 1;
     overflow-y: auto;
@@ -138,17 +115,17 @@ export default function SettingsView({
         </ListPane>
       )}
 
-      <div className={styles.detail}>
-        <div className={styles.detailHeader}>
-          <span className={styles.detailTitle}>{active.title}</span>
-          <ActionIcon icon={MoreHorizontal} size="small" title="更多" />
-        </div>
+      <DetailPane
+        title={active.title}
+        align="between"
+        extra={<ActionIcon icon={MoreHorizontal} size="small" title="更多" />}
+      >
         <div className={styles.detailScroll}>
           <div className={styles.detailInner}>
             <Panel />
           </div>
         </div>
-      </div>
+      </DetailPane>
     </>
   );
 }

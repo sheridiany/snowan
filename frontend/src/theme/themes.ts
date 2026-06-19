@@ -85,6 +85,10 @@ export const THEME_PRESETS: ThemePreset[] = [
 
 export const DEFAULT_THEME_ID = 'snowan';
 
+// App-chrome layout scale — fixed pixel sizes for the shell's header/nav/footer
+// (not theme-aware, so plain consts rather than tokens).
+export const LAYOUT = { headerHeight: 52, navBtn: 38, footerBtn: 34, rowGap: 11, handle: 6 } as const;
+
 function presetById(id: string): ThemePreset {
   return THEME_PRESETS.find((t) => t.id === id) ?? THEME_PRESETS[0];
 }

@@ -14,6 +14,7 @@ import {
 import type { ReactNode } from 'react';
 import { SquarePenRounded } from './craftIcons';
 import { useResizableWidth } from './useResizableWidth';
+import { LAYOUT } from '../../theme/themes';
 
 export type View =
   | 'conversations'
@@ -57,7 +58,7 @@ const useStyles = createStyles(({ token, css }) => ({
     top: 8px;
     bottom: 8px;
     right: 0;
-    width: 6px;
+    width: ${LAYOUT.handle}px;
     cursor: col-resize;
     z-index: 5;
     &:hover::after {
@@ -77,12 +78,12 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 2px;
-    height: 52px;
+    height: ${LAYOUT.headerHeight}px;
     padding: 0 10px;
   `,
   navItem: css`
-    width: 38px;
-    height: 38px;
+    width: ${LAYOUT.navBtn}px;
+    height: ${LAYOUT.navBtn}px;
     flex: none;
     display: flex;
     align-items: center;
@@ -110,8 +111,8 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: 1;
   `,
   newBtn: css`
-    width: 38px;
-    height: 38px;
+    width: ${LAYOUT.navBtn}px;
+    height: ${LAYOUT.navBtn}px;
     flex: none;
     display: flex;
     align-items: center;
@@ -142,8 +143,8 @@ const useStyles = createStyles(({ token, css }) => ({
     border-top: 1px solid ${token.colorFillQuaternary};
   `,
   footerItem: css`
-    width: 34px;
-    height: 34px;
+    width: ${LAYOUT.footerBtn}px;
+    height: ${LAYOUT.footerBtn}px;
     flex: none;
     display: flex;
     align-items: center;
@@ -247,7 +248,7 @@ const useRowStyles = createStyles(({ token, css }) => ({
     position: relative;
     display: flex;
     align-items: center;
-    gap: 11px;
+    gap: ${LAYOUT.rowGap}px;
     padding: 9px 10px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;

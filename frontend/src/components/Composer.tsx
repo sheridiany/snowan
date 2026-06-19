@@ -32,9 +32,19 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorBgElevated};
     border: 1px solid ${token.colorBorderSecondary};
     box-shadow: ${token.boxShadowTertiary};
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: ${token.boxShadowSecondary};
+    }
     &:focus-within {
       border-color: ${token.colorPrimaryBorder};
+    }
+    @media (prefers-reduced-motion: reduce) {
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      &:hover {
+        transform: none;
+      }
     }
   `,
   dragging: css`

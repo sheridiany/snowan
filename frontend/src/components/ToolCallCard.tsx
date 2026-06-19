@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Highlighter, Text } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
+import { createStyles, useTheme } from 'antd-style';
 import { Check, ChevronRight, X } from 'lucide-react';
 import type { ToolStep } from './types';
 
@@ -109,6 +109,23 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
+// Category accent per tool, keyed to the live colorCat* tokens so the tool
+// stream isn't all-grey. Unmapped tools fall back to neutral colorText.
+type ThemeToken = ReturnType<typeof useTheme>;
+const CATEGORY_TOKENS: Record<string, keyof ThemeToken> = {
+  web_search: 'colorCatSearch',
+  execute_shell_command: 'colorCatShell',
+  read_file: 'colorCatFile',
+  write_file: 'colorCatFile',
+  edit_file: 'colorCatFile',
+  append_file: 'colorCatFile',
+  list_dir: 'colorCatFile',
+  glob: 'colorCatFile',
+  grep: 'colorCatFile',
+  knowledge_search: 'colorCatKnowledge',
+  get_current_time: 'colorCatTime',
+};
+
 // First useful scalar from the call args, so the row reads e.g.
 // `execute_shell_command  ls -la /tmp` without expanding.
 const SUMMARY_KEYS = ['command', 'path', 'file_path', 'pattern', 'query', 'url', 'timezone'];
@@ -138,7 +155,11 @@ function looksLikeJson(text: string): boolean {
 
 export default function ToolCallCard({ step }: { step: ToolStep }) {
   const { styles, cx } = useStyles();
+  const theme = useTheme();
   const [open, setOpen] = useState(false);
+
+  const categoryToken = CATEGORY_TOKENS[step.name];
+  const categoryColor = categoryToken ? (theme[categoryToken] as string) : undefined;
 
   const pending = step.approval === 'pending';
   const denied = step.approval === 'denied';
@@ -161,7 +182,9 @@ export default function ToolCallCard({ step }: { step: ToolStep }) {
           {done && <Check size={14} className={styles.done} />}
           {denied && <X size={14} className={styles.denied} />}
         </span>
-        <Text className={styles.name}>{step.name}</Text>
+        <Text className={styles.name} style={categoryColor ? { color: categoryColor } : undefined}>
+          {step.name}
+        </Text>
         {summary && <span className={styles.summary}>{summary}</span>}
         {pending && <span className={cx(styles.tag, styles.tagWarn)}>需要确认</span>}
         {denied && <span className={cx(styles.tag, styles.tagDenied)}>已拒绝</span>}
