@@ -15,6 +15,7 @@ from pydantic_ai import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
     PartDeltaEvent,
+    RetryPromptPart,
     TextPartDelta,
     ToolDenied,
 )
@@ -131,14 +132,21 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                         })
                     elif isinstance(ev, FunctionToolResultEvent):
                         result = ev.result
-                        content = str(result.content)
-                        status = "denied" if "denied this tool call" in content else "ok"
+                        # Status from the authoritative result type, not an English
+                        # substring: a retry part is an error; a return part carries the
+                        # outcome (success|failed|denied).
+                        if isinstance(result, RetryPromptPart):
+                            status = "error"
+                        elif getattr(result, "outcome", "success") == "denied":
+                            status = "denied"
+                        else:
+                            status = "ok"
                         audit.log(result.tool_name, pending.pop(result.tool_call_id, ""), status)
                         yield _sse({
                             "type": "tool_result",
                             "id": result.tool_call_id,
                             "name": result.tool_name,
-                            "result": content,
+                            "result": str(result.content),
                         })
 
     output = run.result.output

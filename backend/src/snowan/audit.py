@@ -4,6 +4,7 @@ actually did. The trust backbone for letting tools run; surfaced in 权限."""
 import json
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlsplit
 
 from .config import SNOWAN_HOME
 
@@ -13,15 +14,21 @@ _SUMMARY_KEYS = ("command", "path", "file_path", "pattern", "query", "url", "nam
 
 
 def summarize(args: Any) -> str:
-    """First useful scalar from a tool call's args (the command, path, query…)."""
+    """A short, SAFE summary from a tool call's args — only the known scalar keys of
+    our own tools, never an arbitrary value (an MCP tool's `token`/`api_key` arg must
+    not land in the on-disk audit log). URL query/fragment is dropped (often a token)."""
     if not isinstance(args, dict):
         return ""
     for k in _SUMMARY_KEYS:
         v = args.get(k)
         if isinstance(v, str) and v.strip():
-            return v.split("\n")[0][:_MAX_SUMMARY]
-    first = next((v for v in args.values() if isinstance(v, str) and v.strip()), "")
-    return first.split("\n")[0][:_MAX_SUMMARY] if first else ""
+            v = v.split("\n")[0].strip()
+            if k == "url":
+                sp = urlsplit(v)
+                if sp.scheme and sp.netloc:
+                    v = f"{sp.scheme}://{sp.netloc}{sp.path}"
+            return v[:_MAX_SUMMARY]
+    return ""
 
 
 def log(tool: str, summary: str = "", status: str = "ok") -> None:

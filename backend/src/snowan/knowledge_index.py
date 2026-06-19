@@ -19,8 +19,12 @@ _CHUNK_CHARS = 600  # notes are short, so this rarely splits a note
 
 def _conn() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
+    # WAL so a background folder reindex doesn't block a concurrent search read, and a
+    # busy_timeout so the startup sync / download re-embed retry instead of erroring.
+    conn.execute("PRAGMA busy_timeout=15000")
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS documents(
@@ -42,9 +46,11 @@ def _hash(title: str, body: str) -> str:
     return hashlib.sha256(f"{title}\n\n{body}".encode()).hexdigest()
 
 
-def _split(title: str, body: str) -> list[tuple[str, str]]:
+def _split(title: str, body: str, markdown: bool = True) -> list[tuple[str, str]]:
     """(heading, text) chunks — markdown-heading-aware, size-capped. The heading
-    defaults to the note title so every chunk can name its own source."""
+    defaults to the note title so every chunk can name its own source. Heading
+    splitting is OFF for non-markdown sources, else every `#` comment line in an
+    indexed source file would wrongly start a new chunk."""
     heading = title
     blocks: list[tuple[str, str]] = []
     buf: list[str] = []
@@ -56,7 +62,7 @@ def _split(title: str, body: str) -> list[tuple[str, str]]:
         buf.clear()
 
     for line in body.splitlines():
-        m = re.match(r"^#{1,6}\s+(.*)", line)
+        m = re.match(r"^#{1,6}\s+(.*)", line) if markdown else None
         if m:
             flush()
             heading = m.group(1).strip() or title
@@ -85,14 +91,21 @@ def index_document(doc: dict) -> None:
         ).fetchone()
         if row and row["content_hash"] == h and row["model"] == desired_model:
             return
-        chunks = _split(doc["title"], doc.get("body", ""))
+        uri = (doc.get("uri") or "").lower()
+        is_md = doc.get("source_type", "note") == "note" or uri.endswith((".md", ".markdown"))
+        chunks = _split(doc["title"], doc.get("body", ""), markdown=is_md)
         # Embed with title + heading as lightweight context for better recall.
+        vectors: list[bytes | None] = [None] * len(chunks)
         if ready and chunks:
-            vectors: list[bytes | None] = embeddings.embed_passages(
-                [f"{doc['title']} / {hd}\n{tx}" for hd, tx in chunks]
-            )
-        else:
-            vectors = [None] * len(chunks)
+            try:
+                vectors = embeddings.embed_passages(
+                    [f"{doc['title']} / {hd}\n{tx}" for hd, tx in chunks]
+                )
+            except Exception:  # noqa: BLE001 — model files incomplete (is_ready raced a
+                # download): keyword-index now with model="" so reconcile re-embeds later,
+                # instead of 500-ing the create/update request.
+                vectors = [None] * len(chunks)
+                desired_model = ""
         conn.execute("DELETE FROM chunks WHERE document_id=?", (doc["id"],))
         conn.execute(
             """INSERT INTO documents(id, source_type, title, uri, created_at, updated_at, content_hash, model)

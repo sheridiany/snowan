@@ -30,8 +30,13 @@ def _model():
 
 
 def is_ready() -> bool:
-    """Whether the model is present locally — checked WITHOUT any network call."""
-    return CACHE_DIR.exists() and any(CACHE_DIR.rglob("*.onnx"))
+    """Whether the model is FULLY present locally — checked WITHOUT any network call.
+    Requires both the onnx weights and the tokenizer (not just a half-written .onnx),
+    and reports not-ready while a download is in flight, so a concurrent embed never
+    loads an incomplete model."""
+    if _downloading or not CACHE_DIR.exists():
+        return False
+    return any(CACHE_DIR.rglob("*.onnx")) and any(CACHE_DIR.rglob("tokenizer*.json"))
 
 
 def is_downloading() -> bool:

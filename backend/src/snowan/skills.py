@@ -169,8 +169,11 @@ def read_resource(name: str, rel: str) -> str | None:
     d = _find_dir(name)
     if d is None:
         return None
+    root = d.resolve()
     target = (d / rel).resolve()
-    if not str(target).startswith(str(d.resolve())):  # no path escape
+    # Real ancestor check, not a string prefix — a sibling like `<skill>-secrets/`
+    # would pass startswith() and escape the skill folder.
+    if target != root and root not in target.parents:
         return None
     try:
         return target.read_text(encoding="utf-8")

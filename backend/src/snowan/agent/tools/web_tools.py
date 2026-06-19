@@ -73,13 +73,22 @@ def web_search(query: str, max_results: int = 5) -> str:
     n = max(1, min(max_results, 8))
     prefs = load_prefs()
     provider = prefs.get("web_search_provider") or "duckduckgo"
-    key = f"search:{provider}:{n}:{query}"
+    # The EFFECTIVE provider: a keyless tavily/brave silently falls back to ddg, so
+    # the cache must key on what actually ran — else adding a key later serves a
+    # stale ddg result cached under "tavily".
+    if provider == "tavily" and prefs.get("tavily_api_key"):
+        effective = "tavily"
+    elif provider == "brave" and prefs.get("brave_api_key"):
+        effective = "brave"
+    else:
+        effective = "duckduckgo"
+    key = f"search:{effective}:{n}:{query}"
     if (c := _cached(key)) is not None:
         return c
     try:
-        if provider == "tavily" and prefs.get("tavily_api_key"):
+        if effective == "tavily":
             results = _tavily(query, n, prefs["tavily_api_key"])
-        elif provider == "brave" and prefs.get("brave_api_key"):
+        elif effective == "brave":
             results = _brave(query, n, prefs["brave_api_key"])
         else:
             results = _ddg(query, n)
@@ -121,13 +130,32 @@ def _is_public(url: str) -> bool:
     return True
 
 
+_UA = "Mozilla/5.0 (compatible; Snowan/0.1)"
+
+
+def _fetch_html(url: str) -> str | None:
+    """Fetch a page, following redirects MANUALLY so every hop is SSRF-checked.
+    trafilatura.fetch_url (urllib) would follow a 302 to http://127.0.0.1/ or the
+    cloud-metadata IP unguarded; here each redirect target is re-validated."""
+    with httpx.Client(follow_redirects=False, timeout=20, headers={"User-Agent": _UA}) as client:
+        for _ in range(4):  # cap redirect chain
+            if not _is_public(url):
+                return None
+            r = client.get(url)
+            if r.is_redirect and r.next_request is not None:
+                url = str(r.next_request.url)
+                continue
+            return r.text if r.status_code == 200 else None
+    return None
+
+
 def _trafilatura(url: str) -> str | None:
     import trafilatura
 
-    downloaded = trafilatura.fetch_url(url)
-    if not downloaded:
+    html = _fetch_html(url)
+    if not html:
         return None
-    return trafilatura.extract(downloaded, output_format="markdown", include_links=False) or None
+    return trafilatura.extract(html, output_format="markdown", include_links=False) or None
 
 
 def _jina(url: str) -> str | None:

@@ -91,10 +91,19 @@ def _scan() -> list[dict]:
         root = Path(f["path"])
         if not root.is_dir():
             continue
+        root_real = root.resolve()
         for path in sorted(root.rglob("*")):
             if len(docs) >= _MAX_FILES:
                 break
-            if not path.is_file() or path.name.startswith("."):
+            if not path.is_file() or path.name.startswith(".") or path.is_symlink():
+                continue
+            # A symlinked parent dir can make rglob yield files that resolve OUTSIDE the
+            # registered folder — require the real path to stay under root.
+            try:
+                real = path.resolve()
+            except OSError:
+                continue
+            if real != root_real and root_real not in real.parents:
                 continue
             rel_parents = path.relative_to(root).parts[:-1]
             if any(part in _SKIP_DIRS or part.startswith(".") for part in rel_parents):

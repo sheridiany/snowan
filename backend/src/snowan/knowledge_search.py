@@ -88,7 +88,10 @@ def search(query: str, limit: int = 8) -> list[dict]:
     # semantic leg — only when the model is downloaded and some chunks are embedded
     # (chunks saved before the download carry no vector); otherwise keyword-only.
     vec_ranked: list[int] = []
-    embedded = [i for i, r in enumerate(rows) if r["embedding"]]
+    # Only stack blobs of the exact current dimension — a truncated write or a vector
+    # from an old model/DIM would make the reshape raise and fail the whole search.
+    _want = embeddings.DIM * 4  # float32
+    embedded = [i for i, r in enumerate(rows) if r["embedding"] and len(r["embedding"]) == _want]
     if embedded and embeddings.is_ready():
         mat = np.frombuffer(
             b"".join(rows[i]["embedding"] for i in embedded), dtype=np.float32
