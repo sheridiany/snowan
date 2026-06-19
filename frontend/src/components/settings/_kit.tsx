@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Text } from '@lobehub/ui';
+import { App, Button, Input } from 'antd';
 import { createStyles } from 'antd-style';
+import { Check } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -63,6 +66,23 @@ const useStyles = createStyles(({ token, css }) => ({
     justify-content: flex-end;
     gap: 8px;
   `,
+  secret: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `,
+  savedOk: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: ${token.colorSuccess};
+  `,
+  unset: css`
+    font-size: 12px;
+    color: ${token.colorTextQuaternary};
+  `,
 }));
 
 export function Section({
@@ -113,6 +133,73 @@ export function Row({
         {subtitle && <span className={styles.rowSub}>{subtitle}</span>}
       </div>
       <div className={styles.rowControl}>{control}</div>
+    </div>
+  );
+}
+
+// A key/secret input with explicit, legible save state: typing reveals a 保存
+// button; once saved it shows 已保存 ✓ (and stays that way on reload if a value
+// is present), so the user always knows whether it persisted. onSave does the
+// actual write; this handles the dirty/saved state + a toast.
+export function SecretField({
+  value,
+  onSave,
+  placeholder = '粘贴 API Key',
+  width = 260,
+}: {
+  value: string;
+  onSave: (v: string) => Promise<void>;
+  placeholder?: string;
+  width?: number;
+}) {
+  const { styles } = useStyles();
+  const { message } = App.useApp();
+  const [v, setV] = useState(value);
+  const [saved, setSaved] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setV(value);
+    setSaved(value);
+  }, [value]);
+
+  const dirty = v.trim() !== saved;
+  const doSave = async () => {
+    const next = v.trim();
+    setSaving(true);
+    try {
+      await onSave(next);
+      setSaved(next);
+      setV(next);
+      message.success('已保存');
+    } catch {
+      message.error('保存失败,请重试');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={styles.secret}>
+      <Input.Password
+        value={v}
+        placeholder={placeholder}
+        style={{ width }}
+        onChange={(e) => setV(e.target.value)}
+        onPressEnter={doSave}
+      />
+      {dirty ? (
+        <Button size="small" type="primary" loading={saving} onClick={doSave}>
+          保存
+        </Button>
+      ) : v ? (
+        <span className={styles.savedOk}>
+          <Check size={14} />
+          已保存
+        </span>
+      ) : (
+        <span className={styles.unset}>未配置</span>
+      )}
     </div>
   );
 }

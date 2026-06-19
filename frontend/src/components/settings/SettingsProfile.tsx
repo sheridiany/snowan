@@ -25,6 +25,7 @@ export default function SettingsProfile() {
     try {
       const next = await savePrefs({ profile: { ...profile, ...patch } });
       setProfile(next.profile);
+      message.success('已保存');
     } catch {
       message.error('保存失败');
     }
