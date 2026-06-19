@@ -4,7 +4,7 @@ import subprocess
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from .. import config
+from .. import audit, config
 from ..agent.build import tool_catalog
 
 router = APIRouter()
@@ -23,11 +23,18 @@ class PrefsPatch(BaseModel):
     tavily_api_key: str | None = None
     brave_api_key: str | None = None
     jina_api_key: str | None = None
+    disabled_tools: list[str] | None = None
 
 
 @router.get("/api/tools")
 def list_tools() -> list[dict]:
     return tool_catalog()
+
+
+@router.get("/api/audit")
+def audit_log(limit: int = 100) -> list[dict]:
+    """Recent tool calls (newest first) for the 权限 audit view."""
+    return audit.recent(limit)
 
 
 @router.get("/api/prefs")

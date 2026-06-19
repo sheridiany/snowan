@@ -36,12 +36,13 @@ def _first_line(fn) -> str:
 
 
 def tool_catalog() -> list[dict]:
-    """The agent's tools for the settings UI: name, one-line description, mutating."""
+    """The agent's tools for the settings UI: name, one-line description, mutating, enabled."""
+    disabled = set(load_prefs().get("disabled_tools") or [])
     return [
-        {"name": f.__name__, "description": _first_line(f), "mutating": False}
+        {"name": f.__name__, "description": _first_line(f), "mutating": False, "enabled": f.__name__ not in disabled}
         for f in READONLY_FNS
     ] + [
-        {"name": f.__name__, "description": _first_line(f), "mutating": True}
+        {"name": f.__name__, "description": _first_line(f), "mutating": True, "enabled": f.__name__ not in disabled}
         for f in MUTATING_FNS
     ]
 
@@ -74,12 +75,15 @@ def build_agent() -> Agent:
     auto = nothing gated · ask = mutating/shell gated · strict = every tool gated."""
     prefs = load_prefs()
     mode = prefs.get("approval_mode", "ask")
+    disabled = set(prefs.get("disabled_tools") or [])
+    readonly = [f for f in READONLY_FNS if f.__name__ not in disabled]
+    mutating = [f for f in MUTATING_FNS if f.__name__ not in disabled]
     if mode == "strict":
-        tools = [Tool(f, requires_approval=True) for f in (*READONLY_FNS, *MUTATING_FNS)]
+        tools = [Tool(f, requires_approval=True) for f in (*readonly, *mutating)]
     elif mode == "auto":
-        tools = [*READONLY_FNS, *MUTATING_FNS]
+        tools = [*readonly, *mutating]
     else:  # ask
-        tools = [*READONLY_FNS, *(Tool(f, requires_approval=True) for f in MUTATING_FNS)]
+        tools = [*readonly, *(Tool(f, requires_approval=True) for f in mutating)]
     return Agent(
         build_model(load_settings()),
         instructions=_instructions(prefs),

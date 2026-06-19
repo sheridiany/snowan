@@ -22,6 +22,7 @@ from pydantic_ai.usage import UsageLimits
 
 from ..agent.build import build_agent
 from ..agent.sessions import delete_history, load_history, save_history
+from .. import audit
 from ..config import load_prefs
 from ..extract import extract_text as _extract_text
 
@@ -101,6 +102,7 @@ def _approval_event(requests: DeferredToolRequests) -> dict[str, Any]:
 
 async def _stream_run(run: Any) -> AsyncIterator[str]:
     """Stream one agent run, emitting delta/tool_call/tool_result/approval_required events."""
+    pending: dict[str, str] = {}  # tool_call_id -> arg summary, for the audit log
     async for node in run:
         if Agent.is_model_request_node(node):
             async with node.stream(run.ctx) as request_stream:
@@ -118,6 +120,7 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                                 args = json.loads(args)
                             except json.JSONDecodeError:
                                 pass
+                        pending[part.tool_call_id] = audit.summarize(args)
                         yield _sse({
                             "type": "tool_call",
                             "id": part.tool_call_id,
@@ -126,11 +129,14 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                         })
                     elif isinstance(ev, FunctionToolResultEvent):
                         result = ev.result
+                        content = str(result.content)
+                        status = "denied" if "denied this tool call" in content else "ok"
+                        audit.log(result.tool_name, pending.pop(result.tool_call_id, ""), status)
                         yield _sse({
                             "type": "tool_result",
                             "id": result.tool_call_id,
                             "name": result.tool_name,
-                            "result": str(result.content),
+                            "result": content,
                         })
 
     output = run.result.output
