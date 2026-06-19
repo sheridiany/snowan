@@ -1,5 +1,6 @@
 from pydantic_ai import Agent, DeferredToolRequests, Tool
 
+from .. import skills as skills_store
 from ..config import load_prefs, load_settings
 from .mcp import build_toolsets
 from .providers import build_model
@@ -7,6 +8,7 @@ from .tools.file_tools import append_file, edit_file, read_file, write_file
 from .tools.knowledge_tools import knowledge_search
 from .tools.search_tools import glob_search, grep_search
 from .tools.shell_tools import execute_shell_command
+from .tools.skill_tools import create_skill, load_skill, read_skill_resource
 from .tools.time_tools import get_current_time
 from .tools.web_tools import web_fetch, web_search
 
@@ -23,8 +25,10 @@ READONLY_FNS = [
     knowledge_search,
     web_search,
     web_fetch,
+    load_skill,
+    read_skill_resource,
 ]
-MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command]
+MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill]
 
 
 def _first_line(fn) -> str:
@@ -56,6 +60,12 @@ def _instructions(prefs: dict) -> str:
         text += "\n\n关于用户(用于个性化你的回答):\n" + "\n".join(bits)
     if prefs.get("system_prompt"):
         text += "\n\n附加指令:\n" + prefs["system_prompt"]
+    enabled = skills_store.enabled_skills()
+    if enabled:
+        text += (
+            "\n\n可用技能(与当前任务相关时,先调用 load_skill(name) 读取完整步骤再按它执行):\n"
+            + "\n".join(f"- {s['name']}: {s['description']}" for s in enabled)
+        )
     return text
 
 
