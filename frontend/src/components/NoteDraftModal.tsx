@@ -31,12 +31,13 @@ type Props = {
   sessionId: string;
   topic?: string;
   onClose: () => void;
+  onSaved?: () => void;
 };
 
 // Drafts a structured note from the chat messages (LLM, with backend fallback),
 // lets the user edit it, then saves it as a chat-origin note that cites the
 // conversation it came from.
-export default function NoteDraftModal({ open, entries, sessionId, topic, onClose }: Props) {
+export default function NoteDraftModal({ open, entries, sessionId, topic, onClose, onSaved }: Props) {
   const { styles } = useStyles();
   const { message } = App.useApp();
   const [drafting, setDrafting] = useState(false);
@@ -72,6 +73,7 @@ export default function NoteDraftModal({ open, entries, sessionId, topic, onClos
         source: { chat: sessionId },
       });
       message.success('已存入知识库');
+      onSaved?.();
       onClose();
     } catch (e) {
       message.error(`保存失败:${(e as Error).message}`);

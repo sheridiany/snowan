@@ -16,7 +16,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import { ListRow } from './ListPane';
 import { useResizableWidth } from './useResizableWidth';
-import { listNotes, type Note } from '../../api/knowledge';
+import { listNotes, getEmbeddingStatus, type Note } from '../../api/knowledge';
 
 // The right panel is the in-context knowledge browser (remio-style): a source
 // dropdown in the header, a list below, and click-to-open detail in place. Only
@@ -163,9 +163,35 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextTertiary};
     margin-bottom: 14px;
   `,
+  notice: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 2px 2px 8px;
+    padding: 7px 10px;
+    border-radius: ${token.borderRadius}px;
+    background: ${token.colorWarningBg};
+    border: 1px solid ${token.colorWarningBorder};
+    font-size: 12px;
+    color: ${token.colorWarningText};
+  `,
+  noticeLink: css`
+    flex: none;
+    margin-left: auto;
+    font-weight: 600;
+    color: ${token.colorWarning};
+    cursor: pointer;
+    white-space: nowrap;
+  `,
 }));
 
-export default function RightPanel() {
+export default function RightPanel({
+  refreshKey,
+  onOpenSettings,
+}: {
+  refreshKey?: number;
+  onOpenSettings?: () => void;
+}) {
   const { styles } = useStyles();
   const { width, onResizeStart } = useResizableWidth({
     key: 'snowan.rightWidth',
@@ -178,6 +204,7 @@ export default function RightPanel() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState<Note | null>(null);
+  const [embReady, setEmbReady] = useState<boolean | null>(null);
 
   const refresh = () => {
     setLoading(true);
@@ -185,9 +212,12 @@ export default function RightPanel() {
       .then(setNotes)
       .catch(() => setNotes([]))
       .finally(() => setLoading(false));
+    getEmbeddingStatus()
+      .then((s) => setEmbReady(s.ready))
+      .catch(() => setEmbReady(null));
   };
 
-  useEffect(refresh, []);
+  useEffect(refresh, [refreshKey]); // re-fetch when a note is saved elsewhere
 
   const active = SOURCES.find((s) => s.key === source) ?? SOURCES[0];
 
@@ -247,6 +277,14 @@ export default function RightPanel() {
       </div>
 
       <div className={styles.scroll}>
+        {active.ready && embReady === false && (
+          <div className={styles.notice}>
+            <span>语义检索未启用,当前仅关键词。</span>
+            <span className={styles.noticeLink} onClick={onOpenSettings}>
+              去设置下载
+            </span>
+          </div>
+        )}
         {!active.ready ? (
           <Empty
             icon={active.icon}

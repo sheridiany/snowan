@@ -315,6 +315,8 @@ export default function App() {
     entries: [],
     topic: '',
   });
+  // Bumped when a note is saved, so the right panel re-fetches and shows it.
+  const [notesVersion, setNotesVersion] = useState(0);
   const textOf = (m: Message) =>
     m.blocks
       .filter((b): b is Extract<Block, { kind: 'text' }> => b.kind === 'text')
@@ -396,7 +398,7 @@ export default function App() {
               listCollapsed={listCollapsed}
             />
           )}
-          {rightOpen && <RightPanel />}
+          {rightOpen && <RightPanel refreshKey={notesVersion} onOpenSettings={() => go('settings')} />}
         </main>
       </div>
       <NoteDraftModal
@@ -405,6 +407,10 @@ export default function App() {
         sessionId={activeId}
         topic={noteDraft.topic}
         onClose={() => setNoteDraft((s) => ({ ...s, open: false }))}
+        onSaved={() => {
+          setNotesVersion((v) => v + 1);
+          setRightOpen(true); // reveal the panel so the saved note lands in view
+        }}
       />
     </div>
   );

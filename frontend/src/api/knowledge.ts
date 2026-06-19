@@ -42,3 +42,16 @@ export const createNote = (payload: {
   origin?: string;
   source?: Record<string, unknown>;
 }) => post<Note>('/api/knowledge/notes', payload);
+
+export type EmbeddingStatus = {
+  model: string;
+  size_mb: number;
+  ready: boolean;
+  downloading: boolean;
+};
+
+export const getEmbeddingStatus = () =>
+  fetch(api('/api/knowledge/embedding')).then((r) => j<EmbeddingStatus>(r));
+
+export const downloadEmbedding = () =>
+  post<{ ready: boolean; downloading: boolean }>('/api/knowledge/embedding/download', {});
