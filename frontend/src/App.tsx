@@ -34,6 +34,8 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => ({
     flex-direction: column;
     background: ${token.colorBgLayout};
     color: ${token.colorText};
+    font-feature-settings: 'cv11' 1, 'ss01' 1;
+    font-variant-numeric: tabular-nums;
     &::after {
       content: '';
       position: fixed;

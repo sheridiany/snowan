@@ -6,6 +6,7 @@ import {
   makeThemeConfig,
   persistThemeMode,
   readStoredThemeMode,
+  snowanCustomToken,
   useThemePreset,
 } from './theme/themes';
 import App from './App';
@@ -33,7 +34,12 @@ function Root() {
   );
 
   return (
-    <ThemeProvider themeMode={mode} onThemeModeChange={setMode} theme={theme}>
+    <ThemeProvider
+      themeMode={mode}
+      onThemeModeChange={setMode}
+      theme={theme}
+      customToken={() => snowanCustomToken(themeId, appearance)}
+    >
       <App />
     </ThemeProvider>
   );
