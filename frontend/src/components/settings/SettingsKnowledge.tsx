@@ -158,9 +158,37 @@ export default function SettingsKnowledge() {
   const [adding, setAdding] = useState(false);
   const embTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const fldTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const embFails = useRef(0);
+  const fldFails = useRef(0);
 
-  const loadEmb = () => getEmbeddingStatus().then(setSt).catch(() => {});
-  const loadFolders = () => listFolders().then(setFolders).catch(() => {});
+  // Stop a status poll after repeated failures instead of swallowing errors and
+  // spinning forever if the backend stops responding.
+  const loadEmb = () =>
+    getEmbeddingStatus()
+      .then((s) => {
+        embFails.current = 0;
+        setSt(s);
+      })
+      .catch(() => {
+        if ((embFails.current += 1) >= 5) {
+          clearInterval(embTimer.current);
+          embTimer.current = undefined;
+          message.error('获取模型状态失败,已停止刷新');
+        }
+      });
+  const loadFolders = () =>
+    listFolders()
+      .then((f) => {
+        fldFails.current = 0;
+        setFolders(f);
+      })
+      .catch(() => {
+        if ((fldFails.current += 1) >= 5) {
+          clearInterval(fldTimer.current);
+          fldTimer.current = undefined;
+          message.error('获取索引状态失败,已停止刷新');
+        }
+      });
 
   useEffect(() => {
     loadEmb();
@@ -340,7 +368,7 @@ export default function SettingsKnowledge() {
                     onClick: ({ key }) => key === 'remove' && remove(f.id),
                   }}
                 >
-                  <span className={styles.cardMenu}>
+                  <span className={styles.cardMenu} role="button" tabIndex={0} aria-label="更多操作">
                     <MoreHorizontal size={16} />
                   </span>
                 </Dropdown>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Text } from '@lobehub/ui';
-import { App, Dropdown, Input, Modal, Segmented, Select, Switch } from 'antd';
+import { App, Dropdown, Input, Modal, Segmented, Select, Spin, Switch } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   AlertTriangle,
@@ -302,6 +302,8 @@ export default function SettingsMcp() {
   const [probes, setProbes] = useState<Record<string, ProbeState>>({});
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
   const [addOpen, setAddOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const doProbe = (name: string) => {
     setProbes((p) => ({ ...p, [name]: { status: 'loading' } }));
@@ -312,27 +314,54 @@ export default function SettingsMcp() {
       .catch(() => setProbes((p) => ({ ...p, [name]: { status: 'fail', error: '探测失败' } })));
   };
 
-  const load = () =>
-    listServers().then((list) => {
-      setServers(list);
-      list.filter((s) => s.enabled).forEach((s) => doProbe(s.name));
+  // Probe lazily (on card expand), not for every enabled server on mount — probing
+  // spawns the server's stdio subprocess (npx/uvx), so eager probing is heavy.
+  const expand = (name: string, enabled: boolean) =>
+    setOpenSet((prev) => {
+      const n = new Set(prev);
+      if (n.has(name)) n.delete(name);
+      else {
+        n.add(name);
+        if (enabled && !probes[name]) doProbe(name);
+      }
+      return n;
     });
 
+  const load = () => {
+    setLoadError(false);
+    return listServers()
+      .then((list) => {
+        setServers(list);
+        setLoaded(true);
+      })
+      .catch(() => setLoadError(true));
+  };
+
   useEffect(() => {
-    load().catch(() => {});
+    load();
   }, []);
 
   const toggle = async (s: McpServer) => {
     const enabled = !s.enabled;
     setServers((prev) => prev.map((x) => (x.name === s.name ? { ...x, enabled } : x)));
-    await setEnabled(s.name, enabled).catch(() => {});
-    if (enabled) doProbe(s.name);
+    try {
+      await setEnabled(s.name, enabled);
+      if (enabled && !probes[s.name]) doProbe(s.name);
+    } catch {
+      setServers((prev) => prev.map((x) => (x.name === s.name ? { ...x, enabled: s.enabled } : x)));
+      message.error('保存失败');
+    }
   };
 
   const cyclePolicy = async (name: string, tool: string, cur: ToolPolicy) => {
     const next = NEXT[cur];
     setServers((prev) => prev.map((s) => (s.name === name ? { ...s, tools: { ...s.tools, [tool]: next } } : s)));
-    await setToolPolicy(name, tool, next).catch(() => message.error('保存失败'));
+    try {
+      await setToolPolicy(name, tool, next);
+    } catch {
+      setServers((prev) => prev.map((s) => (s.name === name ? { ...s, tools: { ...s.tools, [tool]: cur } } : s)));
+      message.error('保存失败');
+    }
   };
 
   const remove = (name: string) =>
@@ -350,7 +379,8 @@ export default function SettingsMcp() {
   const dotColor = (s: McpServer): string => {
     if (!s.enabled) return theme.colorTextQuaternary;
     const p = probes[s.name];
-    if (!p || p.status === 'loading') return theme.colorWarning;
+    if (!p) return theme.colorTextTertiary; // enabled but not probed yet (idle)
+    if (p.status === 'loading') return theme.colorWarning;
     return p.status === 'ok' ? theme.colorSuccess : theme.colorError;
   };
 
@@ -375,7 +405,19 @@ export default function SettingsMcp() {
         </Button>
       </div>
 
-      {servers.length === 0 ? (
+      {!loaded && !loadError ? (
+        <div className={styles.empty}>
+          <Spin />
+        </div>
+      ) : loadError ? (
+        <div className={styles.empty}>
+          <Plug size={28} />
+          加载失败
+          <Button size="small" onClick={() => load()}>
+            重试
+          </Button>
+        </div>
+      ) : servers.length === 0 ? (
         <div className={styles.empty}>
           <Plug size={28} />
           还没有 MCP 服务器
@@ -390,23 +432,16 @@ export default function SettingsMcp() {
             const open = openSet.has(s.name);
             const meta = !s.enabled
               ? '已停用'
-              : !p || p.status === 'loading'
-                ? '连接中…'
-                : p.status === 'ok'
-                  ? `${p.tools?.length ?? 0} 工具`
-                  : `连接失败:${p.error ?? ''}`;
+              : !p
+                ? '展开以连接'
+                : p.status === 'loading'
+                  ? '连接中…'
+                  : p.status === 'ok'
+                    ? `${p.tools?.length ?? 0} 工具`
+                    : `连接失败:${p.error ?? ''}`;
             return (
               <div key={s.name} className={styles.card}>
-                <div
-                  className={styles.cardHead}
-                  onClick={() =>
-                    setOpenSet((prev) => {
-                      const n = new Set(prev);
-                      n.has(s.name) ? n.delete(s.name) : n.add(s.name);
-                      return n;
-                    })
-                  }
-                >
+                <div className={styles.cardHead} onClick={() => expand(s.name, s.enabled)}>
                   <span className={styles.dot} style={{ background: dotColor(s) }} />
                   <span className={styles.name}>{s.name}</span>
                   <span className={styles.badge}>{s.transport === 'http' ? 'HTTP' : 'stdio'}</span>
@@ -454,8 +489,16 @@ export default function SettingsMcp() {
                               <span
                                 className={styles.chip}
                                 style={chipStyle(policy)}
+                                role="button"
+                                tabIndex={0}
                                 title="点击循环:询问 → 自动 → 关闭"
                                 onClick={() => cyclePolicy(s.name, t.name, policy)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    cyclePolicy(s.name, t.name, policy);
+                                  }
+                                }}
                               >
                                 {POLICY_LABEL[policy]}
                               </span>

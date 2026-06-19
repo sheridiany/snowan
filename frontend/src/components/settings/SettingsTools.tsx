@@ -34,11 +34,13 @@ export default function SettingsTools() {
   }, [message]);
 
   const toggle = async (t: ToolInfo) => {
+    const prev = tools;
     const next = tools.map((x) => (x.name === t.name ? { ...x, enabled: !x.enabled } : x));
     setTools(next);
     try {
       await savePrefs({ disabled_tools: next.filter((x) => !x.enabled).map((x) => x.name) });
     } catch {
+      setTools(prev);
       message.error('保存失败');
     }
   };

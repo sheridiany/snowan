@@ -273,7 +273,18 @@ export default function SettingsPermissions() {
           <Text className={styles.title} style={{ fontSize: 15, fontWeight: 700 }}>
             最近的工具调用
           </Text>
-          <span className={styles.refresh} onClick={loadAudit}>
+          <span
+            className={styles.refresh}
+            role="button"
+            tabIndex={0}
+            onClick={loadAudit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                loadAudit();
+              }
+            }}
+          >
             <RotateCw size={13} />
             刷新
           </span>
@@ -286,7 +297,14 @@ export default function SettingsPermissions() {
               <div key={i} className={styles.auditRow}>
                 <span
                   className={styles.dot}
-                  style={{ background: e.status === 'denied' ? theme.colorError : theme.colorSuccess }}
+                  style={{
+                    background:
+                      e.status === 'denied'
+                        ? theme.colorError
+                        : e.status === 'error'
+                          ? theme.colorWarning
+                          : theme.colorSuccess,
+                  }}
                 />
                 <span className={styles.auditTool}>{e.tool}</span>
                 <span className={styles.auditSummary}>{e.summary}</span>

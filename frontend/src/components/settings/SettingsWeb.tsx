@@ -34,11 +34,13 @@ export default function SettingsWeb() {
   }, []);
 
   const setProvider = async (v: string) => {
+    const prevV = p?.web_search_provider;
     setP((prev) => (prev ? { ...prev, web_search_provider: v } : prev));
     try {
       await savePrefs({ web_search_provider: v });
       message.success('已保存');
     } catch {
+      setP((prev) => (prev && prevV !== undefined ? { ...prev, web_search_provider: prevV } : prev));
       message.error('保存失败');
     }
   };

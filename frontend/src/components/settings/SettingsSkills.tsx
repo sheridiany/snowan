@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Markdown, Text } from '@lobehub/ui';
-import { App, Dropdown, Input, Modal, Switch } from 'antd';
+import { App, Dropdown, Input, Modal, Spin, Switch } from 'antd';
 import { createStyles } from 'antd-style';
 import { ChevronRight, MoreHorizontal, Plus, Zap } from 'lucide-react';
 import {
@@ -200,8 +200,18 @@ export default function SettingsSkills() {
   const [openSet, setOpenSet] = useState<Record<string, SkillDetail | 'loading'>>({});
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<SkillDetail | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
-  const load = () => listSkills().then(setSkills).catch(() => {});
+  const load = () => {
+    setLoadError(false);
+    return listSkills()
+      .then((list) => {
+        setSkills(list);
+        setLoaded(true);
+      })
+      .catch(() => setLoadError(true));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -209,7 +219,12 @@ export default function SettingsSkills() {
   const toggle = async (s: Skill) => {
     const enabled = !s.enabled;
     setSkills((prev) => prev.map((x) => (x.name === s.name ? { ...x, enabled } : x)));
-    await setEnabled(s.name, enabled).catch(() => {});
+    try {
+      await setEnabled(s.name, enabled);
+    } catch {
+      setSkills((prev) => prev.map((x) => (x.name === s.name ? { ...x, enabled: s.enabled } : x)));
+      message.error('保存失败');
+    }
   };
 
   const expand = (name: string) => {
@@ -227,7 +242,10 @@ export default function SettingsSkills() {
     });
   };
 
-  const startEdit = (name: string) => getSkill(name).then((d) => setEditing(d));
+  const startEdit = (name: string) =>
+    getSkill(name)
+      .then((d) => setEditing(d))
+      .catch(() => message.error('加载技能失败'));
 
   const remove = (name: string) =>
     modal.confirm({
@@ -256,7 +274,19 @@ export default function SettingsSkills() {
         </Button>
       </div>
 
-      {skills.length === 0 ? (
+      {!loaded && !loadError ? (
+        <div className={styles.empty}>
+          <Spin />
+        </div>
+      ) : loadError ? (
+        <div className={styles.empty}>
+          <Zap size={28} />
+          加载失败
+          <Button size="small" onClick={() => load()}>
+            重试
+          </Button>
+        </div>
+      ) : skills.length === 0 ? (
         <div className={styles.empty}>
           <Zap size={28} />
           还没有技能
