@@ -213,5 +213,6 @@ def sync_index() -> None:
 
 
 def search_notes(query: str, limit: int = 8) -> list[dict]:
-    """Hybrid (keyword + semantic) search over the indexed vault."""
-    return knowledge_search.search(query, max(1, min(limit, 8)))
+    """Hybrid (keyword + semantic) search over the indexed vault. Excludes private
+    long-term memory — that surfaces only through the agent's recall, not note browse."""
+    return knowledge_search.search(query, max(1, min(limit, 8)), exclude_sources={"memory"})

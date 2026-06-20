@@ -1,10 +1,12 @@
 from pydantic_ai import Agent, DeferredToolRequests, Tool
 
+from .. import memory
 from .. import skills as skills_store
 from ..config import load_prefs, load_settings
 from .providers import build_model
 from .tools.file_tools import append_file, edit_file, read_file, write_file
 from .tools.knowledge_tools import knowledge_search
+from .tools.memory_tools import recall_memory, remember
 from .tools.search_tools import glob_search, grep_search
 from .tools.shell_tools import execute_shell_command
 from .tools.skill_tools import create_skill, load_skill, read_skill_resource
@@ -22,6 +24,10 @@ READONLY_FNS = [
     grep_search,
     glob_search,
     knowledge_search,
+    recall_memory,
+    # remember writes a memory entry, but it's a cheap, expected action ("记一下") with
+    # full oversight in the 记忆 panel + audit log, so it auto-runs rather than gating.
+    remember,
     web_search,
     web_fetch,
     load_skill,
@@ -66,6 +72,13 @@ def _instructions(prefs: dict) -> str:
             "\n\n可用技能(与当前任务相关时,先调用 load_skill(name) 读取完整步骤再按它执行):\n"
             + "\n".join(f"- {s['name']}: {s['description']}" for s in enabled)
         )
+    profile = memory.profile_text()
+    if profile:
+        text += "\n\n## 用户长期画像(稳定信息,优先遵循)\n" + profile
+    text += (
+        "\n\n关于长期记忆:涉及用户的长期偏好/身份/过往决定/项目事实时,先用 recall_memory 查证;"
+        "当用户让你「记一下」或你发现值得长期记住的事实时,用 remember 记录(别记一次性琐事或敏感信息)。"
+    )
     return text
 
 

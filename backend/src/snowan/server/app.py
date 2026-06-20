@@ -12,6 +12,7 @@ from .chat import router  # noqa: E402
 from .imagegen import router as imagegen_router  # noqa: E402
 from .knowledge import router as knowledge_router  # noqa: E402
 from .mcp import router as mcp_router  # noqa: E402
+from .memory import router as memory_router  # noqa: E402
 from .providers import router as providers_router  # noqa: E402
 from .skills import router as skills_router  # noqa: E402
 from .system import router as system_router  # noqa: E402
@@ -23,9 +24,10 @@ async def lifespan(_app: FastAPI):
     # keyword-only until the user downloads the embedding model from Settings —
     # it never triggers the download itself.
     def _bootstrap() -> None:
-        from .. import knowledge
+        from .. import knowledge, memory
 
         knowledge.sync_index()
+        memory.sync_index()
 
     threading.Thread(target=_bootstrap, daemon=True).start()
     yield
@@ -45,6 +47,7 @@ app.include_router(providers_router)
 app.include_router(system_router)
 app.include_router(knowledge_router)
 app.include_router(mcp_router)
+app.include_router(memory_router)
 app.include_router(skills_router)
 app.include_router(imagegen_router)
 

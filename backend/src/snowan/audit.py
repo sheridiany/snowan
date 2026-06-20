@@ -10,7 +10,7 @@ from .config import SNOWAN_HOME
 
 AUDIT_PATH = SNOWAN_HOME / "audit.jsonl"
 _MAX_SUMMARY = 200
-_SUMMARY_KEYS = ("command", "path", "file_path", "pattern", "query", "url", "name", "timezone")
+_SUMMARY_KEYS = ("command", "path", "file_path", "pattern", "query", "url", "name", "timezone", "content")
 
 
 def summarize(args: Any) -> str:

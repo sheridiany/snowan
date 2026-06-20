@@ -19,6 +19,7 @@ _RRF_K = 60
 # source_type (manual vs chat-generated notes both rank as notes — provenance, not
 # weight, distinguishes them). Future sources slot in here.
 _SOURCE_WEIGHTS = {
+    "memory": 1.1,  # long-term memory outranks everything at equal relevance
     "note": 1.0,
     "file": 0.85,
     "ai_chat": 0.7,
@@ -69,9 +70,15 @@ def _excerpt(text: str, max_chars: int = 300) -> str:
     return t if len(t) <= max_chars else t[: max_chars - 1].rstrip() + "…"
 
 
-def search(query: str, limit: int = 8) -> list[dict]:
-    """Top documents for a query, one best chunk each, fused keyword+semantic."""
+def search(query: str, limit: int = 8, reinforce: bool = False,
+           exclude_sources: set[str] | None = None) -> list[dict]:
+    """Top documents for a query, one best chunk each, fused keyword+semantic.
+    Memory rows get a soft-forgetting decay (recency × importance); set reinforce=True
+    when this recall represents real usage so surfaced memories are strengthened.
+    exclude_sources drops whole source types (the notes browse excludes 'memory')."""
     rows = knowledge_index.all_chunks()
+    if exclude_sources:
+        rows = [r for r in rows if r["source_type"] not in exclude_sources]
     if not rows:
         return []
 
@@ -110,6 +117,16 @@ def search(query: str, limit: int = 8) -> list[dict]:
     for i in fused:
         fused[i] *= _SOURCE_WEIGHTS.get(rows[i]["source_type"], 0.6)
 
+    # Soft forgetting: scale memory rows by recency × importance (decay) so stale,
+    # low-importance memories sink. Lazy import — memory depends on this module.
+    mem_ids = {rows[i]["document_id"] for i in fused if rows[i]["source_type"] == "memory"}
+    if mem_ids:
+        from . import memory
+        factors = memory.recency_factors(list(mem_ids))
+        for i in fused:
+            if rows[i]["source_type"] == "memory":
+                fused[i] *= factors.get(rows[i]["document_id"], 1.0)
+
     results: list[dict] = []
     seen: set[str] = set()
     for i in sorted(fused, key=fused.get, reverse=True):
@@ -123,9 +140,16 @@ def search(query: str, limit: int = 8) -> list[dict]:
                 "title": r["title"],
                 "heading": r["heading"],
                 "snippet": _excerpt(r["text"]),
+                "source_type": r["source_type"],
                 "score": round(fused[i], 4),
             }
         )
         if len(results) >= limit:
             break
+
+    if reinforce:
+        hits = [r["document_id"] for r in results if r["source_type"] == "memory"]
+        if hits:
+            from . import memory
+            memory.reinforce(hits)
     return results
