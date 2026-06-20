@@ -50,14 +50,21 @@ def _png_dims(data: bytes) -> tuple[int | None, int | None]:
 
 class GenerateBody(BaseModel):
     prompt: str
-    size: str = "1024x1024"
+    size: str = "auto"
     n: int = 1
     provider: str | None = None
     model: str | None = None
+    # Optional reference images (data URLs or bare base64). When present we route
+    # to the image-edit endpoint instead of plain text-to-image.
+    reference_images: list[str] = []
 
 
 class IdsBody(BaseModel):
     ids: list[str]
+
+
+_MAX_N = 4  # one generation request yields at most 4 images
+_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 
 
 def _resolve(body: GenerateBody) -> config.Settings:
@@ -69,27 +76,75 @@ def _resolve(body: GenerateBody) -> config.Settings:
     return s
 
 
-async def _openai_generate(s: config.Settings, prompt: str, size: str, n: int) -> tuple[list[bytes], str | None]:
+def _decode_refs(refs: list[str]) -> list[tuple[bytes, str]]:
+    """Decode reference images (data URL or bare base64) to (bytes, mime)."""
+    out: list[tuple[bytes, str]] = []
+    for r in refs:
+        mime, b64 = "image/png", r
+        if r.startswith("data:"):
+            head, _, b64 = r.partition(",")
+            mime = head[5:].split(";", 1)[0] or mime
+        out.append((base64.b64decode(b64), mime))
+    return out
+
+
+async def _collect(data) -> list[bytes]:
+    """Image bytes from an OpenAI image response: inline b64, else fetch the url."""
+    out: list[bytes] = []
+    for img in data or []:
+        if getattr(img, "b64_json", None):
+            out.append(base64.b64decode(img.b64_json))
+        elif getattr(img, "url", None):
+            import httpx
+
+            async with httpx.AsyncClient(timeout=60) as c:
+                resp = await c.get(img.url)
+                resp.raise_for_status()
+                out.append(resp.content)
+    return out
+
+
+def _openai_client(s: config.Settings):
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=s.api_key or "missing", base_url=s.base_url or None)
-    # dall-e defaults to returning URLs (b64_json is then None); gpt-image-1
-    # always returns b64 and rejects the response_format param.
+    return AsyncOpenAI(api_key=s.api_key or "missing", base_url=s.base_url or None)
+
+
+async def _openai_generate(s, prompt, size, n) -> tuple[list[bytes], str | None]:
+    client = _openai_client(s)
+    # gpt-image returns b64 and rejects response_format; dall-e needs it for b64.
     kwargs = {} if "gpt-image" in (s.model or "") else {"response_format": "b64_json"}
     resp = await client.images.generate(model=s.model, prompt=prompt, size=size, n=n, **kwargs)
-    images = [base64.b64decode(img.b64_json) for img in (resp.data or []) if img.b64_json]
-    revised = next((img.revised_prompt for img in resp.data if img.revised_prompt), None)
-    return images, revised
+    revised = next((i.revised_prompt for i in (resp.data or []) if i.revised_prompt), None)
+    return await _collect(resp.data), revised
 
 
-def _google_generate(s: config.Settings, prompt: str) -> tuple[list[bytes], str | None]:
+async def _openai_edit(s, prompt, size, n, refs) -> tuple[list[bytes], str | None]:
+    """Reference-image generation via the images.edit endpoint."""
+    client = _openai_client(s)
+    files = [
+        (f"reference_{i}{_EXT.get(mime, '.png')}", data, mime)
+        for i, (data, mime) in enumerate(refs)
+    ]
+    image_arg = files if len(files) > 1 else files[0]
+    kwargs = {} if "gpt-image" in (s.model or "") else {"response_format": "b64_json"}
+    resp = await client.images.edit(
+        model=s.model, image=image_arg, prompt=prompt, size=size, n=n, **kwargs
+    )
+    return await _collect(resp.data), None
+
+
+def _google_generate(s, prompt, refs) -> tuple[list[bytes], str | None]:
     from google.genai import Client
     from google.genai import types
 
     client = Client(api_key=s.api_key)
+    contents: list = [prompt]
+    for data, mime in refs:
+        contents.append(types.Part.from_bytes(data=data, mime_type=mime))
     resp = client.models.generate_content(
         model=s.model,
-        contents=prompt,
+        contents=contents,
         config=types.GenerateContentConfig(response_modalities=["IMAGE"]),
     )
     images: list[bytes] = []
@@ -105,11 +160,15 @@ async def generate(body: GenerateBody) -> dict:
     s = _resolve(body)
     if s.provider == "anthropic":
         raise HTTPException(400, "Anthropic 不支持图像生成,请选择其他模型")
+    n = max(1, min(_MAX_N, body.n))
+    refs = _decode_refs(body.reference_images)
     try:
         if s.provider == "google":
-            raw, revised = _google_generate(s, body.prompt)
-        else:  # openai / openrouter / custom OpenAI-compatible
-            raw, revised = await _openai_generate(s, body.prompt, body.size, body.n)
+            raw, revised = _google_generate(s, body.prompt, refs)
+        elif refs:
+            raw, revised = await _openai_edit(s, body.prompt, body.size, n, refs)
+        else:
+            raw, revised = await _openai_generate(s, body.prompt, body.size, n)
     except Exception as e:  # noqa: BLE001 — surface the upstream error to the UI
         raise HTTPException(400, f"图像生成失败: {e}") from e
     images = []

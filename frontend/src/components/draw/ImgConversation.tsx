@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ActionIcon, Empty } from '@lobehub/ui';
-import { Modal } from 'antd';
+import { Image, Modal } from 'antd';
 import { createStyles } from 'antd-style';
 import { Copy, Download, Heart, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react';
 
@@ -85,26 +85,42 @@ const useStyles = createStyles(({ token, css }) => ({
     overflow: hidden;
     background: ${token.colorFillTertiary};
     border: 1px solid ${token.colorBorderSecondary};
+    & .ant-image {
+      display: block;
+      width: 100%;
+    }
+    & .ant-image-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: zoom-in;
+    }
     &:hover .img-actions {
       opacity: 1;
     }
-  `,
-  img: css`
-    display: block;
-    width: 100%;
-    height: auto;
   `,
   actions: css`
     position: absolute;
     top: 6px;
     right: 6px;
+    z-index: 2;
     display: flex;
-    gap: 4px;
-    padding: 4px;
+    gap: 2px;
+    padding: 3px;
     border-radius: ${token.borderRadius}px;
-    background: ${token.colorBgMask};
+    /* Photos can be any color: a dark scrim + forced white icons stays legible
+       in both light and dark themes (theme-driven colors washed out on light). */
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
     opacity: 0;
     transition: opacity 0.15s ease;
+    button {
+      color: #fff !important;
+    }
+    button:hover {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.22) !important;
+    }
   `,
 }));
 
@@ -181,7 +197,7 @@ export default function ImgConversation({
               <div className={styles.grid}>
                 {t.images.map((im) => (
                   <div key={im.id} className={styles.card}>
-                    <img className={styles.img} src={imageFileUrl(im.id)} alt={t.prompt} />
+                    <Image src={imageFileUrl(im.id)} alt={t.prompt} preview={{ mask: false }} />
                     <div className={`${styles.actions} img-actions`}>
                       <ActionIcon
                         icon={Heart}

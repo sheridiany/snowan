@@ -9,7 +9,7 @@ import ImgLibraryPanel from '../draw/ImgLibraryPanel';
 import { useImagegen, type ImgParams } from '../../hooks/useImagegen';
 import { imageFileUrl } from '../../api/imagegen';
 
-const DEFAULT_PARAMS: ImgParams = { size: '1024x1024', n: 1 };
+const DEFAULT_PARAMS: ImgParams = { size: 'auto', n: 1 };
 
 // Trigger a browser download of a generated image by its backend id.
 function download(imageId: string) {
@@ -33,12 +33,12 @@ export default function DrawView({
   // The active turn is pending while its generate() promise is in flight.
   const busy = img.turns.some((t) => t.status === 'pending');
 
-  const submit = () => {
+  const submit = (referenceImages: string[]) => {
     const text = prompt.trim();
     if (!text || busy) return;
     setPrompt('');
     // Provider/model are resolved server-side from active_image when null.
-    img.generate(text, params, null, null);
+    img.generate(text, params, null, null, referenceImages);
   };
 
   return (

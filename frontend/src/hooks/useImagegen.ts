@@ -120,19 +120,29 @@ export function useImagegen() {
     params: ImgParams,
     provider: string | null,
     model: string | null,
+    referenceImages: string[] = [],
   ) => {
     const sid = activeId;
     const turnId = crypto.randomUUID();
     if (turns.length === 0 && prompt) {
       rename(sid, prompt.length > 24 ? prompt.slice(0, 24) + '…' : prompt);
     }
+    // Reference images are inputs, not persisted in the turn (they would bloat
+    // localStorage); only the generated images are kept.
     setActiveTurns((prev) => [
       ...prev,
       { id: turnId, prompt, params, provider, model, status: 'pending', images: [] },
     ]);
     touch(sid);
 
-    const req: GenerateRequest = { prompt, size: params.size, n: params.n, provider, model };
+    const req: GenerateRequest = {
+      prompt,
+      size: params.size,
+      n: params.n,
+      provider,
+      model,
+      reference_images: referenceImages,
+    };
     try {
       const res = await generateImage(req);
       setThreads((t) => ({

@@ -1,5 +1,5 @@
 import { ActionIcon, Empty } from '@lobehub/ui';
-import { Modal } from 'antd';
+import { Image, Modal } from 'antd';
 import { createStyles } from 'antd-style';
 import { Copy, Heart, Trash2 } from 'lucide-react';
 
@@ -69,23 +69,38 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   thumbWrap: css`
     position: relative;
-  `,
-  thumb: css`
-    display: block;
-    width: 100%;
-    height: auto;
+    & .ant-image {
+      display: block;
+      width: 100%;
+    }
+    & .ant-image-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: zoom-in;
+    }
   `,
   actions: css`
     position: absolute;
     top: 6px;
     right: 6px;
+    z-index: 2;
     display: flex;
-    gap: 4px;
-    padding: 4px;
+    gap: 2px;
+    padding: 3px;
     border-radius: ${token.borderRadius}px;
-    background: ${token.colorBgMask};
+    /* Dark scrim + forced white icons: legible over any photo, both themes. */
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
     opacity: 0;
     transition: opacity 0.15s ease;
+    button {
+      color: #fff !important;
+    }
+    button:hover {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.22) !important;
+    }
   `,
   meta: css`
     padding: 8px 10px 10px;
@@ -145,7 +160,7 @@ export default function ImgLibraryPanel({ library, onUsePrompt, onDelete }: Prop
           library.map((e) => (
             <div key={e.id} className={styles.card}>
               <div className={styles.thumbWrap}>
-                <img className={styles.thumb} src={imageFileUrl(e.previewId)} alt={e.prompt} />
+                <Image src={imageFileUrl(e.previewId)} alt={e.prompt} preview={{ mask: false }} />
                 <div className={`${styles.actions} lib-actions`}>
                   <ActionIcon
                     icon={Copy}

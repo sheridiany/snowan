@@ -88,3 +88,14 @@ def test_path_rejects_traversal(home, tmp_path):
 def test_png_dims():
     assert imagegen._png_dims(PNG_1x1) == (1, 1)
     assert imagegen._png_dims(b"not a png") == (None, None)
+
+
+def test_decode_refs():
+    import base64
+
+    raw = base64.b64encode(PNG_1x1).decode()
+    # data URL keeps its declared mime; bare base64 defaults to png.
+    out = imagegen._decode_refs([f"data:image/webp;base64,{raw}", raw])
+    assert out[0] == (PNG_1x1, "image/webp")
+    assert out[1] == (PNG_1x1, "image/png")
+    assert imagegen._decode_refs([]) == []

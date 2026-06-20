@@ -10,6 +10,8 @@ export type GenerateRequest = {
   n?: number;
   provider?: string | null;
   model?: string | null;
+  /** Reference images as data URLs; when present the backend uses image-edit. */
+  reference_images?: string[];
 };
 export type GenerateResult = { images: GenImage[]; revised_prompt: string | null };
 
