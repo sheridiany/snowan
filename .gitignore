@@ -18,3 +18,6 @@ src-tauri/target/
 .DS_Store
 .idea/
 .vscode/
+
+# PyInstaller backend bundle (built, not tracked)
+frontend/src-tauri/binaries/
