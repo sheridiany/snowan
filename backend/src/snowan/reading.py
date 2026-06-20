@@ -192,40 +192,40 @@ def parse_feed(raw: str):
 
 # --- extract ---------------------------------------------------------------
 
-def _extract(content_html: str, url: str | None, *, allow_fetch: bool = True) -> tuple[str, str]:
-    """(extracted_html, body_text) via trafilatura. If the feed body is thin and a
-    url is known, fetch the article page and extract from that (only when
-    allow_fetch — bulk ingest skips it to stay fast). Falls back to the feed body's
-    text when extraction yields nothing."""
+def _extract_page(page_html: str, url: str | None) -> tuple[str, str]:
+    """Extract the article out of a FULL web page via trafilatura (strips nav/ads).
+    Only ever applied to a fetched page — never to feed-provided HTML."""
     import trafilatura
 
-    source_html = content_html
-    # A summary-only feed: the body is too short to be the real article, so go fetch it.
+    try:
+        html = trafilatura.extract(
+            page_html, url=url, output_format="html",
+            include_comments=False, include_tables=True, favor_recall=True,
+        ) or ""
+        text = trafilatura.extract(
+            page_html, url=url, output_format="txt",
+            include_comments=False, include_tables=True, favor_recall=True,
+        ) or ""
+    except Exception:  # noqa: BLE001 — malformed page
+        html, text = "", ""
+    return html, text
+
+
+def _extract(content_html: str, url: str | None, *, allow_fetch: bool = True) -> tuple[str, str]:
+    """(extracted_html, body_text) for a FEED entry.
+
+    Feeds ship clean article HTML, so it is used VERBATIM — running trafilatura over
+    already-clean content mangles it (inline <code> becomes blocks, paragraphs drop).
+    trafilatura is reserved for a real web page: only when the feed body is a thin
+    summary and we're allowed to fetch do we pull the article page and extract that.
+    """
     if allow_fetch and url and len(_text_of(content_html)) < 600:
         fetched = _fetch(url)
         if fetched["status"] == 200 and fetched["body"]:
-            source_html = fetched["body"]
-
-    extracted_html = ""
-    body_text = ""
-    if source_html:
-        try:
-            extracted_html = trafilatura.extract(
-                source_html, url=url, output_format="html",
-                include_comments=False, include_tables=True, favor_recall=True,
-            ) or ""
-            body_text = trafilatura.extract(
-                source_html, url=url, output_format="txt",
-                include_comments=False, include_tables=True, favor_recall=True,
-            ) or ""
-        except Exception:  # noqa: BLE001 — malformed HTML: fall back to the feed text
-            extracted_html, body_text = "", ""
-
-    if not body_text:
-        body_text = _text_of(content_html)
-    if not extracted_html:
-        extracted_html = content_html
-    return extracted_html, body_text
+            html, text = _extract_page(fetched["body"], url)
+            if html or text:
+                return html or content_html, text or _text_of(content_html)
+    return content_html, _text_of(content_html)
 
 
 def _text_of(html: str) -> str:
@@ -515,7 +515,10 @@ def add_url_article(url: str) -> dict | None:
     if fetched["status"] != 200 or not fetched["body"]:
         return None
     html = fetched["body"]
-    extracted_html, body_text = _extract(html, url)
+    # A pasted URL is a full web page → extract the article from it.
+    extracted_html, body_text = _extract_page(html, url)
+    if not body_text:
+        body_text = _text_of(html)
     title = _page_title(html) or url
     article_id = "art_" + uuid.uuid4().hex
     conn = _conn()
