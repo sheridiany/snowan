@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Markdown } from '@lobehub/ui';
-import { createStyles } from 'antd-style';
-import { Check, Copy, NotebookPen, Paperclip, Sparkles } from 'lucide-react';
+import { createStyles, useTheme } from 'antd-style';
+import { Check, Code2, Copy, ListChecks, NotebookPen, Paperclip, Search, Sparkles } from 'lucide-react';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
 import type { Block, Message, ToolStep } from './types';
@@ -51,26 +51,49 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 14px;
+    gap: 9px;
     padding: 24px;
   `,
-  orb: css`
-    width: 80px;
-    height: 80px;
+  markWrap: css`
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 6px;
+  `,
+  // Soft halo behind the mark for depth (rgba glow token → transparent).
+  markGlow: css`
+    position: absolute;
+    inset: -26px;
+    border-radius: 50%;
+    background: radial-gradient(circle, ${token.colorBrandGlow} 0%, transparent 68%);
+    pointer-events: none;
+  `,
+  // A lit "bubble": brand gradient + a glossy top highlight, a bottom inner
+  // shade, and an outer accent glow — reads crafted rather than a flat circle.
+  mark: css`
+    position: relative;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     background: ${token.colorBrandGradient};
-    box-shadow: 0 0 40px ${token.colorBrandGlow};
-    animation: orbfloat 6s ease-in-out infinite;
-    @keyframes orbfloat {
+    box-shadow:
+      inset 0 1.5px 1px rgba(255, 255, 255, 0.45),
+      inset 0 -3px 7px rgba(0, 0, 0, 0.18),
+      0 8px 20px -6px ${token.colorBrandGlow};
+    animation: markfloat 6s ease-in-out infinite;
+    @keyframes markfloat {
       0%,
       100% {
-        transform: translateY(-4px);
+        transform: translateY(-3px);
       }
       50% {
-        transform: translateY(4px);
+        transform: translateY(3px);
       }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -78,42 +101,49 @@ const useStyles = createStyles(({ token, css }) => ({
     }
   `,
   greeting: css`
-    font-size: 24px;
-    font-weight: 600;
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
     color: ${token.colorText};
   `,
   heroDesc: css`
-    font-size: 14px;
-    color: ${token.colorTextSecondary};
+    font-size: 13.5px;
+    color: ${token.colorTextTertiary};
+    margin-bottom: 10px;
   `,
-  chips: css`
+  cardGrid: css`
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 480px;
+  `,
+  promptCard: css`
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    max-width: 420px;
-    margin-top: 6px;
-  `,
-  chip: css`
-    padding: 7px 14px;
-    border: none;
-    border-radius: 999px;
-    background: ${token.colorFillTertiary};
-    color: ${token.colorText};
-    font-size: 13px;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 14px;
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorFillQuaternary};
+    border: 1px solid ${token.colorBorderSecondary};
+    text-align: left;
     cursor: pointer;
     transition:
       transform 0.15s ease,
-      background 0.15s ease;
-    animation: chipin 0.32s ease-out both;
+      border-color 0.15s ease,
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+    animation: cardin 0.34s ease-out both;
     &:hover {
       transform: translateY(-2px);
-      background: ${token.colorFillSecondary};
+      background: ${token.colorBgElevated};
+      border-color: ${token.colorBorder};
+      box-shadow: ${token.boxShadowSecondary};
     }
-    @keyframes chipin {
+    @keyframes cardin {
       from {
         opacity: 0;
-        transform: translateY(6px);
+        transform: translateY(8px);
       }
       to {
         opacity: 1;
@@ -123,6 +153,23 @@ const useStyles = createStyles(({ token, css }) => ({
     @media (prefers-reduced-motion: reduce) {
       animation: none;
     }
+  `,
+  promptIcon: css`
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: ${token.colorFillTertiary};
+  `,
+  promptText: css`
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.35;
+    color: ${token.colorText};
   `,
   user: css`
     align-self: flex-end;
@@ -275,11 +322,11 @@ type Props = {
 };
 
 const SUGGESTED_PROMPTS = [
-  '帮我把这段对话存成笔记',
-  '总结一下今天的工作',
-  '搜索最新的 AI 进展',
-  '解释一段代码',
-];
+  { text: '把这段对话存成笔记', icon: NotebookPen, color: 'colorCatKnowledge' },
+  { text: '总结一下今天的工作', icon: ListChecks, color: 'colorCatTime' },
+  { text: '搜索最新的 AI 进展', icon: Search, color: 'colorCatSearch' },
+  { text: '帮我解释一段代码', icon: Code2, color: 'colorCatFile' },
+] as const;
 
 export default function ChatView({
   messages,
@@ -289,6 +336,7 @@ export default function ChatView({
   onPickPrompt,
 }: Props) {
   const { styles } = useStyles();
+  const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
   // Stick to the bottom only while the user is already there; if they scroll up
   // to read history, streamed updates must not yank them back down.
@@ -315,23 +363,32 @@ export default function ChatView({
     return (
       <div className={styles.emptyScroll} ref={scrollRef}>
         <div className={styles.hero}>
-          <div className={styles.orb}>
-            <Sparkles size={34} color="#fff" />
+          <div className={styles.markWrap}>
+            <span className={styles.markGlow} />
+            <div className={styles.mark}>
+              <Sparkles size={28} color="#fff" />
+            </div>
           </div>
           <div className={styles.greeting}>{greeting}</div>
           <div className={styles.heroDesc}>开启一段新对话,Snowan 在这里。</div>
-          <div className={styles.chips}>
-            {SUGGESTED_PROMPTS.map((p, i) => (
-              <button
-                key={p}
-                type="button"
-                className={styles.chip}
-                style={{ animationDelay: `${i * 60}ms` }}
-                onClick={() => onPickPrompt?.(p)}
-              >
-                {p}
-              </button>
-            ))}
+          <div className={styles.cardGrid}>
+            {SUGGESTED_PROMPTS.map((p, i) => {
+              const Ico = p.icon;
+              return (
+                <button
+                  key={p.text}
+                  type="button"
+                  className={styles.promptCard}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                  onClick={() => onPickPrompt?.(p.text)}
+                >
+                  <span className={styles.promptIcon}>
+                    <Ico size={16} color={theme[p.color] as string} />
+                  </span>
+                  <span className={styles.promptText}>{p.text}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
