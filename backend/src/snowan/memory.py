@@ -343,6 +343,23 @@ def sync_index() -> None:
     knowledge_index.reconcile("memory", docs)
 
 
+def auto_context(query: str, k: int = 3, min_score: float = 0.005) -> str:
+    """Memories relevant to the current turn, formatted for injection into the agent
+    instructions (threshold + top-k gated so an unrelated turn injects nothing).
+    Reinforces the surfaced memories. Returns "" when nothing is relevant."""
+    if not query.strip():
+        return ""
+    hits = [
+        h for h in knowledge_search.search(query, 8)
+        if h.get("source_type") == "memory" and h.get("score", 0) >= min_score
+    ][:k]
+    if not hits:
+        return ""
+    reinforce([h["document_id"] for h in hits])
+    lines = "\n".join(f"- {h['snippet']}" for h in hits)
+    return "你记得关于用户的相关长期记忆(供参考,自然融入回答,不要照搬复述):\n" + lines
+
+
 def clear_all() -> dict:
     """Erase all long-term memory — entries (+ their index rows), profile, and daily
     logs. The profile is backed up first. Returns counts of what was removed."""

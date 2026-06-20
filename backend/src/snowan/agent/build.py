@@ -83,9 +83,10 @@ def _instructions(prefs: dict) -> str:
     return text
 
 
-def build_agent() -> Agent:
+def build_agent(extra_instructions: str = "") -> Agent:
     """Tools are gated per the approval_mode preference:
-    auto = nothing gated · ask = mutating/shell gated · strict = every tool gated."""
+    auto = nothing gated · ask = mutating/shell gated · strict = every tool gated.
+    extra_instructions is appended for this run (e.g. memory auto-retrieved for the turn)."""
     prefs = load_prefs()
     mode = prefs.get("approval_mode", "ask")
     disabled = set(prefs.get("disabled_tools") or [])
@@ -101,9 +102,12 @@ def build_agent() -> Agent:
         tools = [*readonly, *(Tool(f, requires_approval=True) for f in mutating)]
     # MCP toolsets are NOT attached here — they're entered resiliently per chat run
     # (server/chat.py) so one failed server can't break the whole turn.
+    instructions = _instructions(prefs)
+    if extra_instructions:
+        instructions += "\n\n" + extra_instructions
     return Agent(
         build_model(load_settings()),
-        instructions=_instructions(prefs),
+        instructions=instructions,
         tools=tools,
         output_type=[str, DeferredToolRequests],
     )

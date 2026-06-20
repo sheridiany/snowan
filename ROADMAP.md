@@ -110,8 +110,11 @@ genuine `recall_memory` use) + hard (a **manual consolidation pass** that never 
 `propose()` returns a reviewable diff, `apply()` commits only user-approved items; L3 never
 auto-written). Tools: `remember` (auto-runs, audited) + `recall_memory`. `/api/memory/*` +
 a 记忆 settings panel (browse/edit entries, edit profile, run + approve consolidation).
-_Deferred: per-turn auto-retrieve injection (agent recalls via tools for now); the consolidation
-"轻/深" split. QwenPaw `agents/memory/reme_light_memory_manager.py` (the "dream" pass)._
+**Per-turn auto-retrieve**: each turn injects the memories relevant to the query (threshold +
+top-k gated, reinforced) into the agent instructions. A product-grade panel ("Snowan 记得你"
+prose + plain-sentence list, internals hidden) + an in-chat "记忆已更新" capture pill + a 暂停
+记忆 toggle + 清空所有记忆. _Deferred: the consolidation "轻/深" split. QwenPaw
+`agents/memory/reme_light_memory_manager.py` (the "dream" pass)._
 
 ## 🟡 Agent capabilities — current focus
 

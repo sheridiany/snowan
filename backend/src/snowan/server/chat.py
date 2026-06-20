@@ -25,7 +25,7 @@ from pydantic_ai.usage import UsageLimits
 from ..agent.build import build_agent
 from ..agent.mcp import build_toolsets
 from ..agent.sessions import delete_history, load_history, save_history
-from .. import audit
+from .. import audit, memory
 from ..config import load_prefs
 from ..extract import extract_text as _extract_text
 
@@ -168,9 +168,19 @@ async def _live_mcp(stack: AsyncExitStack) -> list:
     return live
 
 
+def _query_text(prompt: Any) -> str:
+    if isinstance(prompt, str):
+        return prompt
+    if isinstance(prompt, (list, tuple)):
+        return " ".join(p for p in prompt if isinstance(p, str))
+    return ""
+
+
 async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
     # Build per-request so a model/key change saved in Settings takes effect at once.
-    agent = build_agent()
+    # Auto-retrieve memory relevant to this turn and inject it (threshold-gated).
+    mem_ctx = memory.auto_context(_query_text(prompt)) if load_prefs().get("memory_enabled", True) else ""
+    agent = build_agent(extra_instructions=mem_ctx)
     async with AsyncExitStack() as stack:
         toolsets = await _live_mcp(stack)
         async with agent.iter(
