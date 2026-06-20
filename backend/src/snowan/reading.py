@@ -24,7 +24,12 @@ _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
 }
 _LINK_REL = "noopener noreferrer nofollow"
 _MAX_BODY_BYTES = 5 * 1024 * 1024  # cap a fetched feed/article body
+_MAX_ENTRIES = 50  # ingest only the most-recent N per feed (some feeds ship 1000+)
 _FUTURE_SLACK = timedelta(hours=24)  # clamp absurd future dates to now+24h
+_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
 
 
 def _now() -> str:
@@ -98,7 +103,7 @@ def _fetch(url: str, *, etag: str | None = None, last_modified: str | None = Non
     the feed and move on."""
     import httpx
 
-    headers = {"User-Agent": "Snowan/1.0 (+local reader)"}
+    headers = {"User-Agent": _UA}
     if etag:
         headers["If-None-Match"] = etag
     if last_modified:
@@ -161,24 +166,42 @@ def _entry_image(entry, content_html: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _cap_feed_body(raw: str, n: int = _MAX_ENTRIES + 10) -> str:
+    """Truncate the feed XML after the n-th item/entry so feedparser doesn't chew
+    through pathological feeds (e.g. OpenAI ships 1000+ entries / 600KB). Caps by
+    ENTRY COUNT, not bytes, so full-content feeds with large entries are unaffected.
+    Returns raw unchanged when the feed has <= n entries."""
+    lower = raw.lower()
+    close = "</item>" if lower.count("</item>") >= lower.count("</entry>") else "</entry>"
+    idx = 0
+    for _ in range(n):
+        j = lower.find(close, idx)
+        if j == -1:
+            return raw  # fewer than n entries — nothing to cap
+        idx = j + len(close)
+    truncated = raw[:idx]
+    return truncated + ("</channel></rss>" if close == "</item>" else "</feed>")
+
+
 def parse_feed(raw: str):
-    """feedparser over a literal feed document. Returns the parsed object (no network)."""
+    """feedparser over a literal feed document (capped to recent entries). No network."""
     import feedparser
 
-    return feedparser.parse(raw)
+    return feedparser.parse(_cap_feed_body(raw))
 
 
 # --- extract ---------------------------------------------------------------
 
-def _extract(content_html: str, url: str | None) -> tuple[str, str]:
+def _extract(content_html: str, url: str | None, *, allow_fetch: bool = True) -> tuple[str, str]:
     """(extracted_html, body_text) via trafilatura. If the feed body is thin and a
-    url is known, fetch the article page and extract from that. Falls back to the
-    feed body's text when extraction yields nothing."""
+    url is known, fetch the article page and extract from that (only when
+    allow_fetch — bulk ingest skips it to stay fast). Falls back to the feed body's
+    text when extraction yields nothing."""
     import trafilatura
 
     source_html = content_html
     # A summary-only feed: the body is too short to be the real article, so go fetch it.
-    if url and len(_text_of(content_html)) < 600:
+    if allow_fetch and url and len(_text_of(content_html)) < 600:
         fetched = _fetch(url)
         if fetched["status"] == 200 and fetched["body"]:
             source_html = fetched["body"]
@@ -397,14 +420,17 @@ def _ingest(feed_id: int, body: str) -> int:
     # One `title` value feeds both the articles row and the FTS row — a contentless
     # fts5 'delete' must replay the exact inserted columns, so they stay identical.
     pending: list[tuple] = []
-    for entry in parsed.entries:
+    for entry in parsed.entries[:_MAX_ENTRIES]:
         guid = entry.get("id") or entry.get("link")
         if not guid or guid in existing:
             continue
         existing.add(guid)  # de-dup within this batch too
         content_html = _entry_content_html(entry)
         url = entry.get("link")
-        extracted_html, body_text = _extract(content_html, url)
+        # Bulk ingest is shallow: never fetch the article page here (a 1000-entry,
+        # summary-only feed would mean 1000 blocking page fetches). Feeds that ship
+        # full content still render fully; summary feeds show the summary + 原文 link.
+        extracted_html, body_text = _extract(content_html, url, allow_fetch=False)
         pending.append((
             "art_" + uuid.uuid4().hex, feed_id, guid, url,
             entry.get("title") or "(无标题)",
