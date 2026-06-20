@@ -15,6 +15,7 @@ export type Prefs = {
   brave_api_key: string;
   jina_api_key: string;
   disabled_tools: string[];
+  memory_enabled: boolean;
 };
 export type About = {
   version: string;

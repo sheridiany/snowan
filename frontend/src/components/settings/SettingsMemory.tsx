@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Text } from '@lobehub/ui';
-import { App, Dropdown, Input, InputNumber, Modal, Select, Spin } from 'antd';
+import { App, Dropdown, Input, InputNumber, Modal, Select, Spin, Switch } from 'antd';
 import { createStyles, useTheme } from 'antd-style';
 import { Dot, MoreHorizontal, Pencil, Plus, Sparkles } from 'lucide-react';
 import {
@@ -8,6 +8,7 @@ import {
   createEntry,
   updateEntry,
   deleteEntry,
+  clearAllMemory,
   getProfile,
   saveProfile,
   consolidate,
@@ -17,6 +18,7 @@ import {
   type ConsolidationDiff,
   type DiffItem,
 } from '../../api/memory';
+import { getPrefs, savePrefs } from '../../api/system';
 
 const TYPE_LABELS: Record<MemoryType, string> = {
   fact: '事实',
@@ -194,7 +196,7 @@ const useStyles = createStyles(({ token, css }) => ({
     margin-top: 2px;
   `,
   footer: css`
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
     color: ${token.colorTextSecondary};
@@ -202,6 +204,28 @@ const useStyles = createStyles(({ token, css }) => ({
     cursor: pointer;
     &:hover {
       color: ${token.colorText};
+    }
+  `,
+  footRow: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid ${token.colorBorderSecondary};
+    padding-top: 16px;
+  `,
+  footRight: css`
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12.5px;
+    color: ${token.colorTextTertiary};
+  `,
+  danger: css`
+    color: ${token.colorError};
+    cursor: pointer;
+    &:hover {
+      opacity: 0.8;
     }
   `,
   field: css`
@@ -345,6 +369,8 @@ export default function SettingsMemory() {
   const [proposing, setProposing] = useState(false);
   const [applying, setApplying] = useState(false);
 
+  const [memOn, setMemOn] = useState(true);
+
   const loadEntries = () => {
     setLoadError(false);
     return listEntries()
@@ -362,8 +388,42 @@ export default function SettingsMemory() {
         setSavedProfile(p.text);
       })
       .catch(() => undefined);
+    getPrefs()
+      .then((p) => setMemOn(p.memory_enabled !== false))
+      .catch(() => undefined);
     loadEntries();
   }, []);
+
+  const toggleMem = async (v: boolean) => {
+    setMemOn(v);
+    try {
+      await savePrefs({ memory_enabled: v });
+    } catch {
+      setMemOn(!v);
+      message.error('保存失败');
+    }
+  };
+
+  const clearAll = () =>
+    modal.confirm({
+      title: '清空所有记忆?',
+      content: '会删除全部记忆条目、画像与日志,且不可撤销(画像会先自动备份一份)。',
+      okText: '清空',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await clearAllMemory();
+          setEntries([]);
+          setProfile('');
+          setSavedProfile('');
+          setDiff(null);
+          message.success('已清空');
+        } catch {
+          message.error('清空失败');
+        }
+      },
+    });
 
   const persistProfile = async () => {
     setSavingProfile(true);
@@ -605,11 +665,20 @@ export default function SettingsMemory() {
         ) : null}
       </section>
 
-      {/* footer — manual add demoted */}
-      <span className={styles.footer} onClick={() => setAddOpen(true)}>
-        <Plus size={15} />
-        手动添加一条
-      </span>
+      {/* footer — manual add demoted + pause / clear */}
+      <div className={styles.footRow}>
+        <span className={styles.footer} onClick={() => setAddOpen(true)}>
+          <Plus size={15} />
+          手动添加一条
+        </span>
+        <div className={styles.footRight}>
+          <span>{memOn ? '记忆开启中' : '已暂停'}</span>
+          <Switch size="small" checked={memOn} onChange={toggleMem} />
+          <span className={styles.danger} role="button" tabIndex={0} onClick={clearAll}>
+            清空所有记忆
+          </span>
+        </div>
+      </div>
 
       <EntryModal open={addOpen} onClose={() => setAddOpen(false)} onDone={loadEntries} />
       <EntryModal open={!!editing} edit={editing} onClose={() => setEditing(null)} onDone={loadEntries} />

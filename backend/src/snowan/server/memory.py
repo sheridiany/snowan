@@ -57,6 +57,12 @@ def delete_entry(mem_id: str) -> dict:
     return {"ok": memory.delete_entry(mem_id)}
 
 
+@router.delete("/all")
+def clear_all() -> dict:
+    """Erase all long-term memory (entries + profile + daily logs); profile backed up."""
+    return memory.clear_all()
+
+
 @router.get("/profile")
 def get_profile() -> dict:
     return {"text": memory.get_profile()}

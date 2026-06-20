@@ -343,6 +343,26 @@ def sync_index() -> None:
     knowledge_index.reconcile("memory", docs)
 
 
+def clear_all() -> dict:
+    """Erase all long-term memory — entries (+ their index rows), profile, and daily
+    logs. The profile is backed up first. Returns counts of what was removed."""
+    _ensure()
+    n = 0
+    for m in _all_entries():
+        m["_path"].unlink(missing_ok=True)
+        knowledge_index.remove_document(m["id"])
+        n += 1
+    if PROFILE_PATH.exists():
+        _backup(PROFILE_PATH, "profile")
+        PROFILE_PATH.unlink(missing_ok=True)
+    days = 0
+    if DAILY.exists():
+        for p in DAILY.glob("*.md"):
+            p.unlink(missing_ok=True)
+            days += 1
+    return {"entries": n, "daily": days}
+
+
 def recall(query: str, limit: int = 5, reinforce: bool = False) -> list[dict]:
     """Memory-only recall (decay-aware). reinforce=True only for genuine agent use
     (the recall_memory tool); the panel preview passes False so browsing doesn't bump

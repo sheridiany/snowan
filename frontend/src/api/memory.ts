@@ -64,6 +64,8 @@ export const updateEntry = (
 export const deleteEntry = (id: string) =>
   fetch(api(`/api/memory/entries/${encodeURIComponent(id)}`), { method: 'DELETE' });
 
+export const clearAllMemory = () => fetch(api('/api/memory/all'), { method: 'DELETE' });
+
 export const getProfile = () =>
   fetch(api('/api/memory/profile')).then((r) => j<{ text: string }>(r));
 

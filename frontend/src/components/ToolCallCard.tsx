@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Highlighter, Text } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
-import { Check, ChevronRight, X } from 'lucide-react';
+import { Brain, Check, ChevronRight, X } from 'lucide-react';
 import type { ToolStep } from './types';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -96,6 +96,28 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 6px;
   `,
+  memPill: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 5px 11px 5px 9px;
+    border-radius: 999px;
+    background: ${token.colorFillQuaternary};
+    color: ${token.colorTextTertiary};
+    font-size: 12px;
+  `,
+  memLabel: css`
+    flex: none;
+    color: ${token.colorTextSecondary};
+  `,
+  memContent: css`
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
   label: css`
     font-size: 11px;
     letter-spacing: 0.04em;
@@ -169,6 +191,18 @@ export default function ToolCallCard({ step }: { step: ToolStep }) {
   const hasArgs = !!step.args && Object.keys(step.args).length > 0;
   const expandable = hasArgs || step.result !== undefined;
   const summary = summarize(step);
+
+  // remember runs silently — show a calm "记忆已更新" pill in the stream, not a tool row.
+  if (step.name === 'remember') {
+    const content = typeof step.args?.content === 'string' ? step.args.content : summary;
+    return (
+      <div className={styles.memPill}>
+        <Brain size={13} style={{ flex: 'none', color: theme.colorPrimary }} />
+        <span className={styles.memLabel}>{running ? '正在记忆…' : '记忆已更新'}</span>
+        {content && <span className={styles.memContent}>{content}</span>}
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -72,13 +72,14 @@ def _instructions(prefs: dict) -> str:
             "\n\n可用技能(与当前任务相关时,先调用 load_skill(name) 读取完整步骤再按它执行):\n"
             + "\n".join(f"- {s['name']}: {s['description']}" for s in enabled)
         )
-    profile = memory.profile_text()
-    if profile:
-        text += "\n\n## 用户长期画像(稳定信息,优先遵循)\n" + profile
-    text += (
-        "\n\n关于长期记忆:涉及用户的长期偏好/身份/过往决定/项目事实时,先用 recall_memory 查证;"
-        "当用户让你「记一下」或你发现值得长期记住的事实时,用 remember 记录(别记一次性琐事或敏感信息)。"
-    )
+    if prefs.get("memory_enabled", True):
+        profile = memory.profile_text()
+        if profile:
+            text += "\n\n## 用户长期画像(稳定信息,优先遵循)\n" + profile
+        text += (
+            "\n\n关于长期记忆:涉及用户的长期偏好/身份/过往决定/项目事实时,先用 recall_memory 查证;"
+            "当用户让你「记一下」或你发现值得长期记住的事实时,用 remember 记录(别记一次性琐事或敏感信息)。"
+        )
     return text
 
 
@@ -88,6 +89,8 @@ def build_agent() -> Agent:
     prefs = load_prefs()
     mode = prefs.get("approval_mode", "ask")
     disabled = set(prefs.get("disabled_tools") or [])
+    if not prefs.get("memory_enabled", True):  # paused: drop the memory tools too
+        disabled |= {"remember", "recall_memory"}
     readonly = [f for f in READONLY_FNS if f.__name__ not in disabled]
     mutating = [f for f in MUTATING_FNS if f.__name__ not in disabled]
     if mode == "strict":
