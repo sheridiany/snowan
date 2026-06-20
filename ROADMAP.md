@@ -156,10 +156,16 @@ context isolation (M). **Out of scope:** scheduled / proactive / cron tasks.
 - Make the right "详情" panel useful (sources/context, todos, audit for the
   active chat); persist 偏好/workspace settings.
 
-## ⬜ Phase 7 — Engineering / real desktop  (M–L)
+## 🟡 Phase 7 — Engineering / real desktop  (M–L)
 
-- **Backend as a Tauri sidecar** — auto-launch on app start, no manual `uvicorn`.
-- **Compaction** for long chats (`ProcessHistory`).
+- **Backend as a Tauri sidecar** — _done ✅_. PyInstaller onedir frozen backend shipped
+  as a Tauri resource, spawned by Rust on startup (dev: `uv run` from source · release:
+  the bundled binary), reachable on :8787 — no manual `uvicorn`. Child inherits HOME for
+  `~/.snowan`; a free-port-8787 startup backstop reaps orphans from unclean exits. Mirrors
+  QwenPaw's proven pipeline. _Deferred: codesign/notarize for distribution (ad-hoc local
+  works); kill the orphan AT quit (stdin-EOF watcher) so it doesn't linger till next launch._
+- **Compaction** — _done ✅_. `ProcessHistory` summarizes long histories per-request and
+  folds the summary into the memory daily log; raw on-disk sessions untouched.
 - **Plugins** (hot-loaded extensions) — lowest priority for single-user. _QwenPaw
   `plugins/`._
 
