@@ -28,8 +28,8 @@ class ProfileBody(BaseModel):
 
 
 @router.get("/entries")
-def list_entries() -> list[dict]:
-    return memory.list_entries()
+def list_entries(include_invalid: bool = False) -> list[dict]:
+    return memory.list_entries(include_invalid=include_invalid)
 
 
 @router.post("/entries")

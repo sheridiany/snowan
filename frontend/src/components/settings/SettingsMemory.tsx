@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, Text } from '@lobehub/ui';
 import { App, Dropdown, Input, InputNumber, Modal, Select, Spin, Switch } from 'antd';
 import { createStyles, useTheme } from 'antd-style';
-import { Dot, MoreHorizontal, Pencil, Plus, Sparkles } from 'lucide-react';
+import { ChevronRight, Dot, MoreHorizontal, Pencil, Plus, Sparkles } from 'lucide-react';
 import {
   listEntries,
   createEntry,
@@ -228,6 +228,29 @@ const useStyles = createStyles(({ token, css }) => ({
       opacity: 0.8;
     }
   `,
+  pausedBanner: css`
+    background: ${token.colorWarningBg};
+    color: ${token.colorWarningText};
+    border-radius: ${token.borderRadiusLG}px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    line-height: 1.5;
+  `,
+  archHead: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: ${token.colorTextTertiary};
+    cursor: pointer;
+    &:hover {
+      color: ${token.colorText};
+    }
+  `,
+  archDim: css`
+    opacity: 0.55;
+  `,
   field: css`
     display: flex;
     flex-direction: column;
@@ -371,9 +394,11 @@ export default function SettingsMemory() {
 
   const [memOn, setMemOn] = useState(true);
 
+  const [archivedOpen, setArchivedOpen] = useState(false);
+
   const loadEntries = () => {
     setLoadError(false);
-    return listEntries()
+    return listEntries(true) // include archived (deprecated) so they stay visible + restorable
       .then((list) => {
         setEntries(list);
         setLoaded(true);
@@ -465,6 +490,17 @@ export default function SettingsMemory() {
       },
     });
 
+  const setValid = async (e: MemoryEntry, valid: boolean) => {
+    const prev = entries;
+    setEntries((list) => list.map((x) => (x.id === e.id ? { ...x, valid } : x)));
+    try {
+      await updateEntry(e.id, { valid });
+    } catch {
+      setEntries(prev);
+      message.error('操作失败');
+    }
+  };
+
   const propose = async () => {
     setProposing(true);
     setDiff(null);
@@ -505,9 +541,16 @@ export default function SettingsMemory() {
   };
 
   const lines = profileLines(profile);
+  const active = entries.filter((e) => e.valid);
+  const archived = entries.filter((e) => !e.valid);
 
   return (
     <div className={styles.wrap}>
+      {!memOn && (
+        <div className={styles.pausedBanner}>
+          记忆已暂停 — 助手暂时不会保存或引用记忆,现有记忆仍保留。
+        </div>
+      )}
       {/* L3 — 画像 */}
       <section>
         <div className={styles.head}>
@@ -573,37 +616,88 @@ export default function SettingsMemory() {
               重试
             </Button>
           </div>
-        ) : entries.length === 0 ? (
+        ) : active.length === 0 && archived.length === 0 ? (
           <div className={styles.empty}>
             <div>Snowan 还在认识你。</div>
             <div>聊得越多,它记得越多——也可以直接说「记住…」。</div>
           </div>
         ) : (
-          <div className={styles.list}>
-            {entries.map((e) => (
-              <div key={e.id} className={styles.row}>
-                <Dot size={18} className={styles.rowDot} />
-                <div className={styles.rowBody}>
-                  <div className={styles.rowText}>{e.content}</div>
-                  <div className={styles.rowMeta}>{recordedAt(e.created_at)}</div>
-                </div>
-                <Dropdown
-                  trigger={['click']}
-                  menu={{
-                    items: [
-                      { key: 'edit', label: '编辑' },
-                      { key: 'forget', label: '忘掉', danger: true },
-                    ],
-                    onClick: ({ key }) => (key === 'edit' ? setEditing(e) : forget(e)),
-                  }}
-                >
-                  <span className={cx(styles.menu, 'mem-menu')} role="button" tabIndex={0} aria-label="更多操作">
-                    <MoreHorizontal size={16} />
-                  </span>
-                </Dropdown>
+          <>
+            {active.length > 0 ? (
+              <div className={styles.list}>
+                {active.map((e) => (
+                  <div key={e.id} className={styles.row}>
+                    <Dot size={18} className={styles.rowDot} />
+                    <div className={styles.rowBody}>
+                      <div className={styles.rowText}>{e.content}</div>
+                      <div className={styles.rowMeta}>{recordedAt(e.created_at)}</div>
+                    </div>
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        items: [
+                          { key: 'edit', label: '编辑' },
+                          { key: 'archive', label: '弃用(停用但保留)' },
+                          { key: 'forget', label: '忘掉', danger: true },
+                        ],
+                        onClick: ({ key }) =>
+                          key === 'edit'
+                            ? setEditing(e)
+                            : key === 'archive'
+                              ? setValid(e, false)
+                              : forget(e),
+                      }}
+                    >
+                      <span className={cx(styles.menu, 'mem-menu')} role="button" tabIndex={0} aria-label="更多操作">
+                        <MoreHorizontal size={16} />
+                      </span>
+                    </Dropdown>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className={styles.empty}>在用的记忆都清空了。</div>
+            )}
+
+            {archived.length > 0 && (
+              <>
+                <span className={styles.archHead} onClick={() => setArchivedOpen((v) => !v)}>
+                  <ChevronRight
+                    size={13}
+                    style={{ transform: archivedOpen ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}
+                  />
+                  已弃用 · {archived.length}
+                </span>
+                {archivedOpen && (
+                  <div className={cx(styles.list, styles.archDim)}>
+                    {archived.map((e) => (
+                      <div key={e.id} className={styles.row}>
+                        <Dot size={18} className={styles.rowDot} />
+                        <div className={styles.rowBody}>
+                          <div className={styles.rowText}>{e.content}</div>
+                          <div className={styles.rowMeta}>已弃用 · {recordedAt(e.created_at)}</div>
+                        </div>
+                        <Dropdown
+                          trigger={['click']}
+                          menu={{
+                            items: [
+                              { key: 'restore', label: '恢复' },
+                              { key: 'forget', label: '忘掉', danger: true },
+                            ],
+                            onClick: ({ key }) => (key === 'restore' ? setValid(e, true) : forget(e)),
+                          }}
+                        >
+                          <span className={cx(styles.menu, 'mem-menu')} role="button" tabIndex={0} aria-label="更多操作">
+                            <MoreHorizontal size={16} />
+                          </span>
+                        </Dropdown>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </section>
 

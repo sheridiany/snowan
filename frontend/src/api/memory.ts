@@ -46,8 +46,10 @@ const send = <T>(method: string, path: string, body?: unknown): Promise<T> =>
     body: body ? JSON.stringify(body) : undefined,
   }).then((r) => j<T>(r));
 
-export const listEntries = () =>
-  fetch(api('/api/memory/entries')).then((r) => j<MemoryEntry[]>(r));
+export const listEntries = (includeInvalid = false) =>
+  fetch(api(`/api/memory/entries${includeInvalid ? '?include_invalid=true' : ''}`)).then((r) =>
+    j<MemoryEntry[]>(r),
+  );
 
 export const createEntry = (patch: {
   content: string;
