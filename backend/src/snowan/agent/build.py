@@ -1,6 +1,8 @@
 from pydantic_ai import Agent, DeferredToolRequests, Tool
+from pydantic_ai.capabilities import ProcessHistory
 
 from .. import memory
+from .compaction import compact
 from .. import skills as skills_store
 from ..config import load_prefs, load_settings
 from .providers import build_model
@@ -110,4 +112,5 @@ def build_agent(extra_instructions: str = "") -> Agent:
         instructions=instructions,
         tools=tools,
         output_type=[str, DeferredToolRequests],
+        capabilities=[ProcessHistory(compact)],  # summarize long histories per-request
     )
