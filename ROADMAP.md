@@ -99,13 +99,19 @@ portable Markdown vault as source of truth; a derived SQLite index; hybrid
   `calendar_sources.py`._
 - **2f Mermaid**: render mermaid blocks in chat + notes.
 
-## ⬜ Phase 3 — Long-term memory  (M — personalization)
+## ✅ Phase 3 — Long-term memory  (M — personalization)
 
-- `MEMORY.md` + `PROFILE.md` in `~/.snowan/memory/`; a `memory_search` tool;
-  auto-retrieve relevant memory each turn (threshold-gated); summarize on
-  compaction; a manual "consolidate" action (not the dropped nightly cron).
-  _QwenPaw `agents/memory/reme_light_memory_manager.py`._ Wrap `reme-ai` or a
-  lean home-grown markdown+embedding store.
+_Done._ Home-grown (no reme-ai), reusing the Phase 2 hybrid index. Layered store under
+`~/.snowan/memory/` (portable Markdown, 0700): **L1** `daily/*.md` append-only episodic
+log · **L2** `entries/*.md` atomic facts with decay metadata, indexed as the highest-weight
+`source_type='memory'` · **L3** `PROFILE.md` injected into the agent instructions each turn.
+**Forgetting** is soft (recall score = relevance × recency-decay × importance, reinforced on
+genuine `recall_memory` use) + hard (a **manual consolidation pass** that never auto-writes —
+`propose()` returns a reviewable diff, `apply()` commits only user-approved items; L3 never
+auto-written). Tools: `remember` (auto-runs, audited) + `recall_memory`. `/api/memory/*` +
+a 记忆 settings panel (browse/edit entries, edit profile, run + approve consolidation).
+_Deferred: per-turn auto-retrieve injection (agent recalls via tools for now); the consolidation
+"轻/深" split. QwenPaw `agents/memory/reme_light_memory_manager.py` (the "dream" pass)._
 
 ## 🟡 Agent capabilities — current focus
 
