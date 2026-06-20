@@ -1,23 +1,18 @@
 import { Empty } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { Newspaper, PenTool } from 'lucide-react';
+import { PenTool } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { ListPane, type NavProps, type View } from '../shell/ListPane';
 import DetailPane from '../../ui/DetailPane';
 
-type PlaceholderView = Extract<View, 'design' | 'news'>;
+type PlaceholderView = Extract<View, 'design'>;
 
 const SPEC: Record<PlaceholderView, { label: string; icon: LucideIcon; description: string }> = {
   design: {
     label: '设计',
     icon: PenTool,
     description: '探索界面与视觉设计方案。这个板块正在规划中。',
-  },
-  news: {
-    label: '新闻',
-    icon: Newspaper,
-    description: '聚合并追踪你关心的资讯。这个板块正在规划中。',
   },
 };
 

@@ -14,6 +14,7 @@ from .knowledge import router as knowledge_router  # noqa: E402
 from .mcp import router as mcp_router  # noqa: E402
 from .memory import router as memory_router  # noqa: E402
 from .providers import router as providers_router  # noqa: E402
+from .reading import router as reading_router  # noqa: E402
 from .skills import router as skills_router  # noqa: E402
 from .system import router as system_router  # noqa: E402
 
@@ -50,6 +51,7 @@ app.include_router(mcp_router)
 app.include_router(memory_router)
 app.include_router(skills_router)
 app.include_router(imagegen_router)
+app.include_router(reading_router)
 
 
 @app.get("/health")

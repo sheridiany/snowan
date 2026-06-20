@@ -2,9 +2,9 @@ import { Icon } from '@lobehub/ui';
 import { Tooltip } from 'antd';
 import { createStyles, useThemeMode } from 'antd-style';
 import {
+  BookOpen,
   MessageSquare,
   Moon,
-  Newspaper,
   PenTool,
   Settings,
   Shapes,
@@ -20,7 +20,7 @@ export type View =
   | 'conversations'
   | 'draw'
   | 'design'
-  | 'news'
+  | 'reading'
   | 'settings';
 
 // Section nav + new-chat + settings/theme controls are threaded into every list
@@ -35,7 +35,7 @@ const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
   { view: 'conversations', label: '对话', icon: MessageSquare },
   { view: 'draw', label: '画图', icon: Shapes },
   { view: 'design', label: '设计', icon: PenTool },
-  { view: 'news', label: '新闻', icon: Newspaper },
+  { view: 'reading', label: '阅读', icon: BookOpen },
 ];
 
 // Column 2 — the universal list pane. It carries the horizontal section nav at the
