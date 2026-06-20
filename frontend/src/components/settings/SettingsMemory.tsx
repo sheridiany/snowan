@@ -1,15 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button, Text } from '@lobehub/ui';
-import { App, Dropdown, Input, InputNumber, Modal, Select, Spin, Tag } from 'antd';
-import { createStyles } from 'antd-style';
-import {
-  Brain,
-  MoreHorizontal,
-  Plus,
-  RefreshCw,
-  Sparkles,
-} from 'lucide-react';
-import { Section } from './_kit';
+import { App, Dropdown, Input, InputNumber, Modal, Select, Spin } from 'antd';
+import { createStyles, useTheme } from 'antd-style';
+import { Dot, MoreHorizontal, Pencil, Plus, Sparkles } from 'lucide-react';
 import {
   listEntries,
   createEntry,
@@ -38,99 +31,119 @@ const TYPE_OPTIONS = (Object.keys(TYPE_LABELS) as MemoryType[]).map((t) => ({
   label: TYPE_LABELS[t],
 }));
 
+// Human-voiced labels for the consolidation diff — never expose the pipeline words.
 const KIND_LABELS: Record<DiffItem['kind'], string> = {
-  add: '新增',
-  update: '更新',
-  deprecate: '弃用',
-  promote: '提升到画像',
-};
-const KIND_COLORS: Record<DiffItem['kind'], string> = {
-  add: 'success',
-  update: 'processing',
-  deprecate: 'warning',
-  promote: 'purple',
+  add: '记住',
+  update: '修订',
+  deprecate: '不再提起',
+  promote: '写进画像',
 };
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 30px;
   `,
-  note: css`
+  head: css`
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  `,
+  hTitle: css`
+    font-size: 15.5px;
+    font-weight: 600;
+    color: ${token.colorText};
+  `,
+  hSub: css`
     font-size: 12.5px;
-    line-height: 1.6;
+    color: ${token.colorTextTertiary};
+    margin-top: 2px;
+    line-height: 1.5;
+  `,
+  link: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: ${token.colorTextSecondary};
+    cursor: pointer;
+    flex: none;
+    &:hover {
+      color: ${token.colorText};
+    }
+  `,
+  profileCard: css`
+    margin-top: 11px;
+    background: ${token.colorBgContainer};
+    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${token.borderRadiusLG}px;
+    padding: 15px 18px;
+    line-height: 1.8;
+    color: ${token.colorTextSecondary};
+    font-size: 13.5px;
+  `,
+  profileEmpty: css`
     color: ${token.colorTextTertiary};
   `,
-  profileFoot: css`
+  foot: css`
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
     margin-top: 10px;
   `,
-  toolbar: css`
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 4px;
-  `,
-  cards: css`
+  list: css`
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    margin-top: 4px;
   `,
-  card: css`
+  row: css`
     display: flex;
+    gap: 9px;
     align-items: flex-start;
-    gap: 11px;
-    padding: 12px 12px 12px 13px;
-    border-radius: ${token.borderRadiusLG}px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorFillQuaternary};
+    padding: 13px 4px;
+    border-top: 1px solid ${token.colorBorderSecondary};
+    &:last-child {
+      border-bottom: 1px solid ${token.colorBorderSecondary};
+    }
+    &:hover .mem-menu {
+      opacity: 1;
+    }
   `,
-  cardIcon: css`
+  rowDot: css`
     flex: none;
-    width: 30px;
-    height: 30px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    background: ${token.colorPrimaryBg};
-    color: ${token.colorPrimary};
+    margin-top: 2px;
+    color: ${token.colorTextQuaternary};
   `,
-  cardBody: css`
+  rowBody: css`
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
   `,
-  cardContent: css`
+  rowText: css`
     font-size: 13.5px;
     line-height: 1.55;
     color: ${token.colorText};
     word-break: break-word;
   `,
-  meta: css`
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
+  rowMeta: css`
     font-size: 11.5px;
     color: ${token.colorTextTertiary};
+    margin-top: 3px;
   `,
-  cardMenu: css`
+  menu: css`
     flex: none;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: ${token.borderRadiusSM}px;
     color: ${token.colorTextTertiary};
     cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s;
     &:hover {
       background: ${token.colorFillSecondary};
       color: ${token.colorText};
@@ -140,10 +153,56 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 36px 0;
+    gap: 8px;
+    padding: 34px 0;
     color: ${token.colorTextTertiary};
     font-size: 13px;
+    text-align: center;
+  `,
+  suggest: css`
+    background: ${token.colorFillQuaternary};
+    border-radius: ${token.borderRadiusLG}px;
+    padding: 16px 18px;
+  `,
+  suggestHead: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `,
+  diffRow: css`
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 11px 0;
+    border-top: 1px solid ${token.colorBorderSecondary};
+    cursor: pointer;
+  `,
+  diffDropped: css`
+    opacity: 0.45;
+  `,
+  pill: css`
+    display: inline-flex;
+    font-size: 11.5px;
+    padding: 1px 8px;
+    border-radius: ${token.borderRadiusSM}px;
+    margin-bottom: 3px;
+  `,
+  reason: css`
+    font-size: 12px;
+    line-height: 1.5;
+    color: ${token.colorTextTertiary};
+    margin-top: 2px;
+  `,
+  footer: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: ${token.colorTextSecondary};
+    font-size: 13px;
+    cursor: pointer;
+    &:hover {
+      color: ${token.colorText};
+    }
   `,
   field: css`
     display: flex;
@@ -151,7 +210,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 5px;
     margin-bottom: 12px;
   `,
-  label: css`
+  fLabel: css`
     font-size: 12.5px;
     color: ${token.colorTextSecondary};
   `,
@@ -159,53 +218,25 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     gap: 12px;
   `,
-  diffList: css`
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  `,
-  diffItem: css`
-    display: flex;
-    gap: 11px;
-    padding: 12px 13px;
-    border-radius: ${token.borderRadiusLG}px;
-    border: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorBgContainer};
-  `,
-  diffDropped: css`
-    opacity: 0.5;
-  `,
-  diffBody: css`
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  `,
-  diffContent: css`
-    font-size: 13px;
-    line-height: 1.55;
-    color: ${token.colorText};
-    word-break: break-word;
-  `,
-  diffReason: css`
-    font-size: 12px;
-    line-height: 1.5;
-    color: ${token.colorTextTertiary};
-  `,
-  evidence: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  `,
 }));
 
-function relTime(iso: string | null): string {
-  if (!iso) return '从未召回';
+// "X 前记下" from when the memory was first recorded (created), not the recall mechanic.
+function recordedAt(iso: string): string {
   const days = Math.max(0, (Date.now() - new Date(iso).getTime()) / 86400000);
-  if (days < 1) return '今天召回';
-  if (days < 30) return `${Math.round(days)} 天前召回`;
-  return `${Math.round(days / 30)} 个月前召回`;
+  if (days < 1) return '今天记下';
+  if (days < 30) return `${Math.round(days)} 天前记下`;
+  return `${Math.round(days / 30)} 个月前记下`;
+}
+
+// Read-mode profile: drop a leading "# 画像" heading + per-line bullet markers so it
+// reads like prose, not a markdown source file. Editing still shows the raw text.
+function profileLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l, i) => !(i === 0 && l.startsWith('#')))
+    .map((l) => l.replace(/^[-*]\s+/, '').replace(/^#+\s*/, '').trim())
+    .filter(Boolean);
 }
 
 function EntryModal({
@@ -235,7 +266,7 @@ function EntryModal({
   }, [open, edit]);
 
   const save = async () => {
-    if (!content.trim()) return message.warning('需要内容');
+    if (!content.trim()) return message.warning('写点内容');
     setSaving(true);
     try {
       if (edit) await updateEntry(edit.id, { content: content.trim(), type, importance });
@@ -252,7 +283,7 @@ function EntryModal({
 
   return (
     <Modal
-      title={edit ? '编辑记忆' : '新建记忆'}
+      title={edit ? '编辑这条记忆' : '手动添加一条'}
       open={open}
       onCancel={onClose}
       onOk={save}
@@ -264,21 +295,21 @@ function EntryModal({
     >
       <div style={{ paddingTop: 6 }}>
         <div className={styles.field}>
-          <span className={styles.label}>内容</span>
+          <span className={styles.fLabel}>内容</span>
           <Input.TextArea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             autoSize={{ minRows: 3, maxRows: 8 }}
-            placeholder="一条原子化的事实,如「喜欢用中文交流」"
+            placeholder="一句话,如「喜欢用中文交流」"
           />
         </div>
         <div className={styles.inline}>
           <div className={styles.field} style={{ flex: 1 }}>
-            <span className={styles.label}>类型</span>
+            <span className={styles.fLabel}>类型</span>
             <Select value={type} options={TYPE_OPTIONS} onChange={setType} />
           </div>
           <div className={styles.field} style={{ width: 120 }}>
-            <span className={styles.label}>重要度(1-5)</span>
+            <span className={styles.fLabel}>重要度</span>
             <InputNumber
               value={importance}
               min={1}
@@ -295,21 +326,21 @@ function EntryModal({
 
 export default function SettingsMemory() {
   const { styles, cx } = useStyles();
+  const theme = useTheme();
   const { message, modal } = App.useApp();
 
-  // L3 profile
   const [profile, setProfile] = useState('');
   const [savedProfile, setSavedProfile] = useState('');
+  const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileUpdated, setProfileUpdated] = useState<string | null>(null);
 
-  // L2 entries
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<MemoryEntry | null>(null);
 
-  // consolidation
   const [diff, setDiff] = useState<ConsolidationDiff | null>(null);
   const [proposing, setProposing] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -334,13 +365,14 @@ export default function SettingsMemory() {
     loadEntries();
   }, []);
 
-  const profileDirty = profile !== savedProfile;
   const persistProfile = async () => {
     setSavingProfile(true);
     try {
       const p = await saveProfile(profile);
       setProfile(p.text);
       setSavedProfile(p.text);
+      setProfileUpdated(new Date().toISOString());
+      setEditingProfile(false);
       message.success('已保存');
     } catch {
       message.error('保存失败,请重试');
@@ -349,22 +381,26 @@ export default function SettingsMemory() {
     }
   };
 
-  const remove = (e: MemoryEntry) =>
+  const cancelProfile = () => {
+    setProfile(savedProfile);
+    setEditingProfile(false);
+  };
+
+  const forget = (e: MemoryEntry) =>
     modal.confirm({
-      title: '删除这条记忆?',
+      title: '让 Snowan 忘掉这条?',
       content: e.content,
-      okText: '删除',
+      okText: '忘掉',
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
         const prev = entries;
-        setEntries((list) => list.filter((x) => x.id !== e.id)); // optimistic
+        setEntries((list) => list.filter((x) => x.id !== e.id));
         try {
           await deleteEntry(e.id);
-          message.success('已删除');
         } catch {
-          setEntries(prev); // revert on failure
-          message.error('删除失败');
+          setEntries(prev);
+          message.error('操作失败');
         }
       },
     });
@@ -375,7 +411,7 @@ export default function SettingsMemory() {
     try {
       setDiff(await consolidate());
     } catch {
-      message.error('整理失败,请重试');
+      message.error('暂时没法整理,请重试');
     } finally {
       setProposing(false);
     }
@@ -383,22 +419,17 @@ export default function SettingsMemory() {
 
   const toggleItem = (idx: number) =>
     setDiff((d) =>
-      d
-        ? {
-            ...d,
-            items: d.items.map((it, i) => (i === idx ? { ...it, approved: !it.approved } : it)),
-          }
-        : d,
+      d ? { ...d, items: d.items.map((it, i) => (i === idx ? { ...it, approved: !it.approved } : it)) } : d,
     );
 
   const apply = async () => {
     if (!diff) return;
     const approved = diff.items.filter((it) => it.approved).length;
-    if (approved === 0) return message.warning('没有勾选任何改动');
+    if (approved === 0) return message.warning('还没勾选任何一条');
     setApplying(true);
     try {
       await applyConsolidation(diff);
-      message.success(`已应用 ${approved} 项改动`);
+      message.success(`已更新 ${approved} 条记忆`);
       setDiff(null);
       await loadEntries();
       const p = await getProfile().catch(() => null);
@@ -407,50 +438,69 @@ export default function SettingsMemory() {
         setSavedProfile(p.text);
       }
     } catch {
-      message.error('应用失败,请重试');
+      message.error('更新失败,请重试');
     } finally {
       setApplying(false);
     }
   };
 
+  const lines = profileLines(profile);
+
   return (
     <div className={styles.wrap}>
       {/* L3 — 画像 */}
-      <Section
-        title="画像"
-        subtitle="关于你的稳定身份与偏好,每轮对话都会注入。只在你保存或批准整理时才会写入。"
-        bare
-      >
-        <Input.TextArea
-          value={profile}
-          onChange={(e) => setProfile(e.target.value)}
-          autoSize={{ minRows: 5, maxRows: 16 }}
-          placeholder={'# 画像\n\n- 称呼:…\n- 偏好:…'}
-        />
-        <div className={styles.profileFoot}>
-          <Button
-            type="primary"
-            size="small"
-            disabled={!profileDirty}
-            loading={savingProfile}
-            onClick={persistProfile}
-          >
-            保存
-          </Button>
+      <section>
+        <div className={styles.head}>
+          <div>
+            <div className={styles.hTitle}>Snowan 记得你</div>
+            <div className={styles.hSub}>
+              对你的长期印象,会一直记着
+              {profileUpdated ? ` · 刚刚更新` : ''}
+            </div>
+          </div>
+          {!editingProfile && (
+            <span className={styles.link} onClick={() => setEditingProfile(true)}>
+              <Pencil size={14} />
+              编辑
+            </span>
+          )}
         </div>
-      </Section>
 
-      {/* L2 — 记忆条目 */}
-      <Section bare>
-        <div className={styles.toolbar}>
-          <Text style={{ fontSize: 15, fontWeight: 700, flex: 1 }}>记忆条目</Text>
-          <Button type="primary" icon={<Plus size={15} />} onClick={() => setAddOpen(true)}>
-            新建
-          </Button>
-        </div>
-        <Text className={styles.note} style={{ padding: '0 2px 6px' }}>
-          助手从日常对话中distill出的原子事实。越常被召回的记忆越牢固;少用的会慢慢沉底,但不会被删除。
-        </Text>
+        {editingProfile ? (
+          <>
+            <Input.TextArea
+              style={{ marginTop: 11 }}
+              value={profile}
+              onChange={(e) => setProfile(e.target.value)}
+              autoSize={{ minRows: 5, maxRows: 16 }}
+              placeholder={'用一两句话描述你的长期偏好,如:\n喜欢用中文交流,回答要简短、结果先行。'}
+            />
+            <div className={styles.foot}>
+              <Button size="small" onClick={cancelProfile}>
+                取消
+              </Button>
+              <Button type="primary" size="small" loading={savingProfile} onClick={persistProfile}>
+                保存
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className={styles.profileCard}>
+            {lines.length > 0 ? (
+              lines.map((l, i) => <div key={i}>{l}</div>)
+            ) : (
+              <span className={styles.profileEmpty}>
+                Snowan 还不太了解你。聊几句,或点「编辑」写下你的长期偏好。
+              </span>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* L2 — 记得的事 */}
+      <section>
+        <div className={styles.hTitle}>Snowan 记得的事</div>
+        <div className={styles.hSub}>这些是 Snowan 在你们的对话里慢慢记下的。</div>
 
         {!loaded && !loadError ? (
           <div className={styles.empty}>
@@ -458,7 +508,6 @@ export default function SettingsMemory() {
           </div>
         ) : loadError ? (
           <div className={styles.empty}>
-            <Brain size={28} />
             加载失败
             <Button size="small" onClick={() => loadEntries()}>
               重试
@@ -466,41 +515,29 @@ export default function SettingsMemory() {
           </div>
         ) : entries.length === 0 ? (
           <div className={styles.empty}>
-            <Brain size={28} />
-            还没有记忆条目
-            <Button size="small" onClick={() => setAddOpen(true)}>
-              新建第一条
-            </Button>
+            <div>Snowan 还在认识你。</div>
+            <div>聊得越多,它记得越多——也可以直接说「记住…」。</div>
           </div>
         ) : (
-          <div className={styles.cards}>
+          <div className={styles.list}>
             {entries.map((e) => (
-              <div key={e.id} className={styles.card}>
-                <span className={styles.cardIcon}>
-                  <Brain size={16} />
-                </span>
-                <div className={styles.cardBody}>
-                  <div className={styles.cardContent}>{e.content}</div>
-                  <div className={styles.meta}>
-                    <Tag bordered={false}>{TYPE_LABELS[e.type] ?? e.type}</Tag>
-                    <span>重要度 {e.importance}</span>
-                    <span>·</span>
-                    <span>强度 {e.strength.toFixed(1)}</span>
-                    <span>·</span>
-                    <span>{relTime(e.last_recalled)}</span>
-                  </div>
+              <div key={e.id} className={styles.row}>
+                <Dot size={18} className={styles.rowDot} />
+                <div className={styles.rowBody}>
+                  <div className={styles.rowText}>{e.content}</div>
+                  <div className={styles.rowMeta}>{recordedAt(e.created_at)}</div>
                 </div>
                 <Dropdown
                   trigger={['click']}
                   menu={{
                     items: [
                       { key: 'edit', label: '编辑' },
-                      { key: 'remove', label: '删除', danger: true },
+                      { key: 'forget', label: '忘掉', danger: true },
                     ],
-                    onClick: ({ key }) => (key === 'edit' ? setEditing(e) : remove(e)),
+                    onClick: ({ key }) => (key === 'edit' ? setEditing(e) : forget(e)),
                   }}
                 >
-                  <span className={styles.cardMenu} role="button" tabIndex={0} aria-label="更多操作">
+                  <span className={cx(styles.menu, 'mem-menu')} role="button" tabIndex={0} aria-label="更多操作">
                     <MoreHorizontal size={16} />
                   </span>
                 </Dropdown>
@@ -508,90 +545,74 @@ export default function SettingsMemory() {
             ))}
           </div>
         )}
-      </Section>
+      </section>
 
-      {/* 整理 — consolidation governance gate */}
-      <Section
-        title="整理"
-        subtitle="让助手回顾日志与现有记忆,提出一份可审阅的改动清单。在你勾选并应用之前,什么都不会被写入。"
-        bare
-      >
-        <div className={styles.toolbar}>
-          <Button
-            icon={<Sparkles size={15} />}
-            loading={proposing}
-            onClick={propose}
-          >
-            整理记忆
-          </Button>
-          {diff && (
-            <Button size="small" type="text" icon={<RefreshCw size={14} />} onClick={propose}>
-              重新整理
+      {/* 整理 — gentle suggestion card */}
+      <section className={styles.suggest}>
+        <div className={styles.suggestHead}>
+          <Sparkles size={17} style={{ color: theme.colorPrimary, flex: 'none' }} />
+          <Text style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>Snowan 想更新一些记忆</Text>
+          {!diff && !proposing && (
+            <Button size="small" onClick={propose}>
+              看看建议
             </Button>
           )}
+        </div>
+        <div className={styles.hSub} style={{ marginTop: 2 }}>
+          让助手回顾日志与现有记忆,提一份你来拍板的清单。勾选并应用前,什么都不会写入。
         </div>
 
         {proposing ? (
           <div className={styles.empty}>
             <Spin />
-            正在回顾与提议…
+            正在回顾…
           </div>
         ) : diff && diff.items.length === 0 ? (
-          <Text className={styles.note}>没有需要整理的改动,记忆已是最新。</Text>
+          <div className={styles.empty}>暂时没有要更新的,记忆已是最新。</div>
         ) : diff ? (
           <>
-            {diff.summary && (
-              <Text className={styles.note} style={{ marginBottom: 4 }}>
-                {diff.summary}
-              </Text>
-            )}
-            <div className={styles.diffList}>
+            <div style={{ marginTop: 6 }}>
               {diff.items.map((it, i) => (
-                <label key={i} className={cx(styles.diffItem, !it.approved && styles.diffDropped)}>
+                <label key={i} className={cx(styles.diffRow, !it.approved && styles.diffDropped)}>
                   <input
                     type="checkbox"
                     checked={it.approved}
                     onChange={() => toggleItem(i)}
-                    style={{ marginTop: 3 }}
+                    style={{ marginTop: 4, flex: 'none' }}
                   />
-                  <div className={styles.diffBody}>
-                    <div className={styles.meta}>
-                      <Tag color={KIND_COLORS[it.kind]} bordered={false}>
-                        {KIND_LABELS[it.kind]}
-                      </Tag>
-                      {it.type && <span>{TYPE_LABELS[it.type] ?? it.type}</span>}
-                    </div>
-                    {it.content && <div className={styles.diffContent}>{it.content}</div>}
-                    <div className={styles.diffReason}>{it.reason}</div>
-                    {it.evidence && it.evidence.length > 0 && (
-                      <div className={styles.evidence}>
-                        {it.evidence.map((ev) => (
-                          <Tag key={ev} bordered={false}>
-                            {ev}
-                          </Tag>
-                        ))}
-                      </div>
-                    )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span
+                      className={styles.pill}
+                      style={{ background: theme.colorFillSecondary, color: theme.colorTextSecondary }}
+                    >
+                      {KIND_LABELS[it.kind]}
+                    </span>
+                    {it.content && <div className={styles.rowText}>{it.content}</div>}
+                    {it.reason && <div className={styles.reason}>{it.reason}</div>}
                   </div>
                 </label>
               ))}
             </div>
-            <div className={styles.profileFoot}>
+            <div className={styles.foot}>
+              <Button size="small" type="text" onClick={propose}>
+                重新看看
+              </Button>
               <Button type="primary" loading={applying} onClick={apply}>
-                应用
+                应用 {diff.items.filter((it) => it.approved).length} 条
               </Button>
             </div>
           </>
         ) : null}
-      </Section>
+      </section>
+
+      {/* footer — manual add demoted */}
+      <span className={styles.footer} onClick={() => setAddOpen(true)}>
+        <Plus size={15} />
+        手动添加一条
+      </span>
 
       <EntryModal open={addOpen} onClose={() => setAddOpen(false)} onDone={loadEntries} />
-      <EntryModal
-        open={!!editing}
-        edit={editing}
-        onClose={() => setEditing(null)}
-        onDone={loadEntries}
-      />
+      <EntryModal open={!!editing} edit={editing} onClose={() => setEditing(null)} onDone={loadEntries} />
     </div>
   );
 }
