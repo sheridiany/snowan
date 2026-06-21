@@ -114,6 +114,11 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 12.5px;
     color: ${token.colorTextSecondary};
   `,
+  hint: css`
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: ${token.colorTextTertiary};
+  `,
 }));
 
 function SkillModal({
@@ -172,12 +177,15 @@ function SkillModal({
     >
       <div style={{ paddingTop: 6 }}>
         <div className={styles.field}>
-          <span className={styles.label}>名称(英文标识)</span>
-          <Input value={name} disabled={!!edit} onChange={(e) => setName(e.target.value)} placeholder="weekly-report" />
+          <span className={styles.label}>英文名称</span>
+          <Input value={name} disabled={!!edit} onChange={(e) => setName(e.target.value)} placeholder="例如 weekly-report" />
+          <span className={styles.hint}>
+            {edit ? '名称创建后不能修改。' : '用小写英文和连字符,作为这个技能的唯一标识。'}
+          </span>
         </div>
         <div className={styles.field}>
-          <span className={styles.label}>什么时候用它</span>
-          <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="当用户要写周报时" />
+          <span className={styles.label}>何时触发(描述什么任务该用它)</span>
+          <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="例如 当用户要写周报时" />
         </div>
         <div className={styles.field}>
           <span className={styles.label}>步骤(Markdown)</span>
@@ -185,8 +193,9 @@ function SkillModal({
             value={body}
             onChange={(e) => setBody(e.target.value)}
             autoSize={{ minRows: 8, maxRows: 18 }}
-            placeholder={'# 周报\n\n1. 汇总本周完成的事…\n2. …'}
+            placeholder={'# 写周报\n\n1. 汇总本周完成的事项\n2. 列出下周计划\n3. 整理成简洁的几段话'}
           />
+          <span className={styles.hint}>用 Markdown 写下助手该照着做的步骤。</span>
         </div>
       </div>
     </Modal>
@@ -290,6 +299,9 @@ export default function SettingsSkills() {
         <div className={styles.empty}>
           <Zap size={28} />
           还没有技能
+          <div className={styles.hint} style={{ maxWidth: 280, textAlign: 'center' }}>
+            技能是你教助手处理常见任务的步骤,需要时它会自动按步骤执行。
+          </div>
           <Button size="small" onClick={() => setAddOpen(true)}>
             添加第一个
           </Button>
@@ -307,7 +319,9 @@ export default function SettingsSkills() {
                   </span>
                   <div className={styles.body}>
                     <div className={styles.name}>{s.name}</div>
-                    <div className={styles.desc}>{s.description || '（无说明）'}</div>
+                    <div className={styles.desc} style={s.description ? undefined : { fontStyle: 'italic' }}>
+                      {s.description || '未填写说明'}
+                    </div>
                   </div>
                   <Switch
                     size="small"

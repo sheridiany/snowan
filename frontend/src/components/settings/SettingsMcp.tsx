@@ -3,12 +3,12 @@ import { Button, Text } from '@lobehub/ui';
 import { App, Dropdown, Input, Modal, Segmented, Select, Spin, Switch } from 'antd';
 import { createStyles } from 'antd-style';
 import {
-  AlertTriangle,
   ChevronRight,
   MoreHorizontal,
   Plug,
   Plus,
   RefreshCw,
+  Terminal,
 } from 'lucide-react';
 import {
   listServers,
@@ -73,11 +73,37 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: 50%;
     flex: none;
   `,
+  ident: css`
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  `,
+  nameRow: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  `,
   name: css`
-    font-family: ${token.fontFamilyCode};
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
     color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  source: css`
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  status: css`
+    font-size: 12px;
+    flex: none;
+    margin-left: auto;
   `,
   badge: css`
     font-size: 11px;
@@ -156,17 +182,33 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 12.5px;
     color: ${token.colorTextSecondary};
   `,
-  warn: css`
+  info: css`
     display: flex;
     gap: 8px;
     padding: 9px 11px;
     border-radius: ${token.borderRadius}px;
-    background: ${token.colorWarningBg};
-    border: 1px solid ${token.colorWarningBorder};
-    color: ${token.colorWarningText};
+    background: ${token.colorFillQuaternary};
+    border: 1px solid ${token.colorBorderSecondary};
+    color: ${token.colorTextSecondary};
     font-size: 12px;
     line-height: 1.55;
     margin: 4px 0 12px;
+  `,
+  infoCmd: css`
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: ${token.borderRadiusSM}px;
+    background: ${token.colorFillSecondary};
+    color: ${token.colorTextSecondary};
+    font-family: ${token.fontFamilyCode};
+    font-size: 11.5px;
+    word-break: break-all;
+  `,
+  legend: css`
+    font-size: 11.5px;
+    color: ${token.colorTextTertiary};
+    margin: 2px 0 8px;
   `,
 }));
 
@@ -245,11 +287,11 @@ function AddModal({ open, onClose, onDone }: { open: boolean; onClose: () => voi
               value={json}
               onChange={(e) => setJson(e.target.value)}
               autoSize={{ minRows: 8, maxRows: 16 }}
-              placeholder={'{\n  "mcpServers": {\n    "filesystem": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-filesystem", "~/Documents"]\n    }\n  }\n}'}
+              placeholder={'在此粘贴 mcpServers 配置…'}
               style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}
             />
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
-              直接粘贴 Claude Desktop / Cursor 的 mcpServers 配置即可。
+              从 Claude Desktop / Cursor 复制 mcpServers 配置直接粘贴即可,会一并带上 env 与参数。
             </div>
           </>
         ) : (
@@ -281,10 +323,11 @@ function AddModal({ open, onClose, onDone }: { open: boolean; onClose: () => voi
               )}
             </div>
             {transport === 'stdio' && command.trim() && (
-              <div className={cx(styles.warn)}>
-                <AlertTriangle size={16} style={{ flex: 'none' }} />
+              <div className={cx(styles.info)}>
+                <Terminal size={16} style={{ flex: 'none', marginTop: 1 }} />
                 <span>
-                  保存后将在本机运行:<code>{command.trim()} {args.trim()}</code>。确认命令可信再继续。需要 API key 的服务器请用「粘贴 JSON」带上 env。
+                  stdio 服务器会在你的电脑上以下面这条命令本地启动,请确认它来自可信来源。需要 API key 的服务器建议用「粘贴 JSON」一并带上 env。
+                  <span className={styles.infoCmd}>{`${command.trim()} ${args.trim()}`.trim()}</span>
                 </span>
               </div>
             )}

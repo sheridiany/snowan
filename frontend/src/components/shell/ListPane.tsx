@@ -339,3 +339,22 @@ export function ListRow({
     </div>
   );
 }
+
+const useGroupStyles = createStyles(({ token, css }) => ({
+  group: css`
+    padding: 14px 10px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: ${token.colorTextQuaternary};
+    &:first-of-type {
+      padding-top: 4px;
+    }
+  `,
+}));
+
+// A small section header for the list rail (e.g. grouping the settings tabs).
+export function ListGroupLabel({ children }: { children: ReactNode }) {
+  const { styles } = useGroupStyles();
+  return <div className={styles.group}>{children}</div>;
+}
