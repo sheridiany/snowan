@@ -3,7 +3,6 @@ import { Tooltip } from 'antd';
 import { createStyles, useThemeMode } from 'antd-style';
 import {
   BookOpen,
-  CalendarDays,
   MessageSquare,
   Moon,
   PenTool,
@@ -22,7 +21,6 @@ export type View =
   | 'draw'
   | 'design'
   | 'reading'
-  | 'calendar'
   | 'settings';
 
 // Section nav + new-chat + settings/theme controls are threaded into every list
@@ -38,7 +36,6 @@ const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
   { view: 'draw', label: '画图', icon: Shapes },
   { view: 'design', label: '设计', icon: PenTool },
   { view: 'reading', label: '阅读', icon: BookOpen },
-  { view: 'calendar', label: '日历', icon: CalendarDays },
 ];
 
 // Column 2 — the universal list pane. It carries the horizontal section nav at the

@@ -24,6 +24,7 @@ import {
   type Note,
   type KbFolder,
 } from '../../api/knowledge';
+import { getCalendar, type CalendarEvent } from '../../api/calendar';
 
 // The right panel is the in-context knowledge browser (remio-style): a source
 // dropdown in the header, a list below, and click-to-open detail in place. 笔记
@@ -37,8 +38,28 @@ const SOURCES: Source[] = [
   { key: 'web', label: '网页', icon: Globe, ready: false },
   { key: 'aichat', label: 'AI 对话', icon: MessagesSquare, ready: false },
   { key: 'folders', label: '文件夹', icon: FolderOpen, ready: true },
-  { key: 'calendar', label: '日程', icon: Calendar, ready: false },
+  { key: 'calendar', label: '日程', icon: Calendar, ready: true },
 ];
+
+function evTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  if (d.getHours() === 0 && d.getMinutes() === 0) return '全天';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function evDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const same = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (same(d, today)) return '今天';
+  if (same(d, tomorrow)) return '明天';
+  const wd = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+  return `${d.getMonth() + 1}月${d.getDate()}日 周${wd}`;
+}
 
 function noteDate(iso: string): string {
   const d = new Date(iso);
@@ -196,6 +217,15 @@ const useStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 4px;
   `,
+  dayHead: css`
+    font-size: 12px;
+    font-weight: 600;
+    color: ${token.colorTextTertiary};
+    margin: 14px 4px 4px;
+    &:first-of-type {
+      margin-top: 2px;
+    }
+  `,
 }));
 
 export default function RightPanel({
@@ -216,6 +246,7 @@ export default function RightPanel({
   const [source, setSource] = useState<SourceKey>('notes');
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<KbFolder[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState<Note | null>(null);
   const [embReady, setEmbReady] = useState<boolean | null>(null);
@@ -232,15 +263,26 @@ export default function RightPanel({
     getEmbeddingStatus()
       .then((s) => setEmbReady(s.ready))
       .catch(() => setEmbReady(null));
+    getCalendar()
+      .then((d) => setEvents(d.events))
+      .catch(() => setEvents([]));
   };
 
   useEffect(refresh, [refreshKey]); // re-fetch when a note is saved elsewhere
-  // re-fetch folders each time that source is opened (they change in Settings)
+  // re-fetch each time that source is opened (it can change in Settings)
   useEffect(() => {
     if (source === 'folders') listFolders().then((s) => setFolders(s.folders)).catch(() => {});
+    if (source === 'calendar') getCalendar().then((d) => setEvents(d.events)).catch(() => {});
   }, [source]);
 
   const active = SOURCES.find((s) => s.key === source) ?? SOURCES[0];
+
+  // Agenda: today onward, soonest first.
+  const todayMid = new Date();
+  todayMid.setHours(0, 0, 0, 0);
+  const upcoming = events
+    .filter((e) => new Date(e.startsAt).getTime() >= todayMid.getTime())
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
   // Detail view — a single opened note, with breadcrumb back to its list.
   if (open) {
@@ -313,6 +355,34 @@ export default function RightPanel({
             description={`${active.label}还在规划中。`}
             paddingBlock={36}
           />
+        ) : source === 'calendar' ? (
+          upcoming.length === 0 ? (
+            <div className={styles.folderEmpty}>
+              <Empty
+                icon={Calendar}
+                title="还没有日程"
+                description="连接系统日历或导入 ICS,日程会出现在这里。"
+                paddingBlock={28}
+              />
+              <Button size="small" onClick={onOpenSettings}>
+                去设置连接
+              </Button>
+            </div>
+          ) : (
+            upcoming.map((e, i) => {
+              const day = evDay(e.startsAt);
+              const showHead = i === 0 || evDay(upcoming[i - 1].startsAt) !== day;
+              return (
+                <div key={e.id}>
+                  {showHead && <div className={styles.dayHead}>{day}</div>}
+                  <ListRow
+                    label={e.title || '未命名日程'}
+                    sub={[evTime(e.startsAt), e.location].filter(Boolean).join(' · ')}
+                  />
+                </div>
+              );
+            })
+          )
         ) : source === 'folders' ? (
           folders.length === 0 ? (
             <div className={styles.folderEmpty}>
