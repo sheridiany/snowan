@@ -11,8 +11,11 @@ dist/
 dist-ssr/
 *.local
 
-# tauri
-src-tauri/target/
+# tauri (build outputs — paths are under frontend/, so anchor them there)
+frontend/src-tauri/target/
+frontend/src-tauri/gen/
+dist/pyinstaller/
+dist/pyinstaller-build/
 
 # os/editor
 .DS_Store
