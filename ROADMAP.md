@@ -95,8 +95,13 @@ portable Markdown vault as source of truth; a derived SQLite index; hybrid
 - **2d Web / AI-chat capture**: 网页 + AI 对话 tabs — fetch URL → extract text +
   metadata (httpx + readability), dedupe; import AI-chat transcripts. _QwenPaw
   `browser_capture.py` (store only, no headless browser)._
-- **2e Calendar**: ICS import + macOS Calendar sync (AppleScript). _QwenPaw
-  `calendar_sources.py`._
+- **2e Calendar** — _done ✅_. Read the macOS system Calendar via AppleScript (it
+  aggregates iCloud/Gmail/Outlook locally — no OAuth/EventKit) + ICS import; events
+  stored at `~/.snowan/calendar.json`, mirrored into the index as `source_type='calendar'`
+  (searchable), with an `upcoming_events(days)` agent tool. A month/week 日历 view + a
+  connect/import settings panel. Sync only on user action (first read triggers the macOS
+  Calendar TCC prompt). _QwenPaw `calendar_sources.py`._ _Deferred: source enable/delete UI,
+  Chinese holidays/solar terms in the view._
 - **2f Mermaid**: render mermaid blocks in chat + notes.
 
 ## ✅ Phase 3 — Long-term memory  (M — personalization)
