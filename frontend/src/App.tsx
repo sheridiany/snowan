@@ -12,6 +12,7 @@ import SessionsView from './components/views/SessionsView';
 import ComingSoonView from './components/views/ComingSoonView';
 import DrawView from './components/views/DrawView';
 import ReadingView from './components/views/ReadingView';
+import CalendarView from './components/calendar/CalendarView';
 import SettingsView from './components/settings/SettingsView';
 import type { Block, Message } from './components/types';
 import { useViewHistory } from './hooks/useViewHistory';
@@ -174,6 +175,14 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
+          {nav.view === 'calendar' && (
+            <CalendarView
+              view={nav.view}
+              onView={nav.go}
+              onNewChat={handleNew}
+              listCollapsed={nav.listCollapsed}
+            />
+          )}
           {nav.view === 'design' && (
             <ComingSoonView
               view={nav.view}
@@ -190,7 +199,7 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.rightOpen && nav.view !== 'draw' && nav.view !== 'reading' && (
+          {nav.rightOpen && nav.view !== 'draw' && nav.view !== 'reading' && nav.view !== 'calendar' && (
             <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
           )}
         </main>

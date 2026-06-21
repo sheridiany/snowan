@@ -8,6 +8,7 @@ load_dotenv()  # before the agent reads provider settings
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
+from .calendar import router as calendar_router  # noqa: E402
 from .chat import router  # noqa: E402
 from .imagegen import router as imagegen_router  # noqa: E402
 from .knowledge import router as knowledge_router  # noqa: E402
@@ -52,6 +53,7 @@ app.include_router(memory_router)
 app.include_router(skills_router)
 app.include_router(imagegen_router)
 app.include_router(reading_router)
+app.include_router(calendar_router)
 
 
 @app.get("/health")

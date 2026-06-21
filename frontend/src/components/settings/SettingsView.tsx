@@ -3,6 +3,7 @@ import { ActionIcon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import {
   Brain,
+  CalendarDays,
   Globe,
   Info,
   Keyboard,
@@ -25,6 +26,7 @@ import DetailPane from '../../ui/DetailPane';
 import SettingsAppearance from './SettingsAppearance';
 import SettingsAI from './SettingsAI';
 import SettingsKnowledge from './SettingsKnowledge';
+import SettingsCalendar from './SettingsCalendar';
 import SettingsMemory from './SettingsMemory';
 import SettingsWeb from './SettingsWeb';
 import SettingsMcp from './SettingsMcp';
@@ -40,6 +42,7 @@ type CategoryId =
   | 'appearance'
   | 'ai'
   | 'knowledge'
+  | 'calendar'
   | 'memory'
   | 'web'
   | 'mcp'
@@ -63,6 +66,7 @@ const CATEGORIES: Category[] = [
   { id: 'appearance', title: '外观', subtitle: '主题与字体', icon: Palette, panel: SettingsAppearance },
   { id: 'ai', title: 'AI', subtitle: '模型与连接', icon: Sparkles, panel: SettingsAI },
   { id: 'knowledge', title: '知识库', subtitle: '本地语义检索', icon: Library, panel: SettingsKnowledge },
+  { id: 'calendar', title: '日历', subtitle: '系统日历与 ICS', icon: CalendarDays, panel: SettingsCalendar },
   { id: 'memory', title: '记忆', subtitle: '长期记忆与画像', icon: Brain, panel: SettingsMemory },
   { id: 'web', title: '联网', subtitle: '网页搜索与抓取', icon: Globe, panel: SettingsWeb },
   { id: 'mcp', title: 'MCP', subtitle: '外部工具服务器', icon: Plug, panel: SettingsMcp },
