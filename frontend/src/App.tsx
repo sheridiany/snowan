@@ -154,7 +154,7 @@ export default function App() {
                   onSaveNote={handleSaveNote}
                   onPickPrompt={(t) => chat.send(t)}
                 />
-                <Composer busy={chat.busy} onSend={chat.send} onStop={chat.stop} />
+                <Composer busy={chat.busy} onSend={chat.send} onStop={chat.stop} onSteer={chat.steer} />
               </DetailPane>
             </>
           )}

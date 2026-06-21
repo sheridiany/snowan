@@ -19,6 +19,7 @@ from pydantic_ai import (
     TextPartDelta,
     ToolDenied,
 )
+from pydantic_ai.exceptions import UndrainedPendingMessagesError
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import UsageLimits
 
@@ -30,6 +31,10 @@ from ..config import load_prefs
 from ..extract import extract_text as _extract_text
 
 router = APIRouter()
+
+# session_id -> the live AgentRun, so POST /api/chat/steer can enqueue a follow-up
+# into the in-flight turn. Single-process, single-user; one entry per active turn.
+_active_runs: dict[str, Any] = {}
 
 
 def _limits() -> UsageLimits:
@@ -176,25 +181,67 @@ def _query_text(prompt: Any) -> str:
     return ""
 
 
-async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
+def _drain_pending_text(run: Any) -> str:
+    """Text of the user message(s) stranded in the run's pending queue — a steer that
+    arrived in the brief final-response window, too late to inject into this turn."""
+    out: list[str] = []
+    for pm in getattr(run, "pending_messages", None) or []:
+        for m in pm.messages:
+            for part in getattr(m, "parts", []) or []:
+                c = getattr(part, "content", None)
+                if isinstance(c, str):
+                    out.append(c)
+                elif isinstance(c, (list, tuple)):
+                    out.extend(x for x in c if isinstance(x, str))
+    return "\n".join(out).strip()
+
+
+async def _drive(
+    session_id: str,
+    prompt: Any,
+    history: list[ModelMessage],
+    deferred_results: DeferredToolResults | None = None,
+) -> AsyncIterator[str]:
+    """Stream one agent turn, registering it as the session's active run so a steer
+    (POST /api/chat/steer) can `enqueue` into it mid-flight. A steer that lands too
+    late to be injected (the brief final-response window, where the loop hits End with
+    the message still queued) is run as an immediate follow-up turn rather than lost."""
     # Build per-request so a model/key change saved in Settings takes effect at once.
-    # Per-turn retrieved memory rides in the USER message (a <相关记忆> block), NOT in
-    # the instructions — that keeps the system+tools prefix byte-stable so prompt
-    # caching lands; the dynamic memory is then the only uncached part of the turn.
+    agent = build_agent()
+    stranded = ""
+    async with AsyncExitStack() as stack:
+        toolsets = await _live_mcp(stack)
+        kwargs: dict[str, Any] = {"message_history": history, "usage_limits": _limits(), "toolsets": toolsets}
+        if deferred_results is not None:
+            kwargs["deferred_tool_results"] = deferred_results
+        args = (prompt,) if prompt is not None else ()
+        async with agent.iter(*args, **kwargs) as run:
+            _active_runs[session_id] = run
+            try:
+                try:
+                    async for chunk in _stream_run(run):
+                        yield chunk
+                except UndrainedPendingMessagesError:
+                    stranded = _drain_pending_text(run)
+                    yield _sse({"type": "done"})
+                save_history(session_id, run.all_messages())
+                usage.record(run.result)
+            finally:
+                _active_runs.pop(session_id, None)
+    if stranded:
+        async for chunk in _run_new(stranded, load_history(session_id), session_id):
+            yield chunk
+
+
+async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
+    # Per-turn retrieved memory rides in the USER message (a <相关记忆> block), NOT in the
+    # instructions — that keeps the system+tools prefix byte-stable so prompt caching lands.
     mem_ctx = memory.auto_context(_query_text(prompt)) if load_prefs().get("memory_enabled", True) else ""
     if mem_ctx:
         block = f"<相关记忆>\n{mem_ctx}\n</相关记忆>"
         prompt = [block, *prompt] if isinstance(prompt, list) else [block, prompt]
-    agent = build_agent()
-    async with AsyncExitStack() as stack:
-        toolsets = await _live_mcp(stack)
-        async with agent.iter(
-            prompt, message_history=history, usage_limits=_limits(), toolsets=toolsets
-        ) as run:
-            async for chunk in _stream_run(run):
-                yield chunk
-            save_history(session_id, run.result.all_messages())
-            usage.record(run.result)
+    async for chunk in _drive(session_id, prompt, history):
+        yield chunk
 
 
 async def _run_resume(
@@ -202,19 +249,8 @@ async def _run_resume(
     results: DeferredToolResults,
     session_id: str,
 ) -> AsyncIterator[str]:
-    agent = build_agent()
-    async with AsyncExitStack() as stack:
-        toolsets = await _live_mcp(stack)
-        async with agent.iter(
-            message_history=history,
-            deferred_tool_results=results,
-            usage_limits=_limits(),
-            toolsets=toolsets,
-        ) as run:
-            async for chunk in _stream_run(run):
-                yield chunk
-            save_history(session_id, run.result.all_messages())
-            usage.record(run.result)
+    async for chunk in _drive(session_id, None, history, deferred_results=results):
+        yield chunk
 
 
 @router.post("/api/chat/stream")
@@ -225,6 +261,22 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
         _run_new(prompt, history, req.session_id),
         media_type="text/event-stream",
     )
+
+
+class SteerRequest(BaseModel):
+    session_id: str = "default"
+    message: str
+
+
+@router.post("/api/chat/steer")
+async def chat_steer(req: SteerRequest) -> dict:
+    """Inject a follow-up instruction into the session's in-flight turn without
+    interrupting it (PydanticAI `enqueue`, 'asap'). No-op if no turn is running."""
+    run = _active_runs.get(req.session_id)
+    if run is None or not req.message.strip():
+        return {"ok": False}
+    run.enqueue(req.message, priority="asap")
+    return {"ok": True}
 
 
 @router.delete("/api/sessions/{session_id}")

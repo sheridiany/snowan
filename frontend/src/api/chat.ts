@@ -44,6 +44,17 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await fetch(api(`/api/sessions/${sessionId}`), { method: 'DELETE' });
 }
 
+// Inject a follow-up instruction into the in-flight turn without interrupting it.
+// Returns whether a running turn picked it up (false = nothing was streaming).
+export async function steerChat(sessionId: string, message: string): Promise<boolean> {
+  const res = await fetch(api('/api/chat/steer'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, message }),
+  });
+  return ((await res.json()) as { ok: boolean }).ok;
+}
+
 // Resume a paused turn: approved tools execute, denied tools return a denial to
 // the model. The continuation streams back the same typed event protocol.
 export async function approveChat(
