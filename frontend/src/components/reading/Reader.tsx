@@ -6,6 +6,7 @@ import {
   BookOpen,
   Check,
   Clock,
+  Download,
   ExternalLink,
   Languages,
   Sparkles,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import {
+  exportArticleHtml,
   saveArticleNote,
   summarizeArticle,
   translateArticle,
@@ -197,6 +199,9 @@ export default function Reader({
       .catch(() => message.error('存为笔记失败,请重试'));
   };
 
+  const exportHtml = () =>
+    exportArticleHtml(a.id).catch(() => message.error('导出失败,请重试'));
+
   const bodyHtml = showTranslated && a.translated_html ? a.translated_html : a.extracted_html;
 
   return (
@@ -243,6 +248,9 @@ export default function Reader({
           onClick={saveNote}
         >
           {a.note_id ? '已存为笔记' : '存为笔记'}
+        </Button>
+        <Button size="small" icon={<Download size={14} />} onClick={exportHtml}>
+          导出
         </Button>
       </div>
 

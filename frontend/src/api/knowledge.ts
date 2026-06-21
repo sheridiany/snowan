@@ -36,6 +36,28 @@ export const listNotes = () => fetch(api('/api/knowledge/notes')).then((r) => j<
 export const draftNote = (entries: DraftEntry[], topic = '') =>
   post<NoteDraft>('/api/knowledge/notes/draft', { entries, topic });
 
+export type ExportFormat = 'md' | 'html' | 'docx';
+
+// Fetch the export as a blob and trigger a browser download, honoring the
+// server's Content-Disposition filename (UTF-8, so CJK titles survive).
+export async function exportNote(id: string, format: ExportFormat): Promise<void> {
+  const r = await fetch(api(`/api/knowledge/notes/${id}/export?format=${format}`));
+  if (!r.ok) throw new Error(`${r.status}`);
+  const cd = r.headers.get('content-disposition') ?? '';
+  const m = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  const name = m ? decodeURIComponent(m[1]) : `note.${format}`;
+  triggerDownload(await r.blob(), name);
+}
+
+export function triggerDownload(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export const createNote = (payload: {
   body: string;
   title?: string;

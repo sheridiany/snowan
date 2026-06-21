@@ -1,11 +1,13 @@
 """Reading (阅读) API: feed CRUD + refresh, article list/detail/flags, paste-URL,
 and the AI layer (summarize / ask-your-reading RAG / translate) over the active
 provider model. save-note bridges an article into the knowledge vault."""
+from urllib.parse import quote
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .. import knowledge, reading
+from .. import export, knowledge, reading
 from ..agent.providers import build_model
 from ..config import load_settings
 from ..reading import sanitize_html
@@ -101,6 +103,27 @@ def get_article(article_id: str) -> dict:
     if art is None:
         raise HTTPException(404, "article not found")
     return art
+
+
+# Articles are stored as sanitized HTML (not Markdown), so only HTML export is
+# cheap here — md/docx would need an HTML→token walker, skipped on purpose.
+@router.get("/articles/{article_id}/export")
+def export_article(article_id: str) -> Response:
+    art = reading.get_article(article_id)
+    if art is None:
+        raise HTTPException(404, "article not found")
+    body = art["extracted_html"] or art["content_html"]
+    if not body:
+        raise HTTPException(400, "该文章没有可导出的正文")
+    title = art["title"] or "文章"
+    html = export.html_to_html_doc(title, body)
+    return Response(
+        html.encode("utf-8"),
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(export._filename(title, 'html'))}"
+        },
+    )
 
 
 @router.patch("/articles/{article_id}")

@@ -1,12 +1,13 @@
 """Knowledge base: notes CRUD, hybrid search, chat -> note drafting, and the
 local embedding model (status + explicit download)."""
 import threading
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .. import embeddings, knowledge, knowledge_draft, knowledge_folders
+from .. import embeddings, export, knowledge, knowledge_draft, knowledge_folders
 
 router = APIRouter(prefix="/api/knowledge")
 
@@ -64,6 +65,40 @@ def get_note(note_id: str) -> dict:
     if note is None:
         raise HTTPException(404, "note not found")
     return note
+
+
+_EXPORT = {
+    "md": ("text/markdown; charset=utf-8", "md"),
+    "html": ("text/html; charset=utf-8", "html"),
+    "docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"),
+}
+
+
+def _attachment(filename: str) -> str:
+    # RFC 5987 filename* so CJK note titles survive the Content-Disposition header.
+    return f"attachment; filename*=UTF-8''{quote(filename)}"
+
+
+@router.get("/notes/{note_id}/export")
+def export_note(note_id: str, format: str = "md") -> Response:
+    if format not in _EXPORT:
+        raise HTTPException(422, "format must be md|html|docx")
+    note = knowledge.get_note(note_id)
+    if note is None:
+        raise HTTPException(404, "note not found")
+    media_type, ext = _EXPORT[format]
+    title = note["title"]
+    if format == "md":
+        content: bytes = note["body"].encode("utf-8")
+    elif format == "html":
+        content = export.md_to_html_doc(title, note["body"]).encode("utf-8")
+    else:
+        content = export.md_to_docx(title, note["body"])
+    return Response(
+        content,
+        media_type=media_type,
+        headers={"Content-Disposition": _attachment(export._filename(title, ext))},
+    )
 
 
 @router.put("/notes/{note_id}")

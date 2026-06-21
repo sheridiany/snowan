@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { ActionIcon, Button, Empty, Markdown } from '@lobehub/ui';
-import { Dropdown } from 'antd';
+import { App, Dropdown } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   Calendar,
   ChevronDown,
   ChevronLeft,
+  Download,
+  FileCode,
+  FileText,
+  FileType,
   FolderOpen,
   Globe,
   MessagesSquare,
@@ -21,6 +25,8 @@ import {
   listNotes,
   listFolders,
   getEmbeddingStatus,
+  exportNote,
+  type ExportFormat,
   type Note,
   type KbFolder,
 } from '../../api/knowledge';
@@ -206,6 +212,7 @@ export default function RightPanel({
   onOpenSettings?: () => void;
 }) {
   const { styles } = useStyles();
+  const { message } = App.useApp();
   const { width, onResizeStart } = useResizableWidth({
     key: 'snowan.rightWidth',
     initial: 340,
@@ -242,6 +249,9 @@ export default function RightPanel({
 
   const active = SOURCES.find((s) => s.key === source) ?? SOURCES[0];
 
+  const doExport = (note: Note, format: ExportFormat) =>
+    exportNote(note.id, format).catch(() => message.error('导出失败,请重试'));
+
   // Detail view — a single opened note, with breadcrumb back to its list.
   if (open) {
     return (
@@ -253,6 +263,19 @@ export default function RightPanel({
             </span>
             <span className={styles.crumbTitle}>{active.label}</span>
           </span>
+          <Dropdown
+            trigger={['click']}
+            menu={{
+              items: [
+                { key: 'md', icon: <FileText size={15} />, label: 'Markdown' },
+                { key: 'html', icon: <FileCode size={15} />, label: 'HTML' },
+                { key: 'docx', icon: <FileType size={15} />, label: 'Word' },
+              ],
+              onClick: ({ key }) => doExport(open, key as ExportFormat),
+            }}
+          >
+            <ActionIcon icon={Download} size="small" title="导出" />
+          </Dropdown>
         </div>
         <div className={styles.detail}>
           <div className={styles.detailTitle}>{open.title || '无标题'}</div>
