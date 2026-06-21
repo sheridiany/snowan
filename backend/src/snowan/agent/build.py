@@ -5,7 +5,7 @@ from .. import memory
 from .compaction import compact
 from .. import skills as skills_store
 from ..config import load_prefs, load_settings
-from .providers import build_model
+from .providers import build_model, cache_settings
 from .tools.file_tools import append_file, edit_file, read_file, write_file
 from .tools.calendar_tools import upcoming_events
 from .tools.knowledge_tools import knowledge_search
@@ -87,10 +87,13 @@ def _instructions(prefs: dict) -> str:
     return text
 
 
-def build_agent(extra_instructions: str = "") -> Agent:
+def build_agent() -> Agent:
     """Tools are gated per the approval_mode preference:
     auto = nothing gated · ask = mutating/shell gated · strict = every tool gated.
-    extra_instructions is appended for this run (e.g. memory auto-retrieved for the turn)."""
+
+    `instructions` is kept byte-stable across turns so the Anthropic system+tools
+    prefix stays cacheable — per-turn dynamic context (retrieved memory) rides in the
+    user message instead (server/chat.py)."""
     prefs = load_prefs()
     mode = prefs.get("approval_mode", "ask")
     disabled = set(prefs.get("disabled_tools") or [])
@@ -106,13 +109,12 @@ def build_agent(extra_instructions: str = "") -> Agent:
         tools = [*readonly, *(Tool(f, requires_approval=True) for f in mutating)]
     # MCP toolsets are NOT attached here — they're entered resiliently per chat run
     # (server/chat.py) so one failed server can't break the whole turn.
-    instructions = _instructions(prefs)
-    if extra_instructions:
-        instructions += "\n\n" + extra_instructions
+    settings = load_settings()
     return Agent(
-        build_model(load_settings()),
-        instructions=instructions,
+        build_model(settings),
+        instructions=_instructions(prefs),
         tools=tools,
         output_type=[str, DeferredToolRequests],
         capabilities=[ProcessHistory(compact)],  # summarize long histories per-request
+        model_settings=cache_settings(settings),  # cache the stable prefix (Anthropic)
     )

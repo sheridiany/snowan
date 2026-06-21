@@ -141,9 +141,10 @@ export interface ComposerProps {
   busy: boolean;
   onSend: (text: string, attachments: Attachment[]) => void;
   onStop?: () => void;
+  onSteer?: (text: string) => void;
 }
 
-export default function Composer({ busy, onSend, onStop }: ComposerProps) {
+export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProps) {
   const { styles, cx } = useStyles();
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -196,7 +197,15 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
 
   const submit = () => {
     const text = value.trim();
-    if ((!text && attachments.length === 0) || busy) return;
+    if (busy) {
+      // Mid-run: send a steer (a follow-up instruction) instead of a new turn.
+      if (text && onSteer) {
+        setValue('');
+        onSteer(text);
+      }
+      return;
+    }
+    if (!text && attachments.length === 0) return;
     const atts = attachments;
     setValue('');
     setAttachments([]);
@@ -289,7 +298,11 @@ export default function Composer({ busy, onSend, onStop }: ComposerProps) {
           )}
         </div>
       </div>
-      <div className={styles.hint}>Enter 发送 · Shift + Enter 换行 · 支持图片 / 文档</div>
+      <div className={styles.hint}>
+        {busy
+          ? 'Enter 插话(追加指令,不打断当前回答)· 方块按钮结束本回合'
+          : 'Enter 发送 · Shift + Enter 换行 · 支持图片 / 文档'}
+      </div>
     </div>
   );
 }

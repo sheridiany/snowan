@@ -6,6 +6,11 @@ that connects to a server and lists its tools for the settings UI."""
 from .. import mcp as store
 from ..config import load_prefs
 
+# Below this many known MCP tools (across enabled servers), sending every schema each
+# turn is cheap. Above it, defer their loading so the auto-injected ToolSearch capability
+# surfaces them on demand instead of bloating + churning the cached prompt prefix.
+_DEFER_THRESHOLD = 10
+
 
 def _build_one(name: str, cfg: dict):
     from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP
@@ -21,10 +26,14 @@ def _build_one(name: str, cfg: dict):
 
 
 def build_toolsets() -> list:
-    """One toolset per enabled server, with the per-tool policy + name prefix."""
+    """One toolset per enabled server, with the per-tool policy + name prefix. When the
+    enabled servers expose many tools in total, defer their loading so they're discovered
+    via tool search rather than bloating (and churning) the cached prompt prefix."""
     mode = load_prefs().get("approval_mode", "ask")
+    servers = list(store.enabled_servers())
+    defer = sum(len(cfg.get("tools") or {}) for _, cfg in servers) > _DEFER_THRESHOLD
     toolsets = []
-    for name, cfg in store.enabled_servers():
+    for name, cfg in servers:
         policy = cfg.get("tools") or {}
         try:
             server = _build_one(name, cfg)
@@ -37,7 +46,10 @@ def build_toolsets() -> list:
         def needs_approval(ctx, td, args, _p=policy) -> bool:
             return True if mode == "strict" else _p.get(td.name, "ask") != "auto"
 
-        toolsets.append(server.filtered(keep).approval_required(needs_approval).prefixed(name))
+        ts = server.filtered(keep).approval_required(needs_approval).prefixed(name)
+        if defer:
+            ts = ts.defer_loading()  # all tools → surfaced via tool search on demand
+        toolsets.append(ts)
     return toolsets
 
 

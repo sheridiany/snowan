@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   streamChat,
   approveChat,
+  steerChat,
   type ChatHandlers,
   type Attachment as ApiAttachment,
 } from '../api/chat';
@@ -145,6 +146,21 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     }
   };
 
+  // Mid-run steering: inject a follow-up instruction into the live turn without
+  // interrupting it. Shown as a user bubble inserted *before* the still-streaming
+  // assistant message, so the assistant stays trailing and deltas keep patching it.
+  const steer = async (text: string) => {
+    const t = text.trim();
+    if (!busy || !t) return;
+    setActiveMessages((prev) => {
+      if (prev.length === 0) return prev;
+      const next = [...prev];
+      next.splice(next.length - 1, 0, { role: 'user', blocks: [{ kind: 'text', text: t }] });
+      return next;
+    });
+    await steerChat(activeId, t);
+  };
+
   const dropThread = (id: string) =>
     setThreads((t) => {
       const next = { ...t };
@@ -152,5 +168,5 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       return next;
     });
 
-  return { messages, busy, send, stop, approve, dropThread };
+  return { messages, busy, send, stop, steer, approve, dropThread };
 }

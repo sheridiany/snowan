@@ -2,6 +2,7 @@
 // ~/.snowan/reading.db; this module is the only place that talks to the backend.
 // All HTML bodies returned here are already sanitized by nh3 on the server.
 import { api } from './base';
+import { triggerDownload } from './knowledge';
 
 export type FeedOut = {
   id: number;
@@ -124,3 +125,14 @@ export const ask = (question: string) =>
 // --- KB bridge ---
 export const saveArticleNote = (id: string) =>
   post<{ note_id: string }>(`/api/reading/articles/${id}/save-note`);
+
+// --- Export ---
+// Articles are stored as sanitized HTML, so only HTML export is offered.
+export async function exportArticleHtml(id: string): Promise<void> {
+  const r = await fetch(api(`/api/reading/articles/${id}/export`));
+  if (!r.ok) throw new Error(`${r.status}`);
+  const cd = r.headers.get('content-disposition') ?? '';
+  const m = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  const name = m ? decodeURIComponent(m[1]) : 'article.html';
+  triggerDownload(await r.blob(), name);
+}
