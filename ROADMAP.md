@@ -169,7 +169,7 @@ context isolation (M). **Out of scope:** scheduled / proactive / cron tasks.
 - **Plugins** (hot-loaded extensions) — lowest priority for single-user. _QwenPaw
   `plugins/`._
 
-## 🟡 Phase 8 — Token 经济 & agent 控制面  (借鉴 [KunAgent/Kun](https://github.com/KunAgent/Kun))
+## ✅ Phase 8 — Token 经济 & agent 控制面  (借鉴 [KunAgent/Kun](https://github.com/KunAgent/Kun))
 
 Surveyed Kun's self-built agent runtime (cache discipline, context economy,
 steering, hooks). Most of Kun's machinery exists because it wrote its own loop;
@@ -181,34 +181,36 @@ Two of Kun's lessons are **already true in Snowan** and just need to stay true:
 - _Context compaction_ — ✅ already (Phase 7): `ProcessHistory(compact)` folds old
   history, preserving goals/decisions/unfinished/paths — exactly Kun's recipe.
 
-Remaining, in dependency order:
+Built — each shipped, tested, and committed on `claude/kun-borrow`:
 
-- **8a Prompt-cache discipline + token telemetry** (highest ROI). Today every turn
-  rebuilds one `instructions` string with the per-turn retrieved memory baked in, so
-  the Anthropic `system`+`tools` prefix is invalidated **every turn** (≈zero cache).
-  Fix: keep `instructions` byte-stable; move per-turn `mem_ctx` out of instructions
-  into the user message (a `<相关记忆>` block, naturally past the cache breakpoint);
-  enable `AnthropicModelSettings(anthropic_cache_instructions/tool_definitions/cache)`
-  for Anthropic models (other providers cache server-side). Persist
-  `cache_read/write` + `input/output` tokens per turn to `~/.snowan/usage.jsonl` and
-  surface a hit-rate + token line in 关于 (the verification that caching landed).
-  Kun: `cache/immutable-prefix.ts`, `docs/kun-cache-optimization`. `agent/build.py`
-  · `agent/providers.py` · `server/chat.py` · `usage.py` · `server/system.py` · 关于.
-- **8b MCP progressive discovery**. Don't blast every MCP tool's schema into the
-  prefix (cache churn + tokens when servers are many). Use PydanticAI's first-class
-  `ToolSearch` capability + `defer_loading` on MCP toolsets so the model discovers
-  tools on demand (provider-native, cache-preserving). Kun: `mcp-tool-search.ts`.
-  `agent/build.py` · `agent/mcp.py`.
-- **8c Markdown export** — notes/articles → HTML + DOCX + raw .md, zero new deps
-  (`markdown-it-py` + `python-docx` already vendored); PDF later (needs a dep). Kun
-  Write-mode export. `server/knowledge.py` · 笔记/阅读 UI.
-- **8d Mid-run steering**. Inject a follow-up instruction into a live run without
-  interrupting it, via PydanticAI's `enqueue`. Needs the chat loop to drive with
-  `run.next(node)` (not bare `async for`) for the full priority set; `'asap'` works
-  as-is. Kun: `loop/steering-queue.ts`. `server/chat.py` · `hooks/useChat.ts`.
-- **8e Lifecycle hooks**. A thin hooks layer over PydanticAI capabilities + audit
-  (pre/post tool, run start/end) so policies/quality checks are programmable.
-  Lowest priority; scope before building. Kun: `hooks/`.
+- **8a Prompt-cache discipline + token telemetry** — _done ✅_. `instructions` kept
+  byte-stable; per-turn `mem_ctx` moved out of the instructions into the user message
+  (a `<相关记忆>` block, past the cache breakpoint);
+  `AnthropicModelSettings(anthropic_cache_instructions/tool_definitions/cache)` for
+  Anthropic (other providers cache server-side). Per-turn `cache_read/write` +
+  `input/output` tokens → `~/.snowan/usage.jsonl`, hit-rate surfaced in 关于. Kun:
+  `cache/immutable-prefix.ts`. `agent/build.py` · `agent/providers.py` ·
+  `server/chat.py` · `usage.py` · `server/system.py`.
+- **8b MCP progressive discovery** — _done ✅_. When enabled servers expose >10 tools
+  in total, `defer_loading()` hides them behind the auto-injected `ToolSearch`
+  capability (provider-native + cache-preserving); few tools stay inline (no extra
+  discovery round-trip). Kun: `mcp-tool-search.ts`. `agent/mcp.py`.
+- **8c Markdown export** — _done ✅_. Notes → HTML / DOCX (a markdown-it token walker,
+  no pandoc) / raw .md; articles → HTML. Zero new deps. 导出 dropdown + reading
+  toolbar; PDF deferred (needs a dep). `export.py` · `server/knowledge.py` ·
+  `server/reading.py` · 笔记/阅读 UI.
+- **8d Mid-run steering** — _done ✅_. Typing while streaming + Enter injects a
+  follow-up into the live turn via `enqueue('asap')` without interrupting it (POST
+  `/api/chat/steer` + an active-run registry); a steer landing in the brief
+  final-response window runs as an immediate follow-up turn (no loss). Adds the first
+  tests for the chat streaming loop. Kun: `loop/steering-queue.ts`. `server/chat.py` ·
+  `api/chat.ts` · `useChat.ts` · `Composer.tsx`.
+- **8e Lifecycle hooks** — _not built (by design)_. PydanticAI's **capabilities ARE
+  the hook system** (`before_model_request` / `after_node_run` / …) and Snowan already
+  uses them (`ProcessHistory`, the auto-injected `ToolSearch` / `PendingMessageDrain`).
+  A generic user-facing hooks engine would be a speculative abstraction — build it
+  against a concrete need (e.g. run a command on a specific tool event), not up front.
+  Kun: `hooks/`.
 
 _Stay out of scope (already excluded above): multi-agent delegation, the
 workflow/Loop canvas, computer-use, scheduling/proactive. The loop-agent **pattern**
