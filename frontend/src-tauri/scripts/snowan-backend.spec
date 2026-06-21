@@ -64,7 +64,8 @@ hiddenimports += collect_submodules("trafilatura")
 # Collect package metadata for packages that query importlib.metadata at runtime.
 _metadata_pkgs = [
     "snowan",
-    "pydantic-ai",
+    "pydantic-ai-slim",
+    "genai-prices",
     "fastapi",
     "starlette",
     "uvicorn",
@@ -75,10 +76,12 @@ _metadata_pkgs = [
     "anyio",
     "sniffio",
 ]
-# pydantic-ai queries importlib.metadata for itself AND transitive deps (genai_prices,
-# etc.) at runtime — recursive pulls every dependency's metadata so none is missing.
+# pydantic-ai-slim queries importlib.metadata for itself AND transitive deps
+# (genai_prices, etc.) at runtime — recursive pulls every dependency's metadata so none
+# is missing. We depend on -slim, not the pydantic-ai meta-package, so the walk must
+# start there (else genai_prices metadata is dropped and the frozen app crashes on boot).
 try:
-    datas += copy_metadata("pydantic-ai", recursive=True)
+    datas += copy_metadata("pydantic-ai-slim", recursive=True)
 except Exception:
     pass
 for _pkg in _metadata_pkgs:
