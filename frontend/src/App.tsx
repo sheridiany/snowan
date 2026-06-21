@@ -9,7 +9,7 @@ import DetailPane from './ui/DetailPane';
 import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
 import SessionsView from './components/views/SessionsView';
-import ComingSoonView from './components/views/ComingSoonView';
+import DailyView from './components/views/DailyView';
 import DrawView from './components/views/DrawView';
 import ReadingView from './components/views/ReadingView';
 import SettingsView from './components/settings/SettingsView';
@@ -174,8 +174,8 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.view === 'design' && (
-            <ComingSoonView
+          {nav.view === 'daily' && (
+            <DailyView
               view={nav.view}
               onView={nav.go}
               onNewChat={handleNew}
@@ -190,9 +190,12 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.rightOpen && nav.view !== 'draw' && nav.view !== 'reading' && (
-            <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
-          )}
+          {nav.rightOpen &&
+            nav.view !== 'draw' &&
+            nav.view !== 'reading' &&
+            nav.view !== 'daily' && (
+              <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
+            )}
         </main>
       </div>
       <NoteDraftModal

@@ -5,7 +5,7 @@ import {
   BookOpen,
   MessageSquare,
   Moon,
-  PenTool,
+  NotebookPen,
   Settings,
   Shapes,
   Sun,
@@ -19,7 +19,7 @@ import { LAYOUT } from '../../theme/themes';
 export type View =
   | 'conversations'
   | 'draw'
-  | 'design'
+  | 'daily'
   | 'reading'
   | 'settings';
 
@@ -32,9 +32,9 @@ export type NavProps = {
 };
 
 const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
+  { view: 'daily', label: '今天', icon: NotebookPen },
   { view: 'conversations', label: '对话', icon: MessageSquare },
   { view: 'draw', label: '画图', icon: Shapes },
-  { view: 'design', label: '设计', icon: PenTool },
   { view: 'reading', label: '阅读', icon: BookOpen },
 ];
 

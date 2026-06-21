@@ -1,14 +1,22 @@
-"""Knowledge base: notes CRUD, hybrid search, chat -> note drafting, and the
-local embedding model (status + explicit download)."""
+"""Knowledge base: notes CRUD, hybrid search, chat -> note drafting, the daily
+note (今天) module, and the local embedding model (status + explicit download)."""
 import threading
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import Response
 from pydantic import BaseModel
 
 from .. import embeddings, knowledge, knowledge_draft, knowledge_folders
+from ..config import load_settings
 
 router = APIRouter(prefix="/api/knowledge")
+
+# The {date} path param is client-supplied and ends up as a vault filename, so it
+# must be a literal YYYY-MM-DD — reject anything else with a 422 at the boundary
+# (defence in depth: knowledge._daily_path also validates) to block path traversal.
+DailyDate = Annotated[str, Path(pattern=r"^\d{4}-\d{2}-\d{2}$")]
 
 
 class NoteCreate(BaseModel):
@@ -36,6 +44,11 @@ class DraftRequest(BaseModel):
 
 class FolderAdd(BaseModel):
     path: str
+
+
+class DailySave(BaseModel):
+    body: str
+    base_updated_at: str | None = None  # the updated_at the client last saw; 409 if stale
 
 
 @router.get("/notes")
@@ -136,3 +149,102 @@ def embedding_download() -> dict:
 
         threading.Thread(target=_run, daemon=True).start()
     return {"ready": False, "downloading": True}
+
+
+# --- 今天 (daily note) ------------------------------------------------------
+# "date" is always the CLIENT's local YYYY-MM-DD; the server never computes its
+# own "today". /daily/dates is declared before /daily/{date} so it isn't swallowed.
+
+
+@router.get("/daily/dates")
+def daily_dates() -> list[str]:
+    return knowledge.list_daily_dates()
+
+
+@router.get("/daily/{date}")
+def get_daily(date: DailyDate) -> dict:
+    """The daily note for a date (find-or-create; applies the template on create)."""
+    return knowledge.get_or_create_daily(date)
+
+
+@router.put("/daily/{date}")
+def save_daily(date: DailyDate, req: DailySave) -> dict:
+    try:
+        return knowledge.save_daily(date, req.body, req.base_updated_at)
+    except knowledge.DailyConflict as e:
+        raise HTTPException(409, "笔记在别处被修改过,请刷新后再保存") from e
+
+
+@router.get("/daily/{date}/assembly")
+def daily_assembly(date: DailyDate) -> dict:
+    return knowledge.daily_assembly(date)
+
+
+@router.get("/daily/{date}/carryover")
+def daily_carryover(date: DailyDate) -> list[dict]:
+    return knowledge.daily_carryover(date)
+
+
+def _model_or_400():
+    s = load_settings()
+    if s.provider == "test" or not s.api_key:
+        raise HTTPException(400, "未配置 AI 模型,请先在设置中选择")
+    from ..agent.providers import build_model
+
+    return build_model(s)
+
+
+@router.post("/daily/{date}/plan")
+async def daily_plan(date: DailyDate) -> dict:
+    """One-shot draft: today's schedule + recent unfinished work + relevant memory →
+    a Highlight + ≤3 priorities. Returns an EDITABLE draft; never writes the note."""
+    assembly = knowledge.daily_assembly(date)
+    carryover = knowledge.daily_carryover(date)
+    events = "\n".join(
+        f"- {e.get('startsAt', '')} {e.get('title', '')}".rstrip() for e in assembly["events"]
+    ) or "(今天没有日程)"
+    pending = "\n".join(f"- {c['line'][5:].strip()} (来自 {c['fromDate']})" for c in carryover) \
+        or "(没有未完成的事项)"
+    memory = "\n".join(f"- {m['snippet']}" for m in assembly["memory"]) or "(无)"
+    from pydantic_ai import Agent
+
+    agent = Agent(
+        _model_or_400(),
+        instructions="你是 Snowan 的日记助手,帮用户规划今天。基于给定的日程、近期未完成事项、"
+        "相关记忆,产出一份可编辑的草稿:先给一个「今日 Highlight」(一件最重要的、60–90 分钟级的事),"
+        "再给最多 3 个「今日重点」。用提问/给选项的口吻引导用户思考,不要替他拍板。"
+        "只输出 Markdown 草稿本身,简体中文,简洁。",
+    )
+    prompt = (
+        f"今天日期:{date}\n\n今日日程:\n{events}\n\n"
+        f"近期未完成:\n{pending}\n\n相关记忆:\n{memory}"
+    )
+    try:
+        res = await agent.run(prompt)
+    except Exception as e:  # noqa: BLE001 — surface the upstream model error
+        raise HTTPException(400, f"规划失败: {e}") from e
+    return {"draft": res.output if isinstance(res.output, str) else str(res.output)}
+
+
+@router.post("/daily/{date}/summarize")
+async def daily_summarize(date: DailyDate) -> dict:
+    """One-shot draft: today's note body + activity → a review draft (成就 / 挑战 /
+    一条教训 / 明日重点). Returns an EDITABLE draft; never writes the note."""
+    note = knowledge.get_daily(date)
+    body = (note["body"] if note else "").strip() or "(今天还没写什么)"
+    assembly = knowledge.daily_assembly(date)
+    reading_lines = "\n".join(f"- 读了《{r['title']}》" for r in assembly["reading"]) or "(无)"
+    from pydantic_ai import Agent
+
+    agent = Agent(
+        _model_or_400(),
+        instructions="你是 Snowan 的日记助手,帮用户复盘今天。基于他今天写的正文和当日活动,"
+        "产出一份可编辑的晚复盘草稿:今天的成就、遇到的挑战、一条可带走的教训、明日重点。"
+        "只是起草供他修改,不要说教、不要编造没发生的事。只输出 Markdown 草稿本身,简体中文,简洁。",
+    )
+    prompt = f"今天日期:{date}\n\n今天写的内容:\n{body}\n\n今天的阅读:\n{reading_lines}"
+    try:
+        res = await agent.run(prompt)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"总结失败: {e}") from e
+    return {"draft": res.output if isinstance(res.output, str) else str(res.output)}

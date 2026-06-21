@@ -4,7 +4,7 @@ import type { View } from '../components/shell/ListPane';
 // Section navigation with back/forward history, plus the two layout flags
 // (list pane collapsed, right panel open). Pure, no async.
 export function useViewHistory() {
-  const [hist, setHist] = useState<View[]>(['conversations']);
+  const [hist, setHist] = useState<View[]>(['daily']);
   const [hi, setHi] = useState(0);
   const view = hist[hi];
 
