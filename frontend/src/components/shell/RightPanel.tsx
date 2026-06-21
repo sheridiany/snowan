@@ -21,6 +21,8 @@ import type { LucideIcon } from 'lucide-react';
 
 import { ListRow } from './ListPane';
 import { useResizableWidth } from './useResizableWidth';
+import PanelDailyNote from '../daily/PanelDailyNote';
+import DailyExpand from '../daily/DailyExpand';
 import { LAYOUT } from '../../theme/themes';
 import {
   listNotes,
@@ -379,6 +381,8 @@ export default function RightPanel({
     return { y: t.getFullYear(), m: t.getMonth() }; // m: 0-11
   });
   const [selDay, setSelDay] = useState(() => ymd(new Date()));
+  const [expandDate, setExpandDate] = useState<string | null>(null);
+  const openExpand = (d: string) => setExpandDate(d);
 
   const refresh = () => {
     setLoading(true);
@@ -608,6 +612,7 @@ export default function RightPanel({
                   ))
                 )}
               </div>
+              <PanelDailyNote date={selDay} onExpand={openExpand} />
             </>
           )
         ) : source === 'folders' ? (
@@ -654,6 +659,11 @@ export default function RightPanel({
         )}
       </div>
       <div className={styles.handle} onPointerDown={onResizeStart} />
+      <DailyExpand
+        date={expandDate ?? ''}
+        open={expandDate !== null}
+        onClose={() => setExpandDate(null)}
+      />
     </aside>
   );
 }

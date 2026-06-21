@@ -9,7 +9,6 @@ import DetailPane from './ui/DetailPane';
 import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
 import SessionsView from './components/views/SessionsView';
-import DailyView from './components/views/DailyView';
 import DrawView from './components/views/DrawView';
 import ReadingView from './components/views/ReadingView';
 import SettingsView from './components/settings/SettingsView';
@@ -174,14 +173,6 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.view === 'daily' && (
-            <DailyView
-              view={nav.view}
-              onView={nav.go}
-              onNewChat={handleNew}
-              listCollapsed={nav.listCollapsed}
-            />
-          )}
           {nav.view === 'settings' && (
             <SettingsView
               view={nav.view}
@@ -192,8 +183,7 @@ export default function App() {
           )}
           {nav.rightOpen &&
             nav.view !== 'draw' &&
-            nav.view !== 'reading' &&
-            nav.view !== 'daily' && (
+            nav.view !== 'reading' && (
               <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
             )}
         </main>
