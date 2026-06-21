@@ -267,29 +267,6 @@ def search_notes(query: str, limit: int = 8) -> list[dict]:
 # always the date string the client passes (its local date) — the backend never
 # computes its own now() for it, to avoid timezone drift.
 
-# §2 starter template, applied once on create. Kept minimal on purpose (a heavy
-# template is the #1 reason daily journaling gets abandoned).
-_DAILY_TEMPLATE = """\
-## 🎯 今日 Highlight
-
-
-## ✅ 今日重点
-- [ ]
-- [ ]
-- [ ]
-
-## 📥 随手记
-
-
-## 🌙 晚复盘
-- 今天为 Highlight 留出时间了吗?
-- 精力如何?
-- 一件带来愉悦的事?
-- 一个可改进的点?
-- [ ] 今日已收尾
-"""
-
-
 def _daily_path(date: str) -> Path:
     # The filename IS the date (§4). Validate at this single boundary so no daily
     # code path can be coaxed into "../.." and write a .md outside the vault — the
@@ -308,9 +285,9 @@ def get_daily(date: str) -> dict | None:
 
 
 def get_or_create_daily(date: str) -> dict:
-    """Find-or-create the daily note for `date`; apply the §2 template on create.
-    The note bypasses the slug path — its filename is the date — and is tagged
-    type:daily so the round-trip preserves it."""
+    """Find-or-create the daily note for `date` — starts empty; structure comes from
+    the 早计划/晚复盘 drafts on demand, not a pre-filled template. The note bypasses the
+    slug path — its filename is the date — and is tagged type:daily."""
     _ensure_vault()
     existing = get_daily(date)
     if existing is not None:
@@ -319,7 +296,7 @@ def get_or_create_daily(date: str) -> dict:
     note = {
         "id": f"note_{uuid.uuid4().hex}",
         "title": date,
-        "body": _DAILY_TEMPLATE,
+        "body": "",
         "type": "daily",
         "date": date,
         "created_at": now,

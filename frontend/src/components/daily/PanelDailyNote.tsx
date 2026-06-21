@@ -13,6 +13,10 @@ const AUTOSAVE_MS = 800;
 
 const useStyles = createStyles(({ token, css }) => ({
   section: css`
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     border-top: 1px solid ${token.colorBorderSecondary};
     margin: 10px 0 0;
     padding-top: 10px;
@@ -45,6 +49,7 @@ const useStyles = createStyles(({ token, css }) => ({
     }
   `,
   ta: css`
+    flex: 1;
     width: 100%;
     box-sizing: border-box;
     min-height: 60px;
@@ -52,7 +57,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border: 1px solid ${token.colorBorderSecondary};
     border-radius: ${token.borderRadius}px;
     outline: none;
-    resize: vertical;
+    resize: none;
     background: ${token.colorFillQuaternary};
     color: ${token.colorText};
     font-size: 13px;

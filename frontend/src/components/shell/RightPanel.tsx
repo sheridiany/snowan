@@ -188,6 +188,9 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   scroll: css`
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     padding: 6px 8px 12px;
   `,
