@@ -37,27 +37,18 @@ const useStyles = createStyles(({ token, css }) => ({
     text-overflow: ellipsis;
     white-space: nowrap;
   `,
-  orb: css`
-    flex: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: ${token.colorBrandGradient};
-  `,
 }));
 
 export default function DetailPane({
   title,
   align = 'center',
   extra,
-  leadingOrb,
   glow,
   children,
 }: {
   title?: ReactNode;
   align?: 'center' | 'between';
   extra?: ReactNode;
-  leadingOrb?: boolean;
   glow?: boolean;
   children: ReactNode;
 }) {
@@ -65,7 +56,6 @@ export default function DetailPane({
   return (
     <section className={cx(styles.detail, glow && styles.glow)}>
       <header className={cx(styles.header, align === 'between' ? styles.between : styles.center)}>
-        {leadingOrb && <div className={styles.orb} />}
         <span className={styles.title}>{title}</span>
         {align === 'between' && extra}
       </header>

@@ -172,7 +172,7 @@ function SideNav({ view, onView, onNewChat }: NavProps) {
   return (
     <nav className={styles.nav}>
       {SECTIONS.map((s) => (
-        <Tooltip key={s.view} title={s.label}>
+        <Tooltip key={s.view} title={s.label} placement="bottom">
           <div
             className={cx(styles.navItem, view === s.view && styles.navItemActive)}
             onClick={() => onView(s.view)}
@@ -182,7 +182,7 @@ function SideNav({ view, onView, onNewChat }: NavProps) {
         </Tooltip>
       ))}
       <div className={styles.navSpacer} />
-      <Tooltip title="新建对话">
+      <Tooltip title="新建对话" placement="bottom">
         <div className={styles.newBtn} onClick={onNewChat}>
           <SquarePenRounded size={17} />
         </div>
@@ -196,7 +196,7 @@ function SideFooter({ view, onView }: Pick<NavProps, 'view' | 'onView'>) {
   const { isDarkMode, setThemeMode } = useThemeMode();
   return (
     <div className={styles.footer}>
-      <Tooltip title="设置">
+      <Tooltip title="设置" placement="top">
         <div
           className={cx(styles.footerItem, view === 'settings' && styles.footerItemActive)}
           onClick={() => onView('settings')}
@@ -204,7 +204,7 @@ function SideFooter({ view, onView }: Pick<NavProps, 'view' | 'onView'>) {
           <Icon icon={Settings} size={18} />
         </div>
       </Tooltip>
-      <Tooltip title={isDarkMode ? '浅色模式' : '深色模式'}>
+      <Tooltip title={isDarkMode ? '浅色模式' : '深色模式'} placement="top">
         <div
           className={styles.footerItem}
           onClick={() => setThemeMode(isDarkMode ? 'light' : 'dark')}

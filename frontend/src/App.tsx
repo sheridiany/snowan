@@ -145,7 +145,7 @@ export default function App() {
                   onDelete={handleDelete}
                 />
               )}
-              <DetailPane title={sessions.activeTitle} leadingOrb glow>
+              <DetailPane title={sessions.activeTitle} glow>
                 <ChatView
                   messages={chat.messages}
                   busy={chat.busy}

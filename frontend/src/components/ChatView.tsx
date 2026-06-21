@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Markdown } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
-import { Check, Code2, Copy, ListChecks, NotebookPen, Paperclip, Search, Sparkles } from 'lucide-react';
+import { Check, Code2, Copy, ListChecks, NotebookPen, Paperclip, Search } from 'lucide-react';
+
+import { getPrefs } from '../api/system';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
 import type { Block, Message, ToolStep } from './types';
@@ -54,54 +56,11 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 9px;
     padding: 24px;
   `,
-  markWrap: css`
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    height: 64px;
-    margin-bottom: 6px;
-  `,
-  // Soft halo behind the mark for depth (rgba glow token → transparent).
-  markGlow: css`
-    position: absolute;
-    inset: -26px;
-    border-radius: 50%;
-    background: radial-gradient(circle, ${token.colorBrandGlow} 0%, transparent 68%);
-    pointer-events: none;
-  `,
-  // A lit "bubble": brand gradient + a glossy top highlight, a bottom inner
-  // shade, and an outer accent glow — reads crafted rather than a flat circle.
-  mark: css`
-    position: relative;
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: ${token.colorBrandGradient};
-    box-shadow:
-      inset 0 1.5px 1px rgba(255, 255, 255, 0.45),
-      inset 0 -3px 7px rgba(0, 0, 0, 0.18),
-      0 8px 20px -6px ${token.colorBrandGlow};
-    animation: markfloat 6s ease-in-out infinite;
-    @keyframes markfloat {
-      0%,
-      100% {
-        transform: translateY(-3px);
-      }
-      50% {
-        transform: translateY(3px);
-      }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      animation: none;
-    }
+  greetingName: css`
+    color: ${token.colorPrimary};
   `,
   greeting: css`
-    font-size: 26px;
+    font-size: 31px;
     font-weight: 650;
     letter-spacing: -0.02em;
     color: ${token.colorText};
@@ -341,6 +300,13 @@ export default function ChatView({
   // Stick to the bottom only while the user is already there; if they scroll up
   // to read history, streamed updates must not yank them back down.
   const stickRef = useRef(true);
+  // The empty-state greeting personalizes with the profile name when set.
+  const [name, setName] = useState('');
+  useEffect(() => {
+    getPrefs()
+      .then((p) => setName(p.profile?.name ?? ''))
+      .catch(() => {});
+  }, []);
 
   const onScroll = () => {
     const el = scrollRef.current;
@@ -363,14 +329,11 @@ export default function ChatView({
     return (
       <div className={styles.emptyScroll} ref={scrollRef}>
         <div className={styles.hero}>
-          <div className={styles.markWrap}>
-            <span className={styles.markGlow} />
-            <div className={styles.mark}>
-              <Sparkles size={28} color="#fff" />
-            </div>
+          <div className={styles.greeting}>
+            {greeting}
+            {name && <span className={styles.greetingName}>,{name}</span>}
           </div>
-          <div className={styles.greeting}>{greeting}</div>
-          <div className={styles.heroDesc}>开启一段新对话,Snowan 在这里。</div>
+          <div className={styles.heroDesc}>今天想从哪里开始?</div>
           <div className={styles.cardGrid}>
             {SUGGESTED_PROMPTS.map((p, i) => {
               const Ico = p.icon;
