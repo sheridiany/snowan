@@ -20,11 +20,11 @@ pub fn run() {
             // the collapse/back/forward buttons. Our own titlebar carries the
             // drag region, so we skip create_overlay_titlebar() entirely.
             //
-            // y = 21 centers the lights on the 44px titlebar icon row.
+            // Inset tuned by eye against the 44px titlebar icon row.
             #[cfg(target_os = "macos")]
             {
                 let win = app.get_webview_window("main").unwrap();
-                win.set_traffic_lights_inset(16.0, 21.0).unwrap();
+                win.set_traffic_lights_inset(16.0, 20.0).unwrap();
             }
             // Launch the Python backend sidecar (dev: uv run from source · release:
             // the bundled PyInstaller binary). Async so setup doesn't block.

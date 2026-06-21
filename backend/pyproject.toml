@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Snowan agent backend — PydanticAI + FastAPI"
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic-ai>=1.0",
+    "pydantic-ai-slim[anthropic,google,mcp,openai]>=1.0",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "python-dotenv>=1.0",
