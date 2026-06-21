@@ -134,11 +134,6 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: 4px;
     object-fit: cover;
   `,
-  empty: css`
-    padding: 2px 0 6px 30px;
-    font-size: 12px;
-    color: ${token.colorTextQuaternary};
-  `,
 }));
 
 function Section({
@@ -222,14 +217,16 @@ export default function AssemblyBand({
   const memory = assembly?.memory ?? [];
   const captureCount = reading.length + chats.length + images.length;
 
+  // Writing-first: a section only appears when it has content, and the whole band
+  // disappears on a quiet day — an empty day is a clean writing surface, not a wall
+  // of "今天没有…" placeholders.
+  if (!events.length && !captureCount && !carryover.length && !memory.length) return null;
+
   return (
     <div className={styles.band}>
-      {/* Calendar moved into the RightPanel (no longer a top-level view), so the
-          今日日程 rows are read-only context, not a deep-link. */}
-      <Section icon={CalendarDays} label="今日日程" count={events.length}>
-        {events.length === 0 ? (
-          <div className={styles.empty}>今天没有日程</div>
-        ) : (
+      {events.length > 0 && (
+        // Calendar lives in the RightPanel now (not a top-level view) — read-only rows.
+        <Section icon={CalendarDays} label="今日日程" count={events.length}>
           <div className={styles.rows}>
             {events.map((ev) => (
               <div key={ev.id} className={styles.row}>
@@ -238,13 +235,11 @@ export default function AssemblyBand({
               </div>
             ))}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
-      <Section icon={BookOpen} label="今日捕获" count={captureCount}>
-        {captureCount === 0 ? (
-          <div className={styles.empty}>今天还没有捕获</div>
-        ) : (
+      {captureCount > 0 && (
+        <Section icon={BookOpen} label="今日捕获" count={captureCount}>
           <div className={styles.rows}>
             {reading.map((a) => (
               <div key={a.id} className={styles.row} onClick={() => onView('reading')}>
@@ -270,13 +265,11 @@ export default function AssemblyBand({
               </div>
             ))}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
-      <Section icon={Plus} label="昨日未完成" count={carryover.length}>
-        {carryover.length === 0 ? (
-          <div className={styles.empty}>没有遗留的待办</div>
-        ) : (
+      {carryover.length > 0 && (
+        <Section icon={Plus} label="昨日未完成" count={carryover.length}>
           <div className={styles.rows}>
             {carryover.map((c, i) => (
               <div key={`${c.fromDate}-${i}`} className={cx(styles.row, styles.carryRow)}>
@@ -291,13 +284,11 @@ export default function AssemblyBand({
               </div>
             ))}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
-      <Section icon={Brain} label="相关记忆" count={memory.length} defaultOpen={false}>
-        {memory.length === 0 ? (
-          <div className={styles.empty}>暂无相关记忆</div>
-        ) : (
+      {memory.length > 0 && (
+        <Section icon={Brain} label="相关记忆" count={memory.length} defaultOpen={false}>
           <div className={styles.rows}>
             {memory.map((m) => (
               <div key={m.id} className={styles.row}>
@@ -306,8 +297,8 @@ export default function AssemblyBand({
               </div>
             ))}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
     </div>
   );
 }

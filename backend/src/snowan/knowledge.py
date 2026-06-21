@@ -271,23 +271,22 @@ def search_notes(query: str, limit: int = 8) -> list[dict]:
 # template is the #1 reason daily journaling gets abandoned).
 _DAILY_TEMPLATE = """\
 ## 🎯 今日 Highlight
-<!-- 一件最重要的事(60–90 分钟级)。可让 AI「帮我规划今天」起草。 -->
 
-## ✅ 今日重点(≤3)
+
+## ✅ 今日重点
 - [ ]
 - [ ]
 - [ ]
 
 ## 📥 随手记
-<!-- 一行一条: - [ ] 任务 / - 笔记 / 时间开头=事件。别做成表单。 -->
--
+
 
 ## 🌙 晚复盘
-- 今天给 Highlight 留出时间了吗?
+- 今天为 Highlight 留出时间了吗?
 - 精力如何?
-- 哪件事带来愉悦?
+- 一件带来愉悦的事?
 - 一个可改进的点?
-- [ ] 今日已收尾 ✓
+- [ ] 今日已收尾
 """
 
 
