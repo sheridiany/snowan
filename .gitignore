@@ -24,3 +24,7 @@ dist/pyinstaller-build/
 
 # PyInstaller backend bundle (built, not tracked)
 frontend/src-tauri/binaries/
+
+# build caches + agent session/worktrees
+*.tsbuildinfo
+.claude/
