@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Text } from '@lobehub/ui';
-import { App, Dropdown, Input, Tag } from 'antd';
+import { App, Dropdown, Input, Tag, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   Check,
@@ -280,23 +280,23 @@ export default function SettingsKnowledge() {
   return (
     <div className={styles.wrap}>
       <Section
-        title="本地语义检索"
-        subtitle="用于「语义搜索」的嵌入模型,完全在你的设备上离线运行——笔记内容不会离开本机。"
+        title="按意思搜索"
+        subtitle="开启后,搜索会理解你想找什么,换种说法也能找到相关笔记。整个过程都在你的设备上离线完成——内容不会离开本机。"
       >
         <Row
           label={st?.model ?? '嵌入模型'}
-          subtitle={`约 ${st?.size_mb ?? 95}MB · 一次性下载,存于 ~/.snowan/models`}
+          subtitle={`约 ${st?.size_mb ?? 95}MB · 一次性下载,之后离线可用`}
           control={embControl}
         />
       </Section>
 
       <Text className={styles.note} style={{ padding: '0 2px' }}>
-        没下载也能用:知识库会以关键词检索工作。下载这个本地模型后,会额外启用语义检索(换种说法也能搜到),
-        并自动为已存的笔记和文件补建索引。
+        不下载也能用:现在可以按关键词搜索笔记和文件。开启后还能按意思搜索——换种说法也能找到想要的内容,
+        系统会自动为已有的笔记和文件补建索引。
       </Text>
       {st && !st.ready && (
         <Tag color="warning" style={{ alignSelf: 'flex-start' }}>
-          语义检索未启用 · 关键词检索可用
+          现在可按关键词搜索 · 开启后能按意思搜索,更准
         </Tag>
       )}
 
@@ -354,11 +354,13 @@ export default function SettingsKnowledge() {
                   <Folder size={18} />
                 </span>
                 <div className={styles.cardBody}>
-                  <span className={styles.cardName}>
-                    {f.path.split('/').filter(Boolean).pop() || f.path}
-                  </span>
+                  <Tooltip title={f.path} placement="top">
+                    <span className={styles.cardName}>
+                      {f.path.split('/').filter(Boolean).pop() || f.path}
+                    </span>
+                  </Tooltip>
                   <span className={styles.cardPath}>
-                    {f.path} · {f.file_count} 个文件
+                    {f.file_count} 个文件 · {f.path}
                   </span>
                 </div>
                 <Dropdown

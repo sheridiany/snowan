@@ -33,12 +33,12 @@ const TYPE_OPTIONS = (Object.keys(TYPE_LABELS) as MemoryType[]).map((t) => ({
   label: TYPE_LABELS[t],
 }));
 
-// Human-voiced labels for the consolidation diff — never expose the pipeline words.
+// Plain-language labels for each proposed change — no pipeline jargon.
 const KIND_LABELS: Record<DiffItem['kind'], string> = {
-  add: '记住',
-  update: '修订',
-  deprecate: '不再提起',
-  promote: '写进画像',
+  add: '新记一条',
+  update: '改一改',
+  deprecate: '不再使用',
+  promote: '记得更牢',
 };
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -267,12 +267,12 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-// "X 前记下" from when the memory was first recorded (created), not the recall mechanic.
+// When this memory was first added, in everyday language.
 function recordedAt(iso: string): string {
   const days = Math.max(0, (Date.now() - new Date(iso).getTime()) / 86400000);
-  if (days < 1) return '今天记下';
-  if (days < 30) return `${Math.round(days)} 天前记下`;
-  return `${Math.round(days / 30)} 个月前记下`;
+  if (days < 1) return '今天';
+  if (days < 30) return `${Math.round(days)} 天前`;
+  return `${Math.round(days / 30)} 个月前`;
 }
 
 // Read-mode profile: drop a leading "# 画像" heading + per-line bullet markers so it
@@ -432,7 +432,7 @@ export default function SettingsMemory() {
   const clearAll = () =>
     modal.confirm({
       title: '清空所有记忆?',
-      content: '会删除全部记忆条目、画像与日志,且不可撤销(画像会先自动备份一份)。',
+      content: 'Snowan 会忘掉关于你的一切,包括它记得的事和对你的印象。此操作不可撤销。',
       okText: '清空',
       okType: 'danger',
       cancelText: '取消',
@@ -548,7 +548,7 @@ export default function SettingsMemory() {
     <div className={styles.wrap}>
       {!memOn && (
         <div className={styles.pausedBanner}>
-          记忆已暂停 — 助手暂时不会保存或引用记忆,现有记忆仍保留。
+          已暂停记忆 — 这段时间聊的内容,Snowan 不会记下来,也不会拿来参考。下面已经记得的不受影响,随时可以重新开启。
         </div>
       )}
       {/* L3 — 画像 */}
@@ -630,14 +630,14 @@ export default function SettingsMemory() {
                     <Dot size={18} className={styles.rowDot} />
                     <div className={styles.rowBody}>
                       <div className={styles.rowText}>{e.content}</div>
-                      <div className={styles.rowMeta}>{recordedAt(e.created_at)}</div>
+                      <div className={styles.rowMeta}>{recordedAt(e.created_at)} 记下</div>
                     </div>
                     <Dropdown
                       trigger={['click']}
                       menu={{
                         items: [
                           { key: 'edit', label: '编辑' },
-                          { key: 'archive', label: '弃用(停用但保留)' },
+                          { key: 'archive', label: '暂时别用(保留不删)' },
                           { key: 'forget', label: '忘掉', danger: true },
                         ],
                         onClick: ({ key }) =>
@@ -666,7 +666,7 @@ export default function SettingsMemory() {
                     size={13}
                     style={{ transform: archivedOpen ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}
                   />
-                  已弃用 · {archived.length}
+                  不再使用的记忆 · {archived.length}
                 </span>
                 {archivedOpen && (
                   <div className={cx(styles.list, styles.archDim)}>
@@ -675,7 +675,7 @@ export default function SettingsMemory() {
                         <Dot size={18} className={styles.rowDot} />
                         <div className={styles.rowBody}>
                           <div className={styles.rowText}>{e.content}</div>
-                          <div className={styles.rowMeta}>已弃用 · {recordedAt(e.created_at)}</div>
+                          <div className={styles.rowMeta}>暂时没在用 · {recordedAt(e.created_at)} 记下</div>
                         </div>
                         <Dropdown
                           trigger={['click']}
@@ -705,7 +705,7 @@ export default function SettingsMemory() {
       <section className={styles.suggest}>
         <div className={styles.suggestHead}>
           <Sparkles size={17} style={{ color: theme.colorPrimary, flex: 'none' }} />
-          <Text style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>Snowan 想更新一些记忆</Text>
+          <Text style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>整理一下记忆</Text>
           {!diff && !proposing && (
             <Button size="small" onClick={propose}>
               看看建议
@@ -713,13 +713,13 @@ export default function SettingsMemory() {
           )}
         </div>
         <div className={styles.hSub} style={{ marginTop: 2 }}>
-          让助手回顾日志与现有记忆,提一份你来拍板的清单。勾选并应用前,什么都不会写入。
+          Snowan 会列出几条它觉得可以新记、修改或不再使用的内容,供你过目。你勾选确认后才会生效。
         </div>
 
         {proposing ? (
           <div className={styles.empty}>
             <Spin />
-            正在回顾…
+            正在整理…
           </div>
         ) : diff && diff.items.length === 0 ? (
           <div className={styles.empty}>暂时没有要更新的,记忆已是最新。</div>
@@ -766,8 +766,8 @@ export default function SettingsMemory() {
           手动添加一条
         </span>
         <div className={styles.footRight}>
-          <span>{memOn ? '记忆开启中' : '已暂停'}</span>
-          <Switch size="small" checked={memOn} onChange={toggleMem} />
+          <span>{memOn ? '记忆开启中' : '记忆已暂停'}</span>
+          <Switch size="small" checked={memOn} onChange={toggleMem} aria-label="开启或暂停记忆" />
           <span className={styles.danger} role="button" tabIndex={0} onClick={clearAll}>
             清空所有记忆
           </span>
