@@ -4,7 +4,7 @@ import subprocess
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from .. import audit, config
+from .. import audit, config, usage
 from ..agent.build import tool_catalog
 
 router = APIRouter()
@@ -36,6 +36,12 @@ def list_tools() -> list[dict]:
 def audit_log(limit: int = 100) -> list[dict]:
     """Recent tool calls (newest first) for the 权限 audit view."""
     return audit.recent(limit)
+
+
+@router.get("/api/usage")
+def usage_summary() -> dict:
+    """Token + cache-hit totals over recent turns — shows whether prompt caching lands."""
+    return usage.summary()
 
 
 @router.get("/api/prefs")

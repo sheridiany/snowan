@@ -41,3 +41,19 @@ def build_model(settings: Settings):
         )
 
     raise ValueError(f"unknown SNOWAN_PROVIDER: {settings.provider}")
+
+
+def cache_settings(settings: Settings):
+    """Prompt-cache the stable system+tools prefix (and the growing message prefix)
+    for Anthropic, so the per-turn dynamic context — which now rides in the user
+    message, not the instructions — is the only uncached part. Other providers cache
+    server-side automatically, so no settings are needed."""
+    if settings.provider == "anthropic":
+        from pydantic_ai.models.anthropic import AnthropicModelSettings
+
+        return AnthropicModelSettings(
+            anthropic_cache_instructions=True,
+            anthropic_cache_tool_definitions=True,
+            anthropic_cache=True,
+        )
+    return None

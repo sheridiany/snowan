@@ -24,6 +24,14 @@ export type About = {
   model: string;
   has_api_key: boolean;
 };
+export type Usage = {
+  turns: number;
+  input: number;
+  output: number;
+  cache_read: number;
+  cache_write: number;
+  hit_rate: number;
+};
 
 const j = <T>(r: Response): Promise<T> => {
   if (!r.ok) throw new Error(`${r.status}`);
@@ -41,4 +49,5 @@ export const savePrefs = (patch: Partial<Prefs>) =>
     body: JSON.stringify(patch),
   }).then((r) => j<Prefs>(r));
 export const getAbout = () => fetch(api('/api/about')).then((r) => j<About>(r));
+export const getUsage = () => fetch(api('/api/usage')).then((r) => j<Usage>(r));
 export const openDataDir = () => fetch(api('/api/about/open-data-dir'), { method: 'POST' });

@@ -4,7 +4,7 @@ import { App, Tag } from 'antd';
 import { createStyles } from 'antd-style';
 import { FolderOpen } from 'lucide-react';
 import { Row, Section } from './_kit';
-import { getAbout, openDataDir, type About } from '../../api/system';
+import { getAbout, getUsage, openDataDir, type About, type Usage } from '../../api/system';
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
@@ -50,11 +50,16 @@ export default function SettingsAbout() {
   const { styles } = useStyles();
   const { message } = App.useApp();
   const [about, setAbout] = useState<About | null>(null);
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const fmt = (n: number) => n.toLocaleString();
 
   useEffect(() => {
     getAbout()
       .then(setAbout)
       .catch(() => message.error('无法获取应用信息'));
+    getUsage()
+      .then(setUsage)
+      .catch(() => {});
   }, [message]);
 
   if (!about) {
@@ -92,6 +97,33 @@ export default function SettingsAbout() {
           }
         />
       </Section>
+
+      {usage && usage.turns > 0 && (
+        <Section title="用量与缓存">
+          <Row label="近期对话轮次" control={<Text>{usage.turns}</Text>} />
+          <Row
+            label="输入 / 输出 tokens"
+            control={
+              <Text>
+                {fmt(usage.input)} / {fmt(usage.output)}
+              </Text>
+            }
+          />
+          <Row
+            label="缓存命中率"
+            subtitle={
+              <span className={styles.appVer}>
+                读取 {fmt(usage.cache_read)} · 写入 {fmt(usage.cache_write)} tokens
+              </span>
+            }
+            control={
+              <Tag color={usage.hit_rate >= 0.5 ? 'green' : 'orange'}>
+                {(usage.hit_rate * 100).toFixed(0)}%
+              </Tag>
+            }
+          />
+        </Section>
+      )}
     </div>
   );
 }

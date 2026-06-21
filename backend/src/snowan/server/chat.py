@@ -25,7 +25,7 @@ from pydantic_ai.usage import UsageLimits
 from ..agent.build import build_agent
 from ..agent.mcp import build_toolsets
 from ..agent.sessions import delete_history, load_history, save_history
-from .. import audit, memory
+from .. import audit, memory, usage
 from ..config import load_prefs
 from ..extract import extract_text as _extract_text
 
@@ -178,9 +178,14 @@ def _query_text(prompt: Any) -> str:
 
 async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
     # Build per-request so a model/key change saved in Settings takes effect at once.
-    # Auto-retrieve memory relevant to this turn and inject it (threshold-gated).
+    # Per-turn retrieved memory rides in the USER message (a <相关记忆> block), NOT in
+    # the instructions — that keeps the system+tools prefix byte-stable so prompt
+    # caching lands; the dynamic memory is then the only uncached part of the turn.
     mem_ctx = memory.auto_context(_query_text(prompt)) if load_prefs().get("memory_enabled", True) else ""
-    agent = build_agent(extra_instructions=mem_ctx)
+    if mem_ctx:
+        block = f"<相关记忆>\n{mem_ctx}\n</相关记忆>"
+        prompt = [block, *prompt] if isinstance(prompt, list) else [block, prompt]
+    agent = build_agent()
     async with AsyncExitStack() as stack:
         toolsets = await _live_mcp(stack)
         async with agent.iter(
@@ -189,6 +194,7 @@ async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) ->
             async for chunk in _stream_run(run):
                 yield chunk
             save_history(session_id, run.result.all_messages())
+            usage.record(run.result)
 
 
 async def _run_resume(
@@ -208,6 +214,7 @@ async def _run_resume(
             async for chunk in _stream_run(run):
                 yield chunk
             save_history(session_id, run.result.all_messages())
+            usage.record(run.result)
 
 
 @router.post("/api/chat/stream")
