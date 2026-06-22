@@ -233,6 +233,8 @@ def _model_or_400():
 async def daily_plan(date: DailyDate) -> dict:
     """One-shot draft: today's schedule + recent unfinished work + relevant memory →
     a Highlight + ≤3 priorities. Returns an EDITABLE draft; never writes the note."""
+    note = knowledge.get_daily(date)
+    body = (note["body"] if note else "").strip()
     assembly = knowledge.daily_assembly(date)
     carryover = knowledge.daily_carryover(date)
     events = "\n".join(
@@ -245,14 +247,15 @@ async def daily_plan(date: DailyDate) -> dict:
 
     agent = Agent(
         _model_or_400(),
-        instructions="你是 Snowan 的日记助手,帮用户规划今天。基于给定的日程、近期未完成事项、"
-        "相关记忆,产出一份可编辑的草稿:先给一个「今日 Highlight」(一件最重要的、60–90 分钟级的事),"
-        "再给最多 3 个「今日重点」。用提问/给选项的口吻引导用户思考,不要替他拍板。"
-        "只输出 Markdown 草稿本身,简体中文,简洁。",
+        instructions="你是 Snowan 的日记助手,帮用户规划今天。如果他已经在今天的笔记里写下了要做的事,"
+        "必须基于这些来规划——从中挑一件最该优先推进的作为「今日 Highlight」(60–90 分钟级),"
+        "其余排成有顺序的「今日重点」并给出取舍/聚焦建议;绝不要忽略他写的、另起一套通用方向。"
+        "只有当他几乎没写时,才用提问/给选项的口吻引导他思考。可结合日程、近期未完成、相关记忆。"
+        "只输出 Markdown 草稿本身,不要加多余的大标题,简体中文,简洁。",
     )
     prompt = (
-        f"今天日期:{date}\n\n今日日程:\n{events}\n\n"
-        f"近期未完成:\n{pending}\n\n相关记忆:\n{memory}"
+        f"今天日期:{date}\n\n他已经写下的内容:\n{body or '(还没写)'}\n\n"
+        f"今日日程:\n{events}\n\n近期未完成:\n{pending}\n\n相关记忆:\n{memory}"
     )
     try:
         res = await agent.run(prompt)
