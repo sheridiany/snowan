@@ -67,7 +67,8 @@ export const createNote = (payload: {
 
 export const deleteNote = (id: string) =>
   fetch(api(`/api/knowledge/notes/${id}`), { method: 'DELETE' }).then((r) => {
-    if (!r.ok) throw new Error(`${r.status}`);
+    // 404 = already gone; treat as deleted so a stale list row still resolves cleanly.
+    if (!r.ok && r.status !== 404) throw new Error(`${r.status}`);
   });
 
 export type EmbeddingStatus = {

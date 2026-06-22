@@ -449,10 +449,10 @@ export default function RightPanel({
     deleteNote(note.id)
       .then(() => {
         setNotes((prev) => prev.filter((n) => n.id !== note.id));
-        setOpen(null);
+        setOpen((cur) => (cur?.id === note.id ? null : cur));
         message.success('已删除');
       })
-      .catch(() => message.error('删除失败,请重试'));
+      .catch((e: Error) => message.error(`删除失败:${e.message || '请重试'}`));
 
   // Detail view — a single opened note, with breadcrumb back to its list.
   if (open) {
@@ -680,6 +680,7 @@ export default function RightPanel({
               sub={snippet(n.body)}
               right={noteDate(n.updated_at)}
               onClick={() => setOpen(n)}
+              onDelete={() => onDelete(n)}
             />
           ))
         )}

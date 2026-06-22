@@ -1,5 +1,5 @@
 import { Icon } from '@lobehub/ui';
-import { Tooltip } from 'antd';
+import { Popconfirm, Tooltip } from 'antd';
 import { createStyles, useThemeMode } from 'antd-style';
 import {
   BookOpen,
@@ -8,6 +8,7 @@ import {
   Settings,
   Shapes,
   Sun,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -253,6 +254,30 @@ const useRowStyles = createStyles(({ token, css }) => ({
     &:hover {
       background: ${token.colorFillTertiary};
     }
+    &:hover [data-rowdel] {
+      opacity: 1;
+    }
+  `,
+  del: css`
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: ${token.borderRadius}px;
+    color: ${token.colorTextTertiary};
+    background: ${token.colorFillSecondary};
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+    &:hover {
+      color: ${token.colorError};
+      background: ${token.colorErrorBg};
+    }
   `,
   active: css`
     background: ${token.colorFillSecondary};
@@ -313,6 +338,7 @@ export function ListRow({
   active,
   right,
   onClick,
+  onDelete,
 }: {
   icon?: LucideIcon;
   label: ReactNode;
@@ -320,6 +346,7 @@ export function ListRow({
   active?: boolean;
   right?: ReactNode;
   onClick?: () => void;
+  onDelete?: () => void;
 }) {
   const { styles, cx } = useRowStyles();
   return (
@@ -336,6 +363,20 @@ export function ListRow({
         {sub && <span className={styles.sub}>{sub}</span>}
       </span>
       {right && <span className={styles.right}>{right}</span>}
+      {onDelete && (
+        <span data-rowdel className={styles.del} onClick={(e) => e.stopPropagation()}>
+          <Popconfirm
+            title="删除这份笔记?"
+            description="删除后不可恢复。"
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            onConfirm={onDelete}
+          >
+            <Trash2 size={15} />
+          </Popconfirm>
+        </span>
+      )}
     </div>
   );
 }
