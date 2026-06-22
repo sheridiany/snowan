@@ -14,6 +14,8 @@ from .tools.memory_tools import recall_memory, remember
 from .tools.search_tools import glob_search, grep_search
 from .tools.shell_tools import execute_shell_command
 from .tools.skill_tools import create_skill, load_skill, read_skill_resource
+from .tools.note_tools import save_note
+from .tools.artifact_tools import present_artifact
 from .tools.time_tools import get_current_time
 from .tools.web_tools import web_fetch, web_search
 
@@ -38,6 +40,10 @@ READONLY_FNS = [
     web_fetch,
     load_skill,
     read_skill_resource,
+    # save_note persists a deliverable into the vault; present_artifact just surfaces a
+    # generated file to the UI — both are expected, reversible, visible, so they auto-run.
+    save_note,
+    present_artifact,
 ]
 MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill]
 
@@ -89,7 +95,22 @@ def _instructions(prefs: dict) -> str:
     return text
 
 
-def build_agent() -> Agent:
+def _with_skill(instructions: str, skill: str) -> str:
+    """Activate a skill for this turn: append its full body as the primary task. The
+    body is stable per-skill, so the cached prefix still holds within a skill session."""
+    s = skills_store.get_skill(skill)
+    if not s or not s.get("body"):
+        return instructions
+    return (
+        instructions
+        + f"\n\n# 当前模式:{s['name']}\n"
+        + "用户在这个模式下发起了本轮对话。把它当作本轮的首要任务,严格按下面的流程做到高质量,"
+        + "不要草草收尾:\n\n"
+        + s["body"]
+    )
+
+
+def build_agent(skill: str | None = None) -> Agent:
     """Tools are gated per the approval_mode preference:
     auto = nothing gated · ask = mutating/shell gated · strict = every tool gated.
 
@@ -112,9 +133,12 @@ def build_agent() -> Agent:
     # MCP toolsets are NOT attached here — they're entered resiliently per chat run
     # (server/chat.py) so one failed server can't break the whole turn.
     settings = load_settings()
+    instructions = _instructions(prefs)
+    if skill:
+        instructions = _with_skill(instructions, skill)
     return Agent(
         build_model(settings),
-        instructions=_instructions(prefs),
+        instructions=instructions,
         tools=tools,
         output_type=[str, DeferredToolRequests],
         capabilities=[ProcessHistory(compact)],  # summarize long histories per-request

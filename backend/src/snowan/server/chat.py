@@ -35,10 +35,18 @@ router = APIRouter()
 # session_id -> the live AgentRun, so POST /api/chat/steer can enqueue a follow-up
 # into the in-flight turn. Single-process, single-user; one entry per active turn.
 _active_runs: dict[str, Any] = {}
+# session_id -> the active skill mode, so an approval-resume rebuilds the agent in the
+# same mode (the skill body isn't in the persisted history).
+_session_skill: dict[str, str] = {}
+
+# Skills that need a bigger iteration budget than the default — deep research fans out
+# many searches + fetches before it can synthesize.
+_SKILL_ITER_FLOOR = {"deep-research": 80}
 
 
-def _limits() -> UsageLimits:
-    return UsageLimits(request_limit=load_prefs().get("max_iters", 40))
+def _limits(skill: str | None = None) -> UsageLimits:
+    base = load_prefs().get("max_iters", 40)
+    return UsageLimits(request_limit=max(base, _SKILL_ITER_FLOOR.get(skill or "", 0)))
 
 
 class Attachment(BaseModel):
@@ -51,6 +59,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
     attachments: list[Attachment] = []
+    skill: str | None = None  # active composer skill mode (deep-research / make-slides / …)
 
 
 def _build_prompt(message: str, attachments: list[Attachment]):
@@ -111,6 +120,7 @@ def _approval_event(requests: DeferredToolRequests) -> dict[str, Any]:
 async def _stream_run(run: Any) -> AsyncIterator[str]:
     """Stream one agent run, emitting delta/tool_call/tool_result/approval_required events."""
     pending: dict[str, str] = {}  # tool_call_id -> arg summary, for the audit log
+    arts: dict[str, dict] = {}  # present_artifact tool_call_id -> {path, title}
     async for node in run:
         if Agent.is_model_request_node(node):
             async with node.stream(run.ctx) as request_stream:
@@ -128,6 +138,9 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                                 args = json.loads(args)
                             except json.JSONDecodeError:
                                 pass
+                        if part.tool_name == "present_artifact":
+                            arts[part.tool_call_id] = args if isinstance(args, dict) else {}
+                            continue  # surfaced as an `artifact` event on its result, not a tool card
                         pending[part.tool_call_id] = audit.summarize(args)
                         yield _sse({
                             "type": "tool_call",
@@ -137,6 +150,17 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                         })
                     elif isinstance(ev, FunctionToolResultEvent):
                         result = ev.result
+                        if result.tool_name == "present_artifact":
+                            meta = arts.pop(result.tool_call_id, {})
+                            ok = not str(result.content).startswith("error")
+                            audit.log("present_artifact", str(meta.get("path", ""))[:200], "ok" if ok else "error")
+                            if ok and meta.get("path"):
+                                yield _sse({
+                                    "type": "artifact",
+                                    "path": str(meta["path"]),
+                                    "title": str(meta.get("title") or ""),
+                                })
+                            continue
                         # Status from the authoritative result type, not an English
                         # substring: a retry part is an error; a return part carries the
                         # outcome (success|failed|denied).
@@ -201,17 +225,18 @@ async def _drive(
     prompt: Any,
     history: list[ModelMessage],
     deferred_results: DeferredToolResults | None = None,
+    skill: str | None = None,
 ) -> AsyncIterator[str]:
     """Stream one agent turn, registering it as the session's active run so a steer
     (POST /api/chat/steer) can `enqueue` into it mid-flight. A steer that lands too
     late to be injected (the brief final-response window, where the loop hits End with
     the message still queued) is run as an immediate follow-up turn rather than lost."""
     # Build per-request so a model/key change saved in Settings takes effect at once.
-    agent = build_agent()
+    agent = build_agent(skill=skill)
     stranded = ""
     async with AsyncExitStack() as stack:
         toolsets = await _live_mcp(stack)
-        kwargs: dict[str, Any] = {"message_history": history, "usage_limits": _limits(), "toolsets": toolsets}
+        kwargs: dict[str, Any] = {"message_history": history, "usage_limits": _limits(skill), "toolsets": toolsets}
         if deferred_results is not None:
             kwargs["deferred_tool_results"] = deferred_results
         args = (prompt,) if prompt is not None else ()
@@ -229,18 +254,25 @@ async def _drive(
             finally:
                 _active_runs.pop(session_id, None)
     if stranded:
-        async for chunk in _run_new(stranded, load_history(session_id), session_id):
+        async for chunk in _run_new(stranded, load_history(session_id), session_id, skill=skill):
             yield chunk
 
 
-async def _run_new(prompt: Any, history: list[ModelMessage], session_id: str) -> AsyncIterator[str]:
+async def _run_new(
+    prompt: Any, history: list[ModelMessage], session_id: str, skill: str | None = None
+) -> AsyncIterator[str]:
+    # Remember the turn's skill mode so an approval-resume stays in it.
+    if skill:
+        _session_skill[session_id] = skill
+    else:
+        _session_skill.pop(session_id, None)
     # Per-turn retrieved memory rides in the USER message (a <相关记忆> block), NOT in the
     # instructions — that keeps the system+tools prefix byte-stable so prompt caching lands.
     mem_ctx = memory.auto_context(_query_text(prompt)) if load_prefs().get("memory_enabled", True) else ""
     if mem_ctx:
         block = f"<相关记忆>\n{mem_ctx}\n</相关记忆>"
         prompt = [block, *prompt] if isinstance(prompt, list) else [block, prompt]
-    async for chunk in _drive(session_id, prompt, history):
+    async for chunk in _drive(session_id, prompt, history, skill=skill):
         yield chunk
 
 
@@ -249,7 +281,9 @@ async def _run_resume(
     results: DeferredToolResults,
     session_id: str,
 ) -> AsyncIterator[str]:
-    async for chunk in _drive(session_id, None, history, deferred_results=results):
+    async for chunk in _drive(
+        session_id, None, history, deferred_results=results, skill=_session_skill.get(session_id)
+    ):
         yield chunk
 
 
@@ -258,7 +292,7 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
     history = load_history(req.session_id)
     prompt = _build_prompt(req.message, req.attachments)
     return StreamingResponse(
-        _run_new(prompt, history, req.session_id),
+        _run_new(prompt, history, req.session_id, skill=req.skill),
         media_type="text/event-stream",
     )
 

@@ -66,11 +66,15 @@ def _save_manifest(m: dict) -> None:
 
 
 def _ensure_starters() -> None:
-    """Copy built-in starter skills on first run (when the vault doesn't exist)."""
-    if SKILLS_DIR.exists() or not _BUILTIN.exists():
-        SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+    """Seed any built-in skill not present yet — idempotent, so existing users get
+    newly-shipped built-ins too (not only on the very first run). A skill the user
+    deleted will reappear; that's the accepted cost of shipping new built-ins."""
+    SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+    if not _BUILTIN.exists():
         return
-    shutil.copytree(_BUILTIN, SKILLS_DIR)
+    for src in _BUILTIN.iterdir():
+        if src.is_dir() and (src / "SKILL.md").exists() and not (SKILLS_DIR / src.name).exists():
+            shutil.copytree(src, SKILLS_DIR / src.name)
 
 
 def _find_dir(name: str) -> Path | None:
