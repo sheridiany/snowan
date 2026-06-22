@@ -135,8 +135,9 @@ const useStyles = createStyles(({ token, css }) => ({
   skillRow: css`
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 0 2px;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 0 4px;
   `,
   skillChip: css`
     display: inline-flex;
@@ -264,6 +265,25 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
 
   return (
     <div className={styles.wrap}>
+      {!busy && (
+        <div className={styles.skillRow}>
+          {SKILLS.map((s) => {
+            const Ico = s.icon;
+            const active = skill === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={cx(styles.skillChip, active && styles.skillChipActive)}
+                onClick={() => setSkill((cur) => (cur === s.id ? null : s.id))}
+              >
+                <Ico size={14} />
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div
         className={cx(styles.card, dragging && styles.dragging)}
         onDragEnter={onDragEnter}
@@ -308,26 +328,6 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
           autoSize={{ minRows: 1, maxRows: 8 }}
           placeholder={skill ? SKILL_PLACEHOLDER[skill] : '问点什么…(可粘贴或拖拽图片、文档)'}
         />
-
-        {!busy && (
-          <div className={styles.skillRow}>
-            {SKILLS.map((s) => {
-              const Ico = s.icon;
-              const active = skill === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={cx(styles.skillChip, active && styles.skillChipActive)}
-                  onClick={() => setSkill((cur) => (cur === s.id ? null : s.id))}
-                >
-                  <Ico size={14} />
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         <div className={styles.bottomRow}>
           <ActionIcon
