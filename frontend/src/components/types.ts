@@ -14,7 +14,8 @@ export type ToolStep = {
 export type Block =
   | { kind: 'text'; text: string }
   | { kind: 'tool'; step: ToolStep }
-  | { kind: 'artifact'; path: string; title: string };
+  | { kind: 'artifact'; path: string; title: string }
+  | { kind: 'diagram'; svg: string; title: string };
 
 export type Attachment = { name: string; mime: string };
 

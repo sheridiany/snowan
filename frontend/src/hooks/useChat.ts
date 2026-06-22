@@ -80,6 +80,8 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       ),
     onArtifact: (a) =>
       patchAssistant((b) => [...b, { kind: 'artifact', path: a.path, title: a.title }]),
+    onDiagram: (d) =>
+      patchAssistant((b) => [...b, { kind: 'diagram', svg: d.svg, title: d.title }]),
   };
 
   const abortRef = useRef<AbortController | null>(null);

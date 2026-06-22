@@ -121,6 +121,7 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
     """Stream one agent run, emitting delta/tool_call/tool_result/approval_required events."""
     pending: dict[str, str] = {}  # tool_call_id -> arg summary, for the audit log
     arts: dict[str, dict] = {}  # present_artifact tool_call_id -> {path, title}
+    diagrams: dict[str, dict] = {}  # render_diagram tool_call_id -> {svg, title}
     async for node in run:
         if Agent.is_model_request_node(node):
             async with node.stream(run.ctx) as request_stream:
@@ -138,6 +139,9 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                                 args = json.loads(args)
                             except json.JSONDecodeError:
                                 pass
+                        if part.tool_name == "render_diagram":
+                            diagrams[part.tool_call_id] = args if isinstance(args, dict) else {}
+                            continue  # surfaced as a `diagram` event on its result, not a tool card
                         if part.tool_name == "present_artifact":
                             arts[part.tool_call_id] = args if isinstance(args, dict) else {}
                             continue  # surfaced as an `artifact` event on its result, not a tool card
@@ -150,6 +154,17 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                         })
                     elif isinstance(ev, FunctionToolResultEvent):
                         result = ev.result
+                        if result.tool_name == "render_diagram":
+                            meta = diagrams.pop(result.tool_call_id, {})
+                            ok = not str(result.content).startswith("error")
+                            audit.log("render_diagram", str(meta.get("title", ""))[:80], "ok" if ok else "error")
+                            if ok and meta.get("svg"):
+                                yield _sse({
+                                    "type": "diagram",
+                                    "svg": str(meta["svg"]),
+                                    "title": str(meta.get("title") or ""),
+                                })
+                            continue
                         if result.tool_name == "present_artifact":
                             meta = arts.pop(result.tool_call_id, {})
                             ok = not str(result.content).startswith("error")

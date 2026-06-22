@@ -7,6 +7,7 @@ import { workspaceFileUrl } from '../api/chat';
 import { getPrefs } from '../api/system';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
+import DiagramCard from './DiagramCard';
 import type { Block, Message, ToolStep } from './types';
 
 // Render blocks in order, but coalesce consecutive tool calls into one run so
@@ -14,7 +15,8 @@ import type { Block, Message, ToolStep } from './types';
 type RenderItem =
   | { kind: 'text'; key: string; text: string }
   | { kind: 'tools'; key: string; steps: ToolStep[] }
-  | { kind: 'artifact'; key: string; path: string; title: string };
+  | { kind: 'artifact'; key: string; path: string; title: string }
+  | { kind: 'diagram'; key: string; svg: string; title: string };
 
 function groupBlocks(blocks: Block[]): RenderItem[] {
   const items: RenderItem[] = [];
@@ -27,6 +29,8 @@ function groupBlocks(blocks: Block[]): RenderItem[] {
       items.push({ kind: 'text', key: `x${j}`, text: b.text });
     } else if (b.kind === 'artifact') {
       items.push({ kind: 'artifact', key: `a${j}`, path: b.path, title: b.title });
+    } else if (b.kind === 'diagram') {
+      items.push({ kind: 'diagram', key: `d${j}`, svg: b.svg, title: b.title });
     }
   });
   return items;
@@ -473,6 +477,8 @@ export default function ChatView({
                       ) : null
                     ) : item.kind === 'artifact' ? (
                       <ArtifactCard key={item.key} path={item.path} title={item.title} />
+                    ) : item.kind === 'diagram' ? (
+                      <DiagramCard key={item.key} svg={item.svg} title={item.title} />
                     ) : (
                       <div key={item.key} className={styles.tool}>
                         <ToolGroup steps={item.steps} />

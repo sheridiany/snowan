@@ -16,12 +16,15 @@ from .tools.shell_tools import execute_shell_command
 from .tools.skill_tools import create_skill, load_skill, read_skill_resource
 from .tools.note_tools import save_note
 from .tools.artifact_tools import present_artifact
+from .tools.diagram_tools import render_diagram
 from .tools.time_tools import get_current_time
 from .tools.web_tools import web_fetch, web_search
 from .tools.browse_tools import browse
 
 INSTRUCTIONS = """You are Snowan, a local-first personal AI assistant and knowledge \
-workbench. Be concise and direct. Use tools when they help; otherwise just answer."""
+workbench. Be concise and direct. Use tools when they help; otherwise just answer. \
+解释结构/流程/架构等概念、或用户想看图时,用 render_diagram 画一张干净的内联 SVG 图示帮助理解\
+(画前先 load_skill("make-diagram") 读规范)。"""
 
 # Read-only tools are safe to auto-run; mutating + shell tools change the user's
 # machine. The approval_mode preference decides which get gated.
@@ -45,6 +48,8 @@ READONLY_FNS = [
     # generated file to the UI — both are expected, reversible, visible, so they auto-run.
     save_note,
     present_artifact,
+    # render_diagram renders an inline SVG to the chat — pure presentation, auto-runs.
+    render_diagram,
 ]
 # browse renders arbitrary pages in a real (sandboxed) headless browser — same
 # threat class as web_fetch, but gated per the agreed design. Move it to
