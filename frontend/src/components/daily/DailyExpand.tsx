@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { App, Modal } from 'antd';
-import { Button } from '@lobehub/ui';
+import { Button, Markdown } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { Check, Loader2, Sparkles } from 'lucide-react';
+import { Check, Lightbulb, Loader2, Sparkles, X } from 'lucide-react';
 
 import { useDaily } from '../../hooks/useDaily';
-import { planDay, summarizeDay } from '../../api/daily';
+import { suggestDay, summarizeDay } from '../../api/daily';
 import { appendCarryover, insertUnderHeading } from './markdownSource';
 import AssemblyBand from './AssemblyBand';
 import DailyEditor from './DailyEditor';
@@ -39,6 +39,30 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 64vh;
     min-height: 0;
   `,
+  sugg: css`
+    border: 1px solid ${token.colorBorderSecondary};
+    background: ${token.colorFillQuaternary};
+    border-radius: ${token.borderRadius}px;
+    padding: 8px 12px 4px;
+    margin: 0 0 10px;
+  `,
+  suggHead: css`
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: ${token.colorTextSecondary};
+    margin-bottom: 2px;
+  `,
+  suggClose: css`
+    margin-left: auto;
+    cursor: pointer;
+    color: ${token.colorTextTertiary};
+    &:hover {
+      color: ${token.colorText};
+    }
+  `,
 }));
 
 type Props = {
@@ -56,8 +80,10 @@ export default function DailyExpand({ date, open, onClose }: Props) {
   const { message } = App.useApp();
   const d = useDaily(date);
 
-  const [aiBusy, setAiBusy] = useState<'plan' | 'summarize' | null>(null);
+  const [aiBusy, setAiBusy] = useState<'suggest' | 'summarize' | null>(null);
   const [editSignal, setEditSignal] = useState(0);
+  // 给我建议 result — shown read-only in a card, NOT written into the note body.
+  const [suggestions, setSuggestions] = useState<string | null>(null);
 
   // Move an unfinished carryover line into the buffer, then drop the user into the
   // textarea on the staged change.
@@ -67,16 +93,14 @@ export default function DailyExpand({ date, open, onClose }: Props) {
     message.success('已移到今天');
   };
 
-  const runPlan = async () => {
-    setAiBusy('plan');
+  const runSuggest = async () => {
+    setAiBusy('suggest');
     try {
-      const { draft } = await planDay(date);
-      // defer=true stages the draft under Highlight WITHOUT arming autosave: it
-      // persists only once the user edits or blurs — never silently (§6).
-      d.edit(insertUnderHeading(d.body, 'Highlight', draft), true);
-      setEditSignal((s) => s + 1);
+      const { draft } = await suggestDay(date);
+      // Advice, not tasks — shown in a card to read, never injected into the note.
+      setSuggestions(draft);
     } catch {
-      message.error('规划失败,请重试');
+      message.error('建议生成失败,请重试');
     } finally {
       setAiBusy(null);
     }
@@ -138,12 +162,16 @@ export default function DailyExpand({ date, open, onClose }: Props) {
         <Button
           size="small"
           icon={
-            aiBusy === 'plan' ? <Loader2 size={14} className={styles.spin} /> : <Sparkles size={14} />
+            aiBusy === 'suggest' ? (
+              <Loader2 size={14} className={styles.spin} />
+            ) : (
+              <Lightbulb size={14} />
+            )
           }
           disabled={aiBusy !== null}
-          onClick={runPlan}
+          onClick={runSuggest}
         >
-          帮我规划今天
+          给我建议
         </Button>
         <Button
           size="small"
@@ -160,6 +188,17 @@ export default function DailyExpand({ date, open, onClose }: Props) {
           总结今天
         </Button>
       </div>
+
+      {suggestions && (
+        <div className={styles.sugg}>
+          <div className={styles.suggHead}>
+            <Lightbulb size={13} />
+            今日建议
+            <X size={14} className={styles.suggClose} onClick={() => setSuggestions(null)} />
+          </div>
+          <Markdown>{suggestions}</Markdown>
+        </div>
+      )}
 
       <div className={styles.body}>
         <AssemblyBand

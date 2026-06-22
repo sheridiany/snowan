@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .. import embeddings, export, knowledge, knowledge_draft, knowledge_folders
+from .. import embeddings, export, knowledge, knowledge_draft, knowledge_folders, memory, reading
 from ..config import load_settings
 
 router = APIRouter(prefix="/api/knowledge")
@@ -229,38 +229,55 @@ def _model_or_400():
     return build_model(s)
 
 
-@router.post("/daily/{date}/plan")
-async def daily_plan(date: DailyDate) -> dict:
-    """One-shot draft: today's schedule + recent unfinished work + relevant memory →
-    a Highlight + ≤3 priorities. Returns an EDITABLE draft; never writes the note."""
-    note = knowledge.get_daily(date)
-    body = (note["body"] if note else "").strip()
-    assembly = knowledge.daily_assembly(date)
-    carryover = knowledge.daily_carryover(date)
-    events = "\n".join(
-        f"- {e.get('startsAt', '')} {e.get('title', '')}".rstrip() for e in assembly["events"]
-    ) or "(今天没有日程)"
-    pending = "\n".join(f"- {c['line'][5:].strip()} (来自 {c['fromDate']})" for c in carryover) \
-        or "(没有未完成的事项)"
-    memory = "\n".join(f"- {m['snippet']}" for m in assembly["memory"]) or "(无)"
+def _kb_digest(date: str) -> str:
+    """A broad, bounded snapshot of the whole knowledge base for the suggestions
+    agent: profile + long-term memory + note breadth/excerpts + recent daily prose +
+    recent reading. Capped so it fits a prompt; grows richer as the KB grows."""
+    def ex(text: str, n: int = 140) -> str:
+        return " ".join((text or "").split())[:n]
+
+    profile = memory.profile_text().strip() or "(未设置)"
+    mems = [ex(m["content"], 120) for m in memory.list_entries()][:15]
+    notes = sorted(knowledge.list_notes(), key=lambda n: n.get("updated_at", ""), reverse=True)
+    titles = [n["title"] for n in notes][:40]
+    excerpts = [f"《{n['title']}》:{ex(n['body'])}" for n in notes[:8]]
+    recent_daily = []
+    for d in knowledge.list_daily_dates()[:5]:
+        nd = knowledge.get_daily(d)
+        prose = ex(nd["body"], 280) if nd else ""
+        if prose:
+            recent_daily.append(f"[{d}] {prose}")
+    reading_titles = [a["title"] for a in reading.list_articles(limit=12)]
+    return (
+        f"# 用户画像\n{profile}\n\n"
+        "# 长期记忆\n" + ("\n".join(f"- {m}" for m in mems) or "(无)") + "\n\n"
+        f"# 笔记标题(共 {len(notes)} 篇)\n" + ("、".join(titles) or "(无)") + "\n\n"
+        "# 近期笔记摘录\n" + ("\n".join(excerpts) or "(无)") + "\n\n"
+        "# 最近几天的日记\n" + ("\n".join(recent_daily) or "(无)") + "\n\n"
+        "# 最近读的\n" + ("、".join(reading_titles) or "(无)")
+    )
+
+
+@router.post("/daily/{date}/suggest")
+async def daily_suggest(date: DailyDate) -> dict:
+    """Exactly 3 KB-grounded suggestions (advice, NOT tasks): drawn from the user's
+    profile, long-term memory, notes, recent daily prose, and recent reading.
+    Returns an editable draft; never writes anything."""
+    digest = _kb_digest(date)
     from pydantic_ai import Agent
 
     agent = Agent(
         _model_or_400(),
-        instructions="你是 Snowan 的日记助手,帮用户规划今天。如果他已经在今天的笔记里写下了要做的事,"
-        "必须基于这些来规划——从中挑一件最该优先推进的作为「今日 Highlight」(60–90 分钟级),"
-        "其余排成有顺序的「今日重点」并给出取舍/聚焦建议;绝不要忽略他写的、另起一套通用方向。"
-        "只有当他几乎没写时,才用提问/给选项的口吻引导他思考。可结合日程、近期未完成、相关记忆。"
-        "只输出 Markdown 草稿本身,不要加多余的大标题,简体中文,简洁。",
-    )
-    prompt = (
-        f"今天日期:{date}\n\n他已经写下的内容:\n{body or '(还没写)'}\n\n"
-        f"今日日程:\n{events}\n\n近期未完成:\n{pending}\n\n相关记忆:\n{memory}"
+        instructions="你是用户的思考伙伴,不是任务管理器。基于他知识库里的内容——画像、长期记忆、"
+        "笔记、最近的日记、读过的东西——给他正好 3 条建议。建议可以是:值得重拾的一个想法、"
+        "两件事之间值得连接的洞察、值得深入的一个方向、一个温和的提醒、或一个引发思考的问题。"
+        "绝不要派任务、不要给 to-do 清单、不要催他做事——给的是启发,不是指令。每条简短(一两句)、"
+        "具体、尽量点到他自己写过/读过的东西。只输出 3 条 Markdown 列表项(- 开头),简体中文,别的都不要。",
     )
     try:
-        res = await agent.run(prompt)
+        res = await agent.run(f"今天日期:{date}\n\n{digest}")
     except Exception as e:  # noqa: BLE001 — surface the upstream model error
-        raise HTTPException(400, f"规划失败: {e}") from e
+        raise HTTPException(400, f"建议生成失败: {e}") from e
     return {"draft": res.output if isinstance(res.output, str) else str(res.output)}
 
 
