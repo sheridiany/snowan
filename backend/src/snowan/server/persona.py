@@ -4,7 +4,7 @@ the existing PUT /api/memory/profile — this router never writes."""
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from .. import persona_interview
+from .. import memory, persona_interview
 
 router = APIRouter(prefix="/api/persona")
 
@@ -20,4 +20,5 @@ def questions() -> list[dict]:
 
 @router.post("/draft")
 async def draft(body: DraftBody) -> dict:
-    return {"draft": await persona_interview.draft(body.answers)}
+    # Fold in the current 画像 so re-running from settings augments instead of clobbering.
+    return {"draft": await persona_interview.draft(body.answers, memory.get_profile())}

@@ -19,6 +19,7 @@ import {
   type DiffItem,
 } from '../../api/memory';
 import { getPrefs, savePrefs } from '../../api/system';
+import PersonaInterview from '../persona/PersonaInterview';
 
 const TYPE_LABELS: Record<MemoryType, string> = {
   fact: '事实',
@@ -381,6 +382,7 @@ export default function SettingsMemory() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileUpdated, setProfileUpdated] = useState<string | null>(null);
+  const [interviewOpen, setInterviewOpen] = useState(false);
 
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -470,6 +472,15 @@ export default function SettingsMemory() {
     setProfile(savedProfile);
     setEditingProfile(false);
   };
+
+  const reloadProfile = () =>
+    getProfile()
+      .then((p) => {
+        setProfile(p.text);
+        setSavedProfile(p.text);
+        setProfileUpdated(new Date().toISOString());
+      })
+      .catch(() => undefined);
 
   const forget = (e: MemoryEntry) =>
     modal.confirm({
@@ -562,10 +573,16 @@ export default function SettingsMemory() {
             </div>
           </div>
           {!editingProfile && (
-            <span className={styles.link} onClick={() => setEditingProfile(true)}>
-              <Pencil size={14} />
-              编辑
-            </span>
+            <div style={{ display: 'flex', gap: 16, flex: 'none' }}>
+              <span className={styles.link} onClick={() => setInterviewOpen(true)}>
+                <Sparkles size={14} />
+                让 Snowan 访谈我
+              </span>
+              <span className={styles.link} onClick={() => setEditingProfile(true)}>
+                <Pencil size={14} />
+                编辑
+              </span>
+            </div>
           )}
         </div>
 
@@ -776,6 +793,11 @@ export default function SettingsMemory() {
 
       <EntryModal open={addOpen} onClose={() => setAddOpen(false)} onDone={loadEntries} />
       <EntryModal open={!!editing} edit={editing} onClose={() => setEditing(null)} onDone={loadEntries} />
+      <PersonaInterview
+        open={interviewOpen}
+        onClose={() => setInterviewOpen(false)}
+        onSaved={reloadProfile}
+      />
     </div>
   );
 }

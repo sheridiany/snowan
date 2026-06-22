@@ -82,6 +82,8 @@ _SYSTEM = """你在为 Snowan 起草用户的「画像」——一份每轮都�
 
 把每节写成简洁、可直接执行的一两句话或短条目。没有可靠依据就留空,宁缺毋滥。
 
+如果输入里附了「已有画像」,把其中有效信息保留并归入对应分节,只做整理、去重与补充,绝不丢弃用户已确认的内容。
+
 绝不将密码、密钥、token、私钥、身份证号等敏感凭据写入画像;若用户回答里出现这类内容,一律忽略。"""
 
 
@@ -110,17 +112,21 @@ def _format_answers(answers: dict) -> str:
     return "\n\n".join(lines) or "(用户没有提供任何回答)"
 
 
-async def draft(answers: dict) -> str:
-    """Distill the interview answers into the 6-section 画像 markdown. Writes nothing.
-    On no model / failure returns the empty skeleton (never raises)."""
+async def draft(answers: dict, existing: str = "") -> str:
+    """Distill the interview answers into the 6-section 画像 markdown, folding in any
+    existing 画像 so a re-run augments rather than clobbers. Writes nothing. On no model /
+    failure returns the existing 画像 (or the empty skeleton) so nothing is ever lost."""
     s = load_settings()
     if s.provider == "test" or not s.api_key:
-        return empty_persona_markdown()
+        return existing.strip() or empty_persona_markdown()
     try:
         from pydantic_ai import Agent
 
         agent = Agent(build_model(s), instructions=_SYSTEM, output_type=Persona)
-        res = await asyncio.wait_for(agent.run(_format_answers(answers)), timeout=_TIMEOUT)
+        prompt = _format_answers(answers)
+        if existing.strip():
+            prompt += f"\n\n## 已有画像(请保留并融合,不要丢失有效信息)\n{existing.strip()}"
+        res = await asyncio.wait_for(agent.run(prompt), timeout=_TIMEOUT)
         return _to_markdown(res.output)
-    except Exception:  # noqa: BLE001 — a model failure must still hand back an editable skeleton
-        return empty_persona_markdown()
+    except Exception:  # noqa: BLE001 — a model failure must still hand back something editable
+        return existing.strip() or empty_persona_markdown()

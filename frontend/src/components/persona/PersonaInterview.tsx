@@ -57,11 +57,11 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-type Props = { open: boolean; onClose: () => void };
+type Props = { open: boolean; onClose: () => void; onSaved?: () => void };
 
 type Phase = 'loading' | 'asking' | 'drafting' | 'review';
 
-export default function PersonaInterview({ open, onClose }: Props) {
+export default function PersonaInterview({ open, onClose, onSaved }: Props) {
   const { styles } = useStyles();
   const { message } = App.useApp();
   const [phase, setPhase] = useState<Phase>('loading');
@@ -146,6 +146,7 @@ export default function PersonaInterview({ open, onClose }: Props) {
       await saveProfile(draft.trim());
       await savePrefs({ onboarded: true });
       message.success('画像已保存,Snowan 会更懂你');
+      onSaved?.();
       onClose();
     } catch (e) {
       message.error(`保存失败:${(e as Error).message}`);
