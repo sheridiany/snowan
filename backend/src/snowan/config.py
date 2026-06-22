@@ -325,6 +325,7 @@ PREF_DEFAULTS: dict = {
     "jina_api_key": "",  # optional, higher r.jina.ai rate limit for web_fetch
     "disabled_tools": [],  # native tools the user turned off (by name)
     "memory_enabled": True,  # paused = stop saving/referencing long-term memory (data kept)
+    "onboarded": False,  # user has seen/finished the first-run persona nudge
 }
 
 

@@ -9,8 +9,8 @@ from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .. import embeddings, export, knowledge, knowledge_draft, knowledge_folders
-from ..config import load_settings
+from .. import embeddings, export, knowledge, knowledge_draft, knowledge_folders, memory
+from ..config import load_prefs, load_settings
 
 router = APIRouter(prefix="/api/knowledge")
 
@@ -246,6 +246,12 @@ async def daily_summarize(date: DailyDate) -> dict:
         "只是起草供他修改,不要说教、不要编造没发生的事。只输出 Markdown 草稿本身,简体中文,简洁。",
     )
     prompt = f"今天日期:{date}\n\n今天写的内容:\n{body}\n\n今天的阅读:\n{reading_lines}"
+    persona = memory.profile_text() if load_prefs().get("memory_enabled", True) else ""
+    if persona:
+        prompt += (
+            "\n\n关于用户(参考其长期/短期规划与习惯,据此把明日重点对齐他的真实目标,"
+            f"但不要逐条复述):\n{persona}"
+        )
     try:
         res = await agent.run(prompt)
     except Exception as e:  # noqa: BLE001

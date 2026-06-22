@@ -25,6 +25,7 @@ class PrefsPatch(BaseModel):
     jina_api_key: str | None = None
     disabled_tools: list[str] | None = None
     memory_enabled: bool | None = None
+    onboarded: bool | None = None
 
 
 @router.get("/api/tools")

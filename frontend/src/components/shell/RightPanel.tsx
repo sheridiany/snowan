@@ -25,6 +25,7 @@ import { ListRow } from './ListPane';
 import { useResizableWidth } from './useResizableWidth';
 import PanelDailyNote from '../daily/PanelDailyNote';
 import DailyExpand from '../daily/DailyExpand';
+import PersonaNudge from '../persona/PersonaNudge';
 import { LAYOUT } from '../../theme/themes';
 import RecordingPanel from '../recording/RecordingPanel';
 import {
@@ -38,6 +39,7 @@ import {
   type KbFolder,
 } from '../../api/knowledge';
 import { getCalendar, type CalendarEvent } from '../../api/calendar';
+import { getPrefs } from '../../api/system';
 
 // The right panel is the in-context knowledge browser (remio-style): a source
 // dropdown in the header, a list below, and click-to-open detail in place. 笔记
@@ -391,6 +393,13 @@ export default function RightPanel({
   const [selDay, setSelDay] = useState(() => ymd(new Date()));
   const [expandDate, setExpandDate] = useState<string | null>(null);
   const openExpand = (d: string) => setExpandDate(d);
+  // 「我的画像」onboarding: show the nudge atop the daily panel until onboarded.
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  useEffect(() => {
+    getPrefs()
+      .then((p) => setOnboarded(p.onboarded))
+      .catch(() => setOnboarded(true));
+  }, []);
 
   const refresh = () => {
     setLoading(true);
@@ -557,20 +566,22 @@ export default function RightPanel({
             paddingBlock={36}
           />
         ) : source === 'calendar' ? (
-          events.length === 0 ? (
-            <div className={styles.folderEmpty}>
-              <Empty
-                icon={Calendar}
-                title="还没有日程"
-                description="连接系统日历或导入 ICS,日程会出现在这里。"
-                paddingBlock={28}
-              />
-              <Button size="small" onClick={onOpenSettings}>
-                去设置连接
-              </Button>
-            </div>
-          ) : (
-            <>
+          <>
+            {onboarded === false && <PersonaNudge onDone={() => setOnboarded(true)} />}
+            {events.length === 0 ? (
+              <div className={styles.folderEmpty}>
+                <Empty
+                  icon={Calendar}
+                  title="还没有日程"
+                  description="连接系统日历或导入 ICS,日程会出现在这里。"
+                  paddingBlock={28}
+                />
+                <Button size="small" onClick={onOpenSettings}>
+                  去设置连接
+                </Button>
+              </div>
+            ) : (
+              <>
               <div className={styles.calNav}>
                 <span className={styles.calMonth}>
                   <span className={styles.calArrow} onClick={() => shiftMonth(-1)}>
@@ -646,7 +657,8 @@ export default function RightPanel({
               </div>
               <PanelDailyNote date={selDay} onExpand={openExpand} />
             </>
-          )
+          )}
+          </>
         ) : source === 'folders' ? (
           folders.length === 0 ? (
             <div className={styles.folderEmpty}>

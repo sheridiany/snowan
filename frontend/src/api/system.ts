@@ -16,6 +16,7 @@ export type Prefs = {
   jina_api_key: string;
   disabled_tools: string[];
   memory_enabled: boolean;
+  onboarded: boolean;
 };
 export type About = {
   version: string;
