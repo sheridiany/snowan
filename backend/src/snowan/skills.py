@@ -66,15 +66,24 @@ def _save_manifest(m: dict) -> None:
 
 
 def _ensure_starters() -> None:
-    """Seed any built-in skill not present yet — idempotent, so existing users get
-    newly-shipped built-ins too (not only on the very first run). A skill the user
-    deleted will reappear; that's the accepted cost of shipping new built-ins."""
+    """Seed + re-sync built-in skills from source. A new built-in appears; a shipped
+    built-in whose SKILL.md changed is re-synced so improvements reach existing users
+    (built-ins are managed — to customize one, fork it under a new name); a deleted
+    built-in reappears. Per-skill enabled state lives in the manifest, so re-syncing
+    never flips what's on/off."""
     SKILLS_DIR.mkdir(parents=True, exist_ok=True)
     if not _BUILTIN.exists():
         return
     for src in _BUILTIN.iterdir():
-        if src.is_dir() and (src / "SKILL.md").exists() and not (SKILLS_DIR / src.name).exists():
-            shutil.copytree(src, SKILLS_DIR / src.name)
+        if not (src.is_dir() and (src / "SKILL.md").exists()):
+            continue
+        dst = SKILLS_DIR / src.name
+        synced = dst / "SKILL.md"
+        if synced.exists() and synced.read_text(encoding="utf-8") == (src / "SKILL.md").read_text(encoding="utf-8"):
+            continue
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(src, dst)
 
 
 def _find_dir(name: str) -> Path | None:
