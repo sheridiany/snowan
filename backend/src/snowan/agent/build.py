@@ -18,6 +18,7 @@ from .tools.note_tools import save_note
 from .tools.artifact_tools import present_artifact
 from .tools.time_tools import get_current_time
 from .tools.web_tools import web_fetch, web_search
+from .tools.browse_tools import browse
 
 INSTRUCTIONS = """You are Snowan, a local-first personal AI assistant and knowledge \
 workbench. Be concise and direct. Use tools when they help; otherwise just answer."""
@@ -45,7 +46,10 @@ READONLY_FNS = [
     save_note,
     present_artifact,
 ]
-MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill]
+# browse renders arbitrary pages in a real (sandboxed) headless browser — same
+# threat class as web_fetch, but gated per the agreed design. Move it to
+# READONLY_FNS to let it auto-run during research.
+MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill, browse]
 
 
 def _first_line(fn) -> str:
