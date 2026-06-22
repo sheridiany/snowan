@@ -104,6 +104,19 @@ def web_search(query: str, max_results: int = 5) -> str:
 
 # --- fetch -----------------------------------------------------------------
 
+# Surge/Clash "fake-ip" proxies resolve EVERY real domain into 198.18.0.0/15,
+# which ipaddress flags as private — but it's the proxy's placeholder range, not
+# the user's LAN/localhost, so blocking it would reject every fetch behind such a
+# proxy. Allow it; the real LAN/loopback/metadata ranges stay blocked.
+_FAKE_IP = ipaddress.ip_network("198.18.0.0/15")
+
+
+def _blocked(ip) -> bool:
+    if ip in _FAKE_IP:
+        return False
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_unspecified
+
+
 def _is_public(url: str) -> bool:
     """Block obvious SSRF targets. Literal private/loopback IPs and localhost-ish
     names are rejected; for real domains we try to resolve and reject private
@@ -116,14 +129,12 @@ def _is_public(url: str) -> bool:
     if h == "localhost" or h.endswith((".local", ".internal", ".localhost")):
         return False
     try:
-        ip = ipaddress.ip_address(host)  # literal IP
-        return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_unspecified)
+        return not _blocked(ipaddress.ip_address(host))  # literal IP
     except ValueError:
         pass  # it's a domain name
     try:
         for info in socket.getaddrinfo(host, None):
-            ip = ipaddress.ip_address(info[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            if _blocked(ipaddress.ip_address(info[4][0])):
                 return False
     except (socket.gaierror, ValueError):
         return True  # can't resolve locally; don't block a possibly-valid public host
