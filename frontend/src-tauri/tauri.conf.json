@@ -31,6 +31,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "macOS": {
+      "entitlements": "Entitlements.plist"
+    },
     "resources": ["binaries/snowan-backend"],
     "icon": [
       "icons/32x32.png",
