@@ -78,12 +78,14 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
           b,
         ),
       ),
+    onArtifact: (a) =>
+      patchAssistant((b) => [...b, { kind: 'artifact', path: a.path, title: a.title }]),
   };
 
   const abortRef = useRef<AbortController | null>(null);
   const stop = () => abortRef.current?.abort();
 
-  const send = async (text: string, attachments: ApiAttachment[] = []) => {
+  const send = async (text: string, attachments: ApiAttachment[] = [], skill?: string) => {
     setBusy(true);
 
     const sid = activeId;
@@ -104,7 +106,7 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      await streamChat(text, sid, attachments, streamHandlers, ctrl.signal);
+      await streamChat(text, sid, attachments, streamHandlers, ctrl.signal, skill);
     } finally {
       setBusy(false);
       abortRef.current = null;

@@ -29,19 +29,19 @@ def test_extra_frontmatter_survives_update(home):
     assert "改过的正文" in after
 
 
-def test_get_or_create_daily_applies_template_and_bypasses_slug(home):
+def test_get_or_create_daily_starts_empty_and_bypasses_slug(home):
     note = knowledge.get_or_create_daily("2026-06-21")
     assert note["date"] == "2026-06-21"
     assert note["type"] == "daily"
-    assert "今日 Highlight" in note["body"]
-    assert "今日重点" in note["body"]
+    # Starts empty — structure comes from the 早计划/晚复盘 drafts on demand, not a template.
+    assert note["body"] == ""
 
     # Filename IS the date (slug path bypassed), under notes/daily/.
     p = home / "knowledge" / "notes" / "daily" / "2026-06-21.md"
     assert p.exists()
     assert "type: daily" in p.read_text(encoding="utf-8")
 
-    # Find-or-create: a second call returns the same note, doesn't re-template.
+    # Find-or-create: a second call returns the same note.
     again = knowledge.get_or_create_daily("2026-06-21")
     assert again["id"] == note["id"]
 

@@ -10,6 +10,7 @@ export type ChatHandlers = {
   onToolCall?: (call: ToolCall) => void;
   onToolResult?: (result: ToolResult) => void;
   onApprovalRequired?: (calls: ToolCall[]) => void;
+  onArtifact?: (a: { path: string; title: string }) => void;
   onDone?: () => void;
 };
 
@@ -18,7 +19,12 @@ type SSEEvent =
   | { type: 'tool_call'; id: string; name: string; args: Record<string, unknown> }
   | { type: 'tool_result'; id: string; name: string; result: string }
   | { type: 'approval_required'; calls: ToolCall[] }
+  | { type: 'artifact'; path: string; title: string }
   | { type: 'done' };
+
+// URL for a file generated into the workspace (a deck, a chart). download=true forces save-as.
+export const workspaceFileUrl = (path: string, download = false): string =>
+  api('/api/workspace/file?path=' + encodeURIComponent(path) + (download ? '&download=1' : ''));
 
 export async function streamChat(
   message: string,
@@ -26,12 +32,13 @@ export async function streamChat(
   attachments: Attachment[],
   handlers: ChatHandlers,
   signal?: AbortSignal,
+  skill?: string,
 ): Promise<void> {
   try {
     const res = await fetch(api('/api/chat/stream'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, session_id: sessionId, attachments }),
+      body: JSON.stringify({ message, session_id: sessionId, attachments, skill }),
       signal,
     });
     await consume(res, handlers);
@@ -104,6 +111,9 @@ function dispatch(raw: string, handlers: ChatHandlers): void {
       break;
     case 'approval_required':
       handlers.onApprovalRequired?.(payload.calls);
+      break;
+    case 'artifact':
+      handlers.onArtifact?.({ path: payload.path, title: payload.title });
       break;
     case 'done':
       handlers.onDone?.();
