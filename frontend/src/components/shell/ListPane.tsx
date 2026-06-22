@@ -254,29 +254,31 @@ const useRowStyles = createStyles(({ token, css }) => ({
     &:hover {
       background: ${token.colorFillTertiary};
     }
+    &:hover [data-rowdate] {
+      opacity: 0;
+    }
     &:hover [data-rowdel] {
       opacity: 1;
     }
   `,
   del: css`
     position: absolute;
-    right: 6px;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     border-radius: ${token.borderRadius}px;
-    color: ${token.colorTextTertiary};
-    background: ${token.colorFillSecondary};
+    color: ${token.colorTextQuaternary};
     opacity: 0;
     cursor: pointer;
-    transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+    transition: opacity 0.14s ease, color 0.14s ease, background 0.14s ease;
     &:hover {
       color: ${token.colorError};
-      background: ${token.colorErrorBg};
+      background: ${token.colorFillSecondary};
     }
   `,
   active: css`
@@ -328,6 +330,7 @@ const useRowStyles = createStyles(({ token, css }) => ({
     flex: none;
     font-size: 11px;
     color: ${token.colorTextQuaternary};
+    transition: opacity 0.14s ease;
   `,
 }));
 
@@ -362,7 +365,11 @@ export function ListRow({
         <span className={styles.label}>{label}</span>
         {sub && <span className={styles.sub}>{sub}</span>}
       </span>
-      {right && <span className={styles.right}>{right}</span>}
+      {right && (
+        <span className={styles.right} data-rowdate={onDelete ? '' : undefined}>
+          {right}
+        </span>
+      )}
       {onDelete && (
         <span data-rowdel className={styles.del} onClick={(e) => e.stopPropagation()}>
           <Popconfirm
