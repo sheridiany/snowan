@@ -22,6 +22,7 @@ dependencies = [
     "nh3>=0.3.5",
     "playwright>=1.60.0",
     "ebooklib>=0.20",
+    "faster-whisper>=1.2.1",
 ]
 
 [build-system]

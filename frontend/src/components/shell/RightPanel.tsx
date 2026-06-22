@@ -14,6 +14,7 @@ import {
   FolderOpen,
   Globe,
   MessagesSquare,
+  Mic,
   RotateCw,
   StickyNote,
   Trash2,
@@ -25,6 +26,7 @@ import { useResizableWidth } from './useResizableWidth';
 import PanelDailyNote from '../daily/PanelDailyNote';
 import DailyExpand from '../daily/DailyExpand';
 import { LAYOUT } from '../../theme/themes';
+import RecordingPanel from '../recording/RecordingPanel';
 import {
   listNotes,
   listFolders,
@@ -41,7 +43,7 @@ import { getCalendar, type CalendarEvent } from '../../api/calendar';
 // dropdown in the header, a list below, and click-to-open detail in place. 笔记
 // and 文件夹 are wired to the backend; the rest are placeholders until their list
 // endpoints land.
-type SourceKey = 'notes' | 'web' | 'aichat' | 'folders' | 'calendar';
+type SourceKey = 'notes' | 'web' | 'aichat' | 'folders' | 'calendar' | 'recording';
 type Source = { key: SourceKey; label: string; icon: LucideIcon; ready: boolean };
 
 const SOURCES: Source[] = [
@@ -50,6 +52,7 @@ const SOURCES: Source[] = [
   { key: 'aichat', label: 'AI 对话', icon: MessagesSquare, ready: false },
   { key: 'folders', label: '文件夹', icon: FolderOpen, ready: true },
   { key: 'calendar', label: '日程', icon: Calendar, ready: true },
+  { key: 'recording', label: '录音', icon: Mic, ready: true },
 ];
 
 function evTime(iso: string): string {
@@ -534,6 +537,9 @@ export default function RightPanel({
         )}
       </div>
 
+      {source === 'recording' ? (
+        <RecordingPanel refreshKey={refreshKey} />
+      ) : (
       <div className={styles.scroll}>
         {active.ready && embReady === false && (
           <div className={styles.notice}>
@@ -685,6 +691,7 @@ export default function RightPanel({
           ))
         )}
       </div>
+      )}
       <div className={styles.handle} onPointerDown={onResizeStart} />
       <DailyExpand
         date={expandDate ?? ''}
