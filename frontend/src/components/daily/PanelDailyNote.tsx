@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { Lightbulb, Maximize2, Moon } from 'lucide-react';
+import { Maximize2, Moon } from 'lucide-react';
 
 import { ConflictError, getDaily, saveDaily } from '../../api/daily';
 
@@ -144,9 +144,6 @@ export default function PanelDailyNote({ date, onExpand }: Props) {
     <div className={styles.section}>
       <div className={styles.head}>
         <span className={styles.label}>日记</span>
-        <span className={styles.miniBtn} onClick={handleExpand}>
-          <Lightbulb size={13} /> 建议
-        </span>
         <span className={styles.miniBtn} onClick={handleExpand}>
           <Moon size={13} /> 晚复盘
         </span>

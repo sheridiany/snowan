@@ -80,10 +80,6 @@ export const getAssembly = (date: string) =>
 export const getCarryover = (date: string) =>
   fetch(api(`/api/knowledge/daily/${date}/carryover`)).then((r) => j<CarryoverItem[]>(r));
 
-// POST /daily/{date}/suggest — exactly 3 KB-grounded suggestions (advice, not tasks).
-export const suggestDay = (date: string) =>
-  post<{ draft: string }>(`/api/knowledge/daily/${date}/suggest`);
-
 // POST /daily/{date}/summarize — one-shot agent → an editable evening-review draft.
 export const summarizeDay = (date: string) =>
   post<{ draft: string }>(`/api/knowledge/daily/${date}/summarize`);

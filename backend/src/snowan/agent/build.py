@@ -8,6 +8,7 @@ from ..config import load_prefs, load_settings
 from .providers import build_model, cache_settings
 from .tools.file_tools import append_file, edit_file, read_file, write_file
 from .tools.calendar_tools import upcoming_events
+from .tools.daily_tools import daily_note
 from .tools.knowledge_tools import knowledge_search
 from .tools.memory_tools import recall_memory, remember
 from .tools.search_tools import glob_search, grep_search
@@ -28,6 +29,7 @@ READONLY_FNS = [
     glob_search,
     knowledge_search,
     upcoming_events,
+    daily_note,
     recall_memory,
     # remember writes a memory entry, but it's a cheap, expected action ("记一下") with
     # full oversight in the 记忆 panel + audit log, so it auto-runs rather than gating.
