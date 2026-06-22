@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActionIcon, Button, Empty, Markdown } from '@lobehub/ui';
-import { App, Dropdown } from 'antd';
+import { App, Dropdown, Popconfirm } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   Calendar,
@@ -16,6 +16,7 @@ import {
   MessagesSquare,
   RotateCw,
   StickyNote,
+  Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -29,6 +30,7 @@ import {
   listFolders,
   getEmbeddingStatus,
   exportNote,
+  deleteNote,
   type ExportFormat,
   type Note,
   type KbFolder,
@@ -372,7 +374,7 @@ export default function RightPanel({
     max: 560,
     side: 'left',
   });
-  const [source, setSource] = useState<SourceKey>('notes');
+  const [source, setSource] = useState<SourceKey>('calendar');
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<KbFolder[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -443,6 +445,15 @@ export default function RightPanel({
   const doExport = (note: Note, format: ExportFormat) =>
     exportNote(note.id, format).catch(() => message.error('导出失败,请重试'));
 
+  const onDelete = (note: Note) =>
+    deleteNote(note.id)
+      .then(() => {
+        setNotes((prev) => prev.filter((n) => n.id !== note.id));
+        setOpen(null);
+        message.success('已删除');
+      })
+      .catch(() => message.error('删除失败,请重试'));
+
   // Detail view — a single opened note, with breadcrumb back to its list.
   if (open) {
     return (
@@ -454,19 +465,31 @@ export default function RightPanel({
             </span>
             <span className={styles.crumbTitle}>{active.label}</span>
           </span>
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: [
-                { key: 'md', icon: <FileText size={15} />, label: 'Markdown' },
-                { key: 'html', icon: <FileCode size={15} />, label: 'HTML' },
-                { key: 'docx', icon: <FileType size={15} />, label: 'Word' },
-              ],
-              onClick: ({ key }) => doExport(open, key as ExportFormat),
-            }}
-          >
-            <ActionIcon icon={Download} size="small" title="导出" />
-          </Dropdown>
+          <div className={styles.actions}>
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'md', icon: <FileText size={15} />, label: 'Markdown' },
+                  { key: 'html', icon: <FileCode size={15} />, label: 'HTML' },
+                  { key: 'docx', icon: <FileType size={15} />, label: 'Word' },
+                ],
+                onClick: ({ key }) => doExport(open, key as ExportFormat),
+              }}
+            >
+              <ActionIcon icon={Download} size="small" title="导出" />
+            </Dropdown>
+            <Popconfirm
+              title="删除这份笔记?"
+              description="删除后不可恢复。"
+              okText="删除"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => onDelete(open)}
+            >
+              <ActionIcon icon={Trash2} size="small" title="删除" />
+            </Popconfirm>
+          </div>
         </div>
         <div className={styles.detail}>
           <div className={styles.detailTitle}>{open.title || '无标题'}</div>

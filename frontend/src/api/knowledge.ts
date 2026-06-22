@@ -65,6 +65,11 @@ export const createNote = (payload: {
   source?: Record<string, unknown>;
 }) => post<Note>('/api/knowledge/notes', payload);
 
+export const deleteNote = (id: string) =>
+  fetch(api(`/api/knowledge/notes/${id}`), { method: 'DELETE' }).then((r) => {
+    if (!r.ok) throw new Error(`${r.status}`);
+  });
+
 export type EmbeddingStatus = {
   model: string;
   size_mb: number;
