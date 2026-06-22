@@ -75,6 +75,8 @@ export default function FeedList({
   onRefresh,
   onSubscribe,
   onSaveArticle,
+  onImportOpml,
+  onAddRecommended,
   onRename,
   onUnsubscribe,
 }: NavProps & {
@@ -87,6 +89,8 @@ export default function FeedList({
   onRefresh: () => void;
   onSubscribe: (url: string) => Promise<unknown>;
   onSaveArticle: (url: string) => Promise<unknown>;
+  onImportOpml: (opml: string) => Promise<{ added: number; total: number }>;
+  onAddRecommended: () => Promise<{ added: number; total: number }>;
   onRename: (id: number, title: string) => void;
   onUnsubscribe: (id: number) => void;
 }) {
@@ -118,7 +122,12 @@ export default function FeedList({
 
   return (
     <ListPane view={view} onView={onView} onNewChat={onNewChat}>
-      <AddFeed onSubscribe={onSubscribe} onSaveArticle={onSaveArticle} />
+      <AddFeed
+        onSubscribe={onSubscribe}
+        onSaveArticle={onSaveArticle}
+        onImportOpml={onImportOpml}
+        onAddRecommended={onAddRecommended}
+      />
 
       {SMART.map((s) => {
         const c = smartCount(s.view);

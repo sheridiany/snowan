@@ -31,6 +31,8 @@ export default function ReadingView({
           onRefresh={() => r.refresh().then((n) => message.success(`刷新完成,新增 ${n} 篇`))}
           onSubscribe={r.subscribe}
           onSaveArticle={r.saveArticleUrl}
+          onImportOpml={r.importFeeds}
+          onAddRecommended={r.addRecommendedFeeds}
           onRename={r.rename}
           onUnsubscribe={r.unsubscribe}
         />

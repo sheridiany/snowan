@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   addFeed,
+  addRecommended,
   deleteFeed,
   getArticle,
+  importOpml,
   listArticles,
   listFeeds,
   refreshAll,
@@ -104,6 +106,22 @@ export function useReading() {
       return f;
     });
 
+  // Bulk-add (curated set or imported OPML): feeds show at once, then a refresh
+  // ingests their articles with the usual spinner.
+  const importFeeds = (opml: string) =>
+    importOpml(opml).then((r) => {
+      loadFeeds();
+      refresh();
+      return r;
+    });
+
+  const addRecommendedFeeds = () =>
+    addRecommended().then((r) => {
+      loadFeeds();
+      refresh();
+      return r;
+    });
+
   const saveArticleUrl = (url: string) =>
     saveUrl(url).then((a) => {
       loadArticles();
@@ -143,6 +161,8 @@ export function useReading() {
     toggleLater,
     refresh,
     subscribe,
+    importFeeds,
+    addRecommendedFeeds,
     saveArticleUrl,
     rename,
     unsubscribe,

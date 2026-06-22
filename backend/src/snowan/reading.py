@@ -366,6 +366,88 @@ def add_feed(url: str) -> dict:
         conn.close()
 
 
+# A curated bilingual starter set (handpicked from BestBlogs' OPML, native RSS only so
+# it works without any third-party relay): AI labs/platforms · 中文 AI 媒体 · 工程 · 思想.
+RECOMMENDED: list[tuple[str, str]] = [
+    ("OpenAI Blog", "https://openai.com/news/rss.xml"),
+    ("Google DeepMind Blog", "https://deepmind.com/blog/feed/basic/"),
+    ("Hugging Face Blog", "https://huggingface.co/blog/feed.xml"),
+    ("LangChain Blog", "https://blog.langchain.dev/rss/"),
+    ("LlamaIndex Blog", "https://www.llamaindex.ai/blog/feed"),
+    ("AWS Machine Learning Blog", "https://aws.amazon.com/blogs/amazon-ai/feed/"),
+    ("Microsoft Research Blog", "http://research.microsoft.com/rss/news.xml"),
+    ("Databricks", "https://www.databricks.com/feed"),
+    ("Qdrant", "https://qdrant.tech/index.xml"),
+    ("量子位", "https://www.qbitai.com/feed"),
+    ("机器之心", "https://wechat2rss.bestblogs.dev/feed/8d97af31b0de9e48da74558af128a4673d78c9a3.xml"),
+    ("新智元", "https://wechat2rss.bestblogs.dev/feed/e531a18b21c34cf787b83ab444eef659d7a980de.xml"),
+    ("智东西", "https://wechat2rss.bestblogs.dev/feed/cfd52b4245ca6119b2fda4ef934832c689028927.xml"),
+    ("硅星人Pro", "https://wechat2rss.bestblogs.dev/feed/c62ceda9eed269d851802bdbc5f33c4fabbf7462.xml"),
+    ("数字生命卡兹克", "https://wechat2rss.bestblogs.dev/feed/ff621c3e98d6ae6fceb3397e57441ffc6ea3c17f.xml"),
+    ("Engineering at Meta", "https://engineering.fb.com/feed/"),
+    ("The Cloudflare Blog", "https://blog.cloudflare.com/rss"),
+    ("Vercel News", "https://vercel.com/atom"),
+    ("The GitHub Blog", "https://github.blog/feed/"),
+    ("ByteByteGo Newsletter", "https://blog.bytebytego.com/feed"),
+    ("Martin Fowler", "https://martinfowler.com/feed.atom"),
+    ("美团技术团队", "https://tech.meituan.com/feed/"),
+    ("阮一峰的网络日志", "http://feeds.feedburner.com/ruanyifeng"),
+    ("Google Cloud Blog", "https://cloudblog.withgoogle.com/rss/"),
+    ("Simon Willison's Weblog", "https://simonwillison.net/atom/everything/"),
+    ("宝玉的分享", "https://baoyu.io/feed.xml"),
+    ("Latent Space", "https://www.latent.space/feed"),
+    ("AI Musings by Mu", "https://kelvinmu.substack.com/feed"),
+]
+
+
+def _subscribe_many(feeds: list[tuple[str, str]]) -> dict:
+    """Bulk-subscribe (title, feed_url) pairs straight from a curated/OPML list — no
+    per-feed discovery fetch (we already have both). Dedups by feed_url; articles are
+    ingested by the follow-up refresh, not here. Returns {added, total}."""
+    conn = _conn()
+    try:
+        existing = {r["feed_url"] for r in conn.execute("SELECT feed_url FROM feeds").fetchall()}
+        added = 0
+        for title, url in feeds:
+            url = (url or "").strip()
+            if not url or url in existing:
+                continue
+            existing.add(url)
+            conn.execute(
+                "INSERT INTO feeds(feed_url, title, created_at) VALUES(?,?,?)",
+                (url, (title or url).strip(), _now()),
+            )
+            added += 1
+        conn.commit()
+        return {"added": added, "total": len(feeds)}
+    finally:
+        conn.close()
+
+
+def add_recommended() -> dict:
+    """Subscribe to the curated starter set; the caller refreshes to ingest articles."""
+    return _subscribe_many(RECOMMENDED)
+
+
+def import_opml(opml_text: str) -> dict:
+    """Subscribe to every <outline xmlUrl=...> in an OPML document, then ingest in the
+    background. The OPML carries titles + feed URLs, so no discovery fetch is needed."""
+    import xml.etree.ElementTree as ET
+
+    try:
+        root = ET.fromstring(opml_text)
+    except ET.ParseError as e:
+        raise ValueError("OPML 解析失败") from e
+    feeds = [
+        (o.get("text") or o.get("title") or "", url)
+        for o in root.iter("outline")
+        if (url := o.get("xmlUrl"))
+    ]
+    if not feeds:
+        raise ValueError("OPML 里没有找到任何订阅源")
+    return _subscribe_many(feeds)
+
+
 def rename_feed(feed_id: int, title: str) -> dict | None:
     conn = _conn()
     try:

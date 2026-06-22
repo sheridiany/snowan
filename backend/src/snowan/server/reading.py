@@ -21,6 +21,10 @@ class FeedAdd(BaseModel):
     url: str
 
 
+class OpmlImport(BaseModel):
+    opml: str
+
+
 class FeedRename(BaseModel):
     title: str | None = None
 
@@ -51,6 +55,21 @@ def add_feed(req: FeedAdd) -> dict:
         raise HTTPException(422, "url is required")
     try:
         return reading.add_feed(req.url.strip())
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@router.post("/recommended")
+def add_recommended() -> dict:
+    """Subscribe to the curated bilingual starter set, then refresh in the background."""
+    return reading.add_recommended()
+
+
+@router.post("/import-opml")
+def import_opml(req: OpmlImport) -> dict:
+    """Import an OPML feed list (e.g. BestBlogs' OPML): bulk subscribe + background refresh."""
+    try:
+        return reading.import_opml(req.opml)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 

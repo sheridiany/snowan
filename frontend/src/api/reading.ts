@@ -74,6 +74,12 @@ export const listFeeds = () => fetch(api('/api/reading/feeds')).then((r) => j<Fe
 
 export const addFeed = (url: string) => post<FeedOut>('/api/reading/feeds', { url });
 
+export const addRecommended = () =>
+  post<{ added: number; total: number }>('/api/reading/recommended');
+
+export const importOpml = (opml: string) =>
+  post<{ added: number; total: number }>('/api/reading/import-opml', { opml });
+
 export const renameFeed = (id: number, title: string) =>
   patch<FeedOut>(`/api/reading/feeds/${id}`, { title });
 
