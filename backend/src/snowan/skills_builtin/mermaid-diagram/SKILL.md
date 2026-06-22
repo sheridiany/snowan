@@ -1,26 +1,26 @@
 ---
 name: mermaid-diagram
-description: 当用户想用图表(流程图、时序图、架构图、思维导图等)表达结构或流程时使用
+description: 画时序图 / 类图·ER 图 / 状态机 / 甘特图时用 mermaid(这几类手画 SVG 很吃力);架构 / 流程 / 结构 / 概念图请改用 make-diagram 的内联 SVG
 ---
 
-# 画 Mermaid 图
+# 画 Mermaid 图(时序 / ER / 状态机 / 甘特)
 
-当用户要「画个流程图 / 时序图 / 架构图 / 把这个画出来」时:
+这几类用 SVG 手画很吃力,交给 mermaid:**时序图、类图 / ER 图、状态机、甘特图**。
+**架构图 / 流程图 / 结构图 / 概念示意**不要用 mermaid——用 `load_skill("make-diagram")` 画更精致的内联中文 SVG。
 
-1. 选最合适的图类型:流程 `flowchart TD`、时序 `sequenceDiagram`、类图 `classDiagram`、状态 `stateDiagram-v2`、思维导图 `mindmap`、甘特 `gantt`。
-2. 用 Mermaid 语法写出来,放进 ```mermaid 代码块,Snowan 会直接渲染成图。
-3. 保持简洁:节点文字短(≤6 字),箭头上写关系,层级清晰,别把所有细节塞进一张图。
+1. 选类型:时序 `sequenceDiagram`、类图 `classDiagram`、ER 图 `erDiagram`、状态 `stateDiagram-v2`、甘特 `gantt`。
+2. 用 mermaid 语法写出来,放进 ```mermaid 代码块,Snowan 会直接渲染。
+3. 节点 / 标签用中文且简短,关系写在箭头上,别把所有细节塞进一张。
 4. 图下面用一两句话说明它表达了什么。
 
-示例:
+示例(时序):
 
 ```mermaid
-flowchart TD
-  A[用户提问] --> B{需要联网?}
-  B -- 是 --> C[web_search]
-  B -- 否 --> D[knowledge_search]
-  C --> E[整理回答]
-  D --> E
+sequenceDiagram
+  participant 用户
+  participant 网关
+  participant Worker
+  用户->>网关: 发起请求
+  网关->>Worker: 鉴权后转发
+  Worker-->>用户: 流式返回
 ```
-
-要点:节点命名清楚、不要超过 ~15 个节点;复杂系统拆成几张小图而不是一张大图。

@@ -1,61 +1,112 @@
 ---
 name: make-diagram
-description: 画图示模式——把结构、流程、架构或概念画成一张干净、专业的内联 SVG 图(用 render_diagram 渲染)
+description: 画图示模式——把架构 / 流程 / 结构 / 概念画成一张干净、专业、信息完整的内联中文 SVG 图(用 render_diagram 渲染)
 ---
 
-# 画干净的内联 SVG 图示
+# 画一张专业的内联 SVG 图示
 
-解释结构 / 流程 / 架构 / 概念时,画一张 SVG 图比堆文字清楚得多。用 `render_diagram(svg, title)` 直接内联渲染。**图要的是干净、克制、信息密度恰好——不是塞满**。下面这套规则违反任何一条都会出现重叠、溢出或糊,务必逐条遵守。
+目标:**一张图把事情讲清楚——干净、专业、信息完整**,像认真画给同事看的白板图,不是简笔画。用 `render_diagram(svg, title)` 直接内联渲染。下面每条都为"不重叠、不溢出、不坍缩"服务,逐条遵守。
 
-## 1. 画布
+## 0. 三条铁律(其余都为它们服务)
 
-- 永远 `<svg width="100%" viewBox="0 0 680 H">`。**680 是写死的**(它对齐渲染容器宽度,保证坐标 1:1 像素,字宽计算才准——绝不要改成别的宽度)。
-- `H` = 所有元素最底边(含文字基线 + 4px 下沿)+ 20。**布局完再算 H,别拍脑袋**,下方不留大片空白。
-- 安全区 x=40..640、y=40..(H-40)。坐标**全部 ≥0**,不准负值。
-- 背景透明。**直接输出裸 `<svg>`**,别套带背景色的 `<div>`(容器/卡片渲染面已经给了)。
-- **一次调用只含一个 `<svg>`**。第一版有问题就整段重画,别在后面追加修正版。
+1. **信息保真,绝不坍缩**。源里有 12 个组件就画 12 个——用**分层**或**泳道**把它们组织进**同一张**画布。把十几个东西压成 5 个大盒子,是这套图最严重的失败。装得下就别拆;真要拆是因为它是两个独立主题,而不是因为"东西多"。
+2. **内容用中文**。所有标签中文;产品名 / 协议 / 缩写保留原文(PostgreSQL、Redis、Firecracker、Docker、Kafka、BOM、ECN、MCP、LLM…)。
+3. **配色按语义,不画彩虹**。默认**所有节点同一种颜色**(`c-blue`)。只有当图里存在**两类本质不同**的东西 / 流向时,才引入**第二种**强调色,并配一行图例。**绝不给每个盒子配不同颜色**——彩虹会把"颜色=含义"彻底毁掉,是最常见的廉价感来源。
 
-## 2. 文字与配色(用预置 class,渲染面已加载)
+## 1. 先定布局(决定一切)
 
-- 每个 `<text>` 必须带 class:`t`(14px 常规,主标签)、`th`(14px 中黑,强调标签)、`ts`(12px,副标题/箭头标签)。**只用 14 和 12 两种字号**,别的不许。
-- 方框:`box`(中性框)。上色:`c-blue / c-teal / c-amber / c-green / c-red / c-purple / c-coral / c-pink / c-gray`,放在形状元素或它的**直接父 `<g>`**上(隔一层会失效变黑)。
-- **≤2 个色阶**。颜色一旦编码状态/层级,就在图里加一行图例(如:🟩 已建成 · 🟨 进行中 · ⬜ 缺失);否则统一用中性 `box`。
-- 全部句首大写式简洁短语,副标题 ≤5 词。框内不放图标/插画,只放文字。
+数清源里的名词和角色,选一种骨架,再动笔:
 
-## 3. 字宽(防溢出的关键)
+- **分层图(最常用)**——系统架构、技术栈、"它怎么分层"。横向分若干带(band),自上而下:客户端 → 网关 → 服务 → 数据。每带左侧一个**层标签**(`ts` 灰字),带内 1–4 个等宽盒子,带与带之间竖直向下箭头。见第 5 节完整范例。
+- **泳道图**——跨角色 / 跨部门流程,"谁负责什么""流程怎么流转"。纵向分 2–3 条泳道(每条=一个角色:设计 / PM / 采购),顶部泳道标题(`th`),泳道间用**竖直虚线**(`leader` 类)分隔;盒子按流程在泳道内 / 跨泳道排布,用**曲线箭头**连。需要时加**第二条强调色流**(回流 / 变更 / 异常)。
+- **简单流程 / 结构图**——步骤不多、无角色无分层。框 + 箭头一条线走下来,或嵌套框表达"谁包含谁"。
+- **示意图**——让人"感觉"机制怎么运作("注意力怎么 work")。画隐喻,不要怂回流程图。
+- **数据库 ERD / 时序图 / 状态机 / 甘特**:不要硬用 SVG 画,改让用户用 mermaid(`load_skill("mermaid-diagram")`)。
 
-SVG 文字**不会自动换行**。放字前先估宽:**14px ≈ 每字符 8px,12px ≈ 每字符 7px**(中文/特殊符号/下标更宽,按 +30% 估)。
-- 判断:`字宽 + 2×24(padding)` 是否 ≤ 框宽?塞不下 → 缩短标签**或**加宽框。
-- 框内文字垂直居中:`<text x=cx y=cy text-anchor="middle" dominant-baseline="central">`(没有 `dominant-baseline` 字会偏上、下沿压到下一行)。
-- 慎用 `text-anchor="end"` 且 x<60(最长标签会甩出左边界);宁可 `start` 右对齐列。
+## 2. 画布
 
-## 4. 箭头(必带这段 defs)
+- 永远 `<svg width="100%" viewBox="0 0 680 H">`。**680 写死**(对齐渲染容器宽度,字宽计算才准,绝不改)。渲染面会把它放大到约 760px 宽。
+- `H` = 所有元素最底边(含图例)+ 20。**排完版再算 H**,下方不留大片空白。
+- 安全区 x=40..640、y=40..(H-40),坐标**全部 ≥0**。
+- 背景透明,**直接输出裸 `<svg>`**(渲染面已有卡片背景,别再套带背景的 `<div>`)。
+- **一次只含一个 `<svg>`**;第一版不对就整段重画,别追加修正版。
 
-每张图开头放:
+## 3. 文字与配色(用预置 class)
+
+- 每个 `<text>` 带 class:`th`(14px 中黑,盒子主标题)、`t`(14px 常规)、`ts`(12px,副描述 / 层标签 / 箭头标签)。**只用 14 和 12 两种字号**。
+- 盒子:中性框用 `box`;上色用 `c-blue / c-teal / c-amber / c-green / c-red / c-purple / c-coral / c-pink / c-gray`,放在形状或它**直接父 `<g>`** 上(隔层会失效变黑)。
+- 语义 2 色搭配建议:主体 `c-blue`,第二类(基础设施 / 外部依赖)`c-gray`;另一种流向(回流 / 变更 / 异常)`c-amber` 或 `c-coral`。**一旦用颜色编码含义,就在底部加一行图例**(小色块 + 文字)。
+- 副描述 `ts` ≤ 8 字,真有信息,不凑字。框内只放文字,不放图标 / 插画 / 装饰大数字。无渐变、无阴影。
+
+## 4. 字宽(中文防溢出的关键)
+
+SVG 文字**不换行**。放字前估宽:
+- **中文 / 全角符号:满宽**——14px 字号 ≈ 每字 **14px**,12px ≈ 每字 **12px**。
+- 英文 / 数字 / 空格 / 半角:≈ 0.55em——14px ≈ **8px**/字,12px ≈ **7px**/字。
+- 判断 `估算宽度 + 2×20(padding)` 是否 ≤ 框宽;塞不下 → 缩短标签**或**加宽框。
+- 框内文字垂直居中:`text-anchor="middle"` + `dominant-baseline="central"`(缺 `dominant-baseline` 字会偏上)。
+
+## 5. 连接线(带这段 defs,优先用曲线)
+
+每张图开头放一次:
+
 ```
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
 ```
-连线用 `class="arr"` + `marker-end="url(#arrow)"`。**所有当连线用的 `<path>`/`<polyline>` 必须 `fill="none"`**(否则默认黑色填充糊成一团)。描边一律 0.5px(框/边),连线 1.5px(用 arr 类已处理)。
 
-## 5. 布局数学(画每个框/箭头前先算)
+- 连线 class `arr` + `marker-end="url(#arrow)"`;**所有当连线的 `<path>`/`<polyline>` 必须 `fill="none"`**(否则黑色填充糊成一团)。
+- 对齐的框之间走**直线**;错位的框之间走**三次贝塞尔曲线**更专业:`<path class="arr" d="M x1 y1 C x1 my x2 my x2 y2" .../>`(`my` 取两端 y 的中点,得到平滑的 S 弯)。需要绕开别的框时才走 L 形折线。
+- 箭头标签用 `ts`,放在线的中点旁(别压在线上)。
+- 第二条流向(回流 / 变更)可用虚线:在该 `<path>` 上加 `stroke-dasharray="5 4"` 并配强调色描边。
 
-- **排内排布**:先算这一排总宽再放。例:4 个框、间距 20 → 4×130 + 3×20 = 580 ≤ 600,右边缘 ≤640 才行。框 ≥ 最长标签算出来的宽度。
-- **箭头不穿框**:写每条线前,拿它的坐标和已放的每个框比一遍;会穿过任意框的内部就改走 L 形 `<path>` 折线绕开。箭头不要落在线上当标签。
-- **间距**:框间 ≥60px(流程)/≥20px(同排并列),框内 padding 24px,文字距边 12px,箭头头距框 10px。两行框(标题+副标题)≥56px 高、行距 22px。
+## 6. 布局数学(画每个框 / 线前先算)
+
+- **排内等分**:一排 n 个框、间距 g,框宽 w = (600 − (n−1)·g) / n。例:3 框、g=20 → w=186.7,起点 x=40,依次 +(w+g)。一排 ≤4 框。
+- **箭头不穿框**:每条线坐标和已放的每个框比一遍,会穿就改走曲线 / 折线绕开。
+- **间距**:层 / 行间距 ≥28px,同排框间 ≥20px,框内 padding 20px,箭头头距框 ≥4px。两行框(标题+副描述)高 ≥48px。
 - **单方向**:整图统一上→下 **或** 左→右,别混。
-- **≤4 框/排、整图 ≤5 节点**(渲染面 ~680px 窄)。用户一次列了 6+ 个组件就**拆**:先画一张只有框+主线的总览,再每个子流程一张(3-4 节点),张与张之间用正文一句话过渡。数清名词再动笔。
-- **环形不要画成圈**(事件循环、Krebs、GC、TCP 重传):所有间距规则都是直角坐标系的,画成圈一定卫星框压主框、标签压在虚线圆上。用一条返回箭头表示"回到开头"即可;有逐阶段细节就拆成多张/步进。
+- **环形别画成圈**(事件循环 / GC / 重传):用一条返回箭头表示"回到开头"即可,别画satellite圈。
 
-## 6. 选对图型(看动词,不是看名词)
+## 7. 完整范例(分层架构——照着这个改,别坍缩成 5 个盒子)
 
-- **流程图**——按顺序的步骤、分支决策、数据流转("走一遍流程""有哪些步骤")。框 + 箭头。
-- **结构图**——东西套在东西里("架构是什么""怎么组织的""X 放在哪")。嵌套框 + 标签。
-- **示意/直觉图**——让人"感觉"机制怎么运作("X 到底怎么work""给我个直觉")。画隐喻:注意力是一个 query 向所有 key 的扇形连线(透明度=权重)、梯度下降是球滚下等高面。这是更有野心的选择,别怂回流程图。
-- 同一主题、不同问法画不同图:"transformer 架构"→结构图;"注意力怎么work"→示意图。
-- 数据库 ERD/schema → 让用户用 mermaid,别硬画 SVG。
+```
+<svg width="100%" viewBox="0 0 680 384" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
 
-## 7. 质量底线
-- 干净 > 完整:宁可拆成两三张能看清的,也不要一张挤爆的。
-- 标签可直接读懂;副标题真有信息,不是凑字。
-- 画前在心里把坐标过一遍(框宽、排宽、箭头是否穿框、H 是否够),别画完才发现重叠。
-- 画完调用 `render_diagram(svg, title)`,并在正文里用一两句话讲这张图说明了什么。
+  <text class="ts" x="40" y="46">客户端</text>
+  <g class="node c-blue"><rect x="40" y="54" width="186" height="50" rx="9"/><text class="th" x="133" y="74" text-anchor="middle" dominant-baseline="central">桌面端</text><text class="ts" x="133" y="91" text-anchor="middle" dominant-baseline="central">Electron + Go</text></g>
+  <g class="node c-blue"><rect x="246" y="54" width="186" height="50" rx="9"/><text class="th" x="339" y="74" text-anchor="middle" dominant-baseline="central">网页端</text><text class="ts" x="339" y="91" text-anchor="middle" dominant-baseline="central">React + TypeScript</text></g>
+  <g class="node c-blue"><rect x="452" y="54" width="186" height="50" rx="9"/><text class="th" x="545" y="74" text-anchor="middle" dominant-baseline="central">控制台</text><text class="ts" x="545" y="91" text-anchor="middle" dominant-baseline="central">管理后台</text></g>
+  <path class="arr" d="M133 106 L133 130" marker-end="url(#arrow)"/>
+  <path class="arr" d="M339 106 L339 130" marker-end="url(#arrow)"/>
+  <path class="arr" d="M545 106 L545 130" marker-end="url(#arrow)"/>
+
+  <text class="ts" x="40" y="124">网关</text>
+  <g class="node c-blue"><rect x="40" y="132" width="598" height="50" rx="9"/><text class="th" x="339" y="152" text-anchor="middle" dominant-baseline="central">API 网关</text><text class="ts" x="339" y="169" text-anchor="middle" dominant-baseline="central">反向代理 · 鉴权 · 限流 · 风险扫描</text></g>
+  <path class="arr" d="M339 184 L339 206" marker-end="url(#arrow)"/>
+
+  <text class="ts" x="40" y="200">核心服务</text>
+  <g class="node c-blue"><rect x="40" y="208" width="289" height="50" rx="9"/><text class="th" x="184" y="228" text-anchor="middle" dominant-baseline="central">API 服务</text><text class="ts" x="184" y="245" text-anchor="middle" dominant-baseline="central">鉴权 · 权限 · 审计 · 资源</text></g>
+  <g class="node c-blue"><rect x="349" y="208" width="289" height="50" rx="9"/><text class="th" x="493" y="228" text-anchor="middle" dominant-baseline="central">Worker</text><text class="ts" x="493" y="245" text-anchor="middle" dominant-baseline="central">agent 循环 · LLM 路由 · 工具</text></g>
+  <path class="arr" d="M184 260 L184 282" marker-end="url(#arrow)"/>
+  <text class="ts" x="196" y="274">数据访问</text>
+
+  <text class="ts" x="40" y="276">数据与基础设施</text>
+  <g class="node c-gray"><rect x="40" y="284" width="186" height="50" rx="9"/><text class="th" x="133" y="304" text-anchor="middle" dominant-baseline="central">PostgreSQL</text><text class="ts" x="133" y="321" text-anchor="middle" dominant-baseline="central">关系数据</text></g>
+  <g class="node c-gray"><rect x="246" y="284" width="186" height="50" rx="9"/><text class="th" x="339" y="304" text-anchor="middle" dominant-baseline="central">Redis</text><text class="ts" x="339" y="321" text-anchor="middle" dominant-baseline="central">缓存 · 队列</text></g>
+  <g class="node c-gray"><rect x="452" y="284" width="186" height="50" rx="9"/><text class="th" x="545" y="304" text-anchor="middle" dominant-baseline="central">向量库</text><text class="ts" x="545" y="321" text-anchor="middle" dominant-baseline="central">向量记忆</text></g>
+
+  <g class="c-blue"><rect x="40" y="351" width="13" height="13" rx="3"/></g>
+  <text class="ts" x="60" y="358" dominant-baseline="central">自家服务</text>
+  <g class="c-gray"><rect x="150" y="351" width="13" height="13" rx="3"/></g>
+  <text class="ts" x="170" y="358" dominant-baseline="central">基础设施 / 外部依赖</text>
+</svg>
+```
+
+注意它怎么做到的:**12 个组件全保留**、分 4 层、每层左侧标签、盒子等宽对齐、竖直箭头、**只有蓝 + 灰两色**(自家 vs 基础设施)+ 底部图例、全中文。这就是"信息完整且干净"。换成泳道图时同理:把"层"换成"角色纵列",竖直箭头换成跨列曲线。
+
+## 8. 收尾
+
+- 干净优先,但**干净 ≠ 删内容**——靠布局组织信息,而不是砍掉信息。
+- 画前在心里把坐标过一遍(框宽够不够装中文、排宽、箭头是否穿框、H 够不够)。
+- 调用 `render_diagram(svg, title)`(title 用中文),并在正文里用一两句话说这张图讲清了什么。
