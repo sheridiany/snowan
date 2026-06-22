@@ -13,6 +13,7 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import (
     collect_all,
+    collect_data_files,
     collect_submodules,
     copy_metadata,
 )
@@ -60,6 +61,11 @@ for _pkg in ("onnxruntime", "fastembed", "tokenizers", "huggingface_hub", "tqdm"
 hiddenimports += collect_submodules("snowan")
 # trafilatura dynamically imports its extraction/format submodules.
 hiddenimports += collect_submodules("trafilatura")
+
+# Snowan ships built-in skills as SKILL.md data files under skills_builtin/. collect_submodules
+# only grabs .py modules, so bundle the skill data explicitly — keeping the package-relative path
+# so _BUILTIN (resolved relative to skills.py) finds them in the frozen app.
+datas += collect_data_files("snowan", includes=["skills_builtin/**"])
 
 # Collect package metadata for packages that query importlib.metadata at runtime.
 _metadata_pkgs = [
