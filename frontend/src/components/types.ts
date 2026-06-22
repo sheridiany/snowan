@@ -13,7 +13,8 @@ export type ToolStep = {
 // land inline exactly where the agent invoked them.
 export type Block =
   | { kind: 'text'; text: string }
-  | { kind: 'tool'; step: ToolStep };
+  | { kind: 'tool'; step: ToolStep }
+  | { kind: 'artifact'; path: string; title: string };
 
 export type Attachment = { name: string; mime: string };
 

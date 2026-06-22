@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ActionIcon, Button, TextArea } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
-import { ArrowUp, Paperclip, Square, X } from 'lucide-react';
+import { ArrowUp, FileText, Paperclip, Presentation, Square, Table2, Telescope, X } from 'lucide-react';
 import ModelSelect from './ModelSelect';
 import type { Attachment } from '../api/chat';
 
@@ -132,14 +132,63 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 11px;
     color: ${token.colorTextQuaternary};
   `,
+  skillRow: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 2px;
+  `,
+  skillChip: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 9px;
+    background: ${token.colorFillTertiary};
+    color: ${token.colorTextSecondary};
+    border: 1px solid transparent;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    &:hover {
+      background: ${token.colorFill};
+      color: ${token.colorText};
+    }
+  `,
+  skillChipActive: css`
+    background: ${token.colorPrimaryBg};
+    color: ${token.colorPrimary};
+    border-color: ${token.colorPrimaryBorder};
+    &:hover {
+      background: ${token.colorPrimaryBgHover};
+      color: ${token.colorPrimary};
+    }
+  `,
 }));
 
 const isGenericImageName = (f: File) =>
   (f.type || '').startsWith('image/') && (!f.name || /^(image|blob)/i.test(f.name));
 
+// The 4 power skills launched from below the input. The id is the built-in skill name
+// the backend activates for the turn (server/skills_builtin/<id>/SKILL.md).
+const SKILLS = [
+  { id: 'deep-research', label: '深度研究', icon: Telescope },
+  { id: 'make-slides', label: '生成幻灯片', icon: Presentation },
+  { id: 'write-document', label: '文档编辑', icon: FileText },
+  { id: 'analyze-data', label: '表格分析', icon: Table2 },
+] as const;
+
+const SKILL_PLACEHOLDER: Record<string, string> = {
+  'deep-research': '深度研究:输入你想研究的主题…',
+  'make-slides': '生成幻灯片:描述主题,或粘贴要点…',
+  'write-document': '文档编辑:说说要写一篇什么文档…',
+  'analyze-data': '表格分析:贴上数据,或描述你的表格…',
+};
+
 export interface ComposerProps {
   busy: boolean;
-  onSend: (text: string, attachments: Attachment[]) => void;
+  onSend: (text: string, attachments: Attachment[], skill?: string) => void;
   onStop?: () => void;
   onSteer?: (text: string) => void;
 }
@@ -148,6 +197,7 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
   const { styles, cx } = useStyles();
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [skill, setSkill] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
@@ -209,7 +259,7 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
     const atts = attachments;
     setValue('');
     setAttachments([]);
-    onSend(text, atts);
+    onSend(text, atts, skill ?? undefined);
   };
 
   return (
@@ -256,8 +306,28 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
             }
           }}
           autoSize={{ minRows: 1, maxRows: 8 }}
-          placeholder="问点什么…(可粘贴或拖拽图片、文档)"
+          placeholder={skill ? SKILL_PLACEHOLDER[skill] : '问点什么…(可粘贴或拖拽图片、文档)'}
         />
+
+        {!busy && (
+          <div className={styles.skillRow}>
+            {SKILLS.map((s) => {
+              const Ico = s.icon;
+              const active = skill === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={cx(styles.skillChip, active && styles.skillChipActive)}
+                  onClick={() => setSkill((cur) => (cur === s.id ? null : s.id))}
+                >
+                  <Ico size={14} />
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className={styles.bottomRow}>
           <ActionIcon

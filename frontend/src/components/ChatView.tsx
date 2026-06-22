@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Markdown } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
-import { Check, Code2, Copy, ListChecks, NotebookPen, Paperclip, Search } from 'lucide-react';
+import { Check, Code2, Copy, FileDown, ListChecks, NotebookPen, Paperclip, Search } from 'lucide-react';
 
+import { workspaceFileUrl } from '../api/chat';
 import { getPrefs } from '../api/system';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
@@ -12,7 +13,8 @@ import type { Block, Message, ToolStep } from './types';
 // they can collapse into a single grouped card.
 type RenderItem =
   | { kind: 'text'; key: string; text: string }
-  | { kind: 'tools'; key: string; steps: ToolStep[] };
+  | { kind: 'tools'; key: string; steps: ToolStep[] }
+  | { kind: 'artifact'; key: string; path: string; title: string };
 
 function groupBlocks(blocks: Block[]): RenderItem[] {
   const items: RenderItem[] = [];
@@ -23,6 +25,8 @@ function groupBlocks(blocks: Block[]): RenderItem[] {
       else items.push({ kind: 'tools', key: b.step.id || `t${j}`, steps: [b.step] });
     } else if (b.kind === 'text') {
       items.push({ kind: 'text', key: `x${j}`, text: b.text });
+    } else if (b.kind === 'artifact') {
+      items.push({ kind: 'artifact', key: `a${j}`, path: b.path, title: b.title });
     }
   });
   return items;
@@ -249,6 +253,44 @@ const useStyles = createStyles(({ token, css }) => ({
       animation: none;
     }
   `,
+  artifactCard: css`
+    align-self: flex-start;
+    max-width: 100%;
+    border: 1px solid ${token.colorBorderSecondary};
+    border-radius: ${token.borderRadiusLG}px;
+    background: ${token.colorFillQuaternary};
+    overflow: hidden;
+  `,
+  artifactImg: css`
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    background: ${token.colorBgContainer};
+  `,
+  artifactRow: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    color: ${token.colorTextSecondary};
+  `,
+  artifactName: css`
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  artifactDl: css`
+    flex: none;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: ${token.colorPrimary};
+    cursor: pointer;
+  `,
 }));
 
 function CopyAction({ text }: { text: string }) {
@@ -269,6 +311,28 @@ function CopyAction({ text }: { text: string }) {
       title={done ? '已复制' : '复制'}
       onClick={copy}
     />
+  );
+}
+
+function ArtifactCard({ path, title }: { path: string; title: string }) {
+  const { styles } = useStyles();
+  const name = path.split('/').pop() || path;
+  const isImg = /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
+  return (
+    <div className={styles.artifactCard}>
+      {isImg && (
+        <img className={styles.artifactImg} src={workspaceFileUrl(path)} alt={title || name} />
+      )}
+      <div className={styles.artifactRow}>
+        <FileDown size={16} />
+        <span className={styles.artifactName} title={name}>
+          {title || name}
+        </span>
+        <a className={styles.artifactDl} href={workspaceFileUrl(path, true)} download={name}>
+          下载
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -407,6 +471,8 @@ export default function ChatView({
                           {item.text}
                         </Markdown>
                       ) : null
+                    ) : item.kind === 'artifact' ? (
+                      <ArtifactCard key={item.key} path={item.path} title={item.title} />
                     ) : (
                       <div key={item.key} className={styles.tool}>
                         <ToolGroup steps={item.steps} />

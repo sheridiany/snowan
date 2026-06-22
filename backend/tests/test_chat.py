@@ -42,7 +42,7 @@ def _run(agen) -> list[dict]:
 
 def test_text_stream(home, monkeypatch):
     agent = Agent(TestModel(call_tools=[]), output_type=[str, DeferredToolRequests])
-    monkeypatch.setattr(chat, "build_agent", lambda: agent)
+    monkeypatch.setattr(chat, "build_agent", lambda skill=None: agent)
     evs = _run(chat._run_new("hi", [], "s1"))
     kinds = [e["type"] for e in evs]
     assert "delta" in kinds
@@ -57,7 +57,7 @@ def test_tool_call_stream(home, monkeypatch):
         return "pong"
 
     agent = Agent(TestModel(call_tools=["ping"]), output_type=[str, DeferredToolRequests], tools=[ping])
-    monkeypatch.setattr(chat, "build_agent", lambda: agent)
+    monkeypatch.setattr(chat, "build_agent", lambda skill=None: agent)
     evs = _run(chat._run_new("go", [], "s2"))
     kinds = [e["type"] for e in evs]
     assert "tool_call" in kinds and "tool_result" in kinds
@@ -75,10 +75,24 @@ def test_approval_required(home, monkeypatch):
         output_type=[str, DeferredToolRequests],
         tools=[Tool(danger, requires_approval=True)],
     )
-    monkeypatch.setattr(chat, "build_agent", lambda: agent)
+    monkeypatch.setattr(chat, "build_agent", lambda skill=None: agent)
     evs = _run(chat._run_new("do", [], "s3"))
     appr = next((e for e in evs if e["type"] == "approval_required"), None)
     assert appr and appr["calls"] and appr["calls"][0]["id"]
+
+
+def test_skill_threads_to_build_agent(home, monkeypatch):
+    seen: dict[str, str | None] = {}
+    agent = Agent(TestModel(call_tools=[]), output_type=[str, DeferredToolRequests])
+
+    def stub(skill=None):
+        seen["skill"] = skill
+        return agent
+
+    monkeypatch.setattr(chat, "build_agent", stub)
+    _run(chat._run_new("hi", [], "s9", skill="deep-research"))
+    assert seen["skill"] == "deep-research"
+    assert chat._session_skill.get("s9") == "deep-research"
 
 
 def test_steer_endpoint(home):
