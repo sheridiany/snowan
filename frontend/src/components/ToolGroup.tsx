@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { Check, ChevronRight } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import ToolCallCard, { summarize } from './ToolCallCard';
+import StatusBadge from '../ui/StatusBadge';
+import { EASING } from '../ui/motion';
 import type { ToolStep } from './types';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -14,9 +17,12 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 6px 8px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background ${EASING.standard} 0.18s;
     &:hover {
       background: ${token.colorFillQuaternary};
+    }
+    &:active {
+      background: ${token.colorFillTertiary};
     }
   `,
   icon: css`
@@ -32,6 +38,7 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 7px;
     border-radius: 50%;
     background: ${token.colorWarning};
+    box-shadow: 0 0 0 3px ${token.colorWarningBg};
   `,
   spin: css`
     width: 12px;
@@ -39,7 +46,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: 50%;
     border: 2px solid ${token.colorFillSecondary};
     border-top-color: ${token.colorPrimary};
-    animation: groupspin 0.8s linear infinite;
+    animation: groupspin 0.7s ${EASING.standard} infinite;
     @keyframes groupspin {
       to {
         transform: rotate(360deg);
@@ -56,11 +63,8 @@ const useStyles = createStyles(({ token, css }) => ({
     font-weight: 600;
     color: ${token.colorText};
   `,
-  count: css`
+  badge: css`
     flex: none;
-    font-size: 11px;
-    font-weight: 600;
-    color: ${token.colorTextTertiary};
   `,
   preview: css`
     flex: 1;
@@ -74,18 +78,22 @@ const useStyles = createStyles(({ token, css }) => ({
   chevron: css`
     flex: none;
     color: ${token.colorTextQuaternary};
-    transition: transform 0.15s ease;
+    transition: transform ${EASING.emphasized} 0.2s;
   `,
   chevronOpen: css`
     transform: rotate(90deg);
   `,
   body: css`
-    margin: 2px 0 6px 14px;
+    overflow: hidden;
+    margin-left: 14px;
     padding-left: 14px;
     border-left: 2px solid ${token.colorFillSecondary};
+  `,
+  bodyInner: css`
     display: flex;
     flex-direction: column;
     gap: 2px;
+    padding: 2px 0 4px;
   `,
 }));
 
@@ -126,17 +134,31 @@ export default function ToolGroup({ steps }: { steps: ToolStep[] }) {
         ) : (
           <Text className={styles.name}>工具调用</Text>
         )}
-        <span className={styles.count}>{steps.length} 次</span>
+        <span className={styles.badge}>
+          <StatusBadge status={running ? 'processing' : pending ? 'warning' : 'success'}>
+            {steps.length} 次
+          </StatusBadge>
+        </span>
         {!expanded && preview && <span className={styles.preview}>{preview}</span>}
         <ChevronRight size={14} className={cx(styles.chevron, expanded && styles.chevronOpen)} />
       </div>
-      {expanded && (
-        <div className={styles.body}>
-          {steps.map((s) => (
-            <ToolCallCard key={s.id} step={s} />
-          ))}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            className={styles.body}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
+          >
+            <div className={styles.bodyInner}>
+              {steps.map((s) => (
+                <ToolCallCard key={s.id} step={s} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

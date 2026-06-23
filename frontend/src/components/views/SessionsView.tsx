@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Empty, Flexbox, Tag, Text } from '@lobehub/ui';
+import { Flexbox, Text } from '@lobehub/ui';
 import { Dropdown, Input, Modal } from 'antd';
 import { createStyles } from 'antd-style';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   Check,
   ChevronDown,
   ChevronRight,
   Circle,
-  MessageSquare,
+  MessagesSquare,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -15,6 +16,11 @@ import {
 
 import { ListPane, type NavProps } from '../shell/ListPane';
 import type { Session, SessionStatus } from '../types';
+import StatusBadge, { type BadgeStatus } from '../../ui/StatusBadge';
+import GradientThumb from '../../ui/GradientThumb';
+import IconOrb from '../../ui/IconOrb';
+import DisplayHeading from '../../ui/DisplayHeading';
+import { EASING, staggerContainer, staggerItem } from '../../ui/motion';
 
 // Relative time in Chinese from a past epoch ms: "刚刚" / "3分钟" / "5小时" / "19天".
 function relTime(ts: number): string {
@@ -31,10 +37,10 @@ function relTime(ts: number): string {
   return `${Math.floor(mon / 12)}年`;
 }
 
-const SECTIONS: { status: SessionStatus; label: string }[] = [
-  { status: 'active', label: '进行中' },
-  { status: 'todo', label: '待办' },
-  { status: 'done', label: '已完成' },
+const SECTIONS: { status: SessionStatus; label: string; badge: BadgeStatus }[] = [
+  { status: 'active', label: '进行中', badge: 'processing' },
+  { status: 'todo', label: '待办', badge: 'info' },
+  { status: 'done', label: '已完成', badge: 'success' },
 ];
 
 // Clicking the status circle advances active -> todo -> done -> active.
@@ -44,7 +50,16 @@ const NEXT: Record<SessionStatus, SessionStatus> = {
   done: 'active',
 };
 
-const useStyles = createStyles(({ token, css }) => ({
+const useStyles = createStyles(({ token, css }) => {
+  // Soft tinted pill for tags — same language as StatusBadge (rgba fill + inset
+  // ring, no border, no dot), seeded from a neutral token (no color-mix).
+  const rgb = (hex: string) => {
+    const c = hex.replace('#', '');
+    if (c.length !== 6) return '120, 120, 120';
+    return [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16)).join(', ');
+  };
+  const tagTint = rgb(token.colorTextSecondary);
+  return {
   section: css`
     display: flex;
     flex-direction: column;
@@ -53,12 +68,13 @@ const useStyles = createStyles(({ token, css }) => ({
   sectionHeader: css`
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     height: 30px;
     padding: 0 8px;
     border-radius: ${token.borderRadiusSM}px;
     cursor: pointer;
     user-select: none;
+    transition: background 0.16s ${EASING.standard};
     &:hover {
       background: ${token.colorFillQuaternary};
     }
@@ -67,17 +83,15 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: none;
     display: inline-flex;
     color: ${token.colorTextTertiary};
+    transition: transform 0.16s ${EASING.standard};
   `,
   sectionLabel: css`
     flex: 1;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     color: ${token.colorTextSecondary};
-  `,
-  count: css`
-    font-size: 12px;
-    color: ${token.colorTextQuaternary};
   `,
   row: css`
     position: relative;
@@ -87,9 +101,29 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 9px 10px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;
-    transition: background 0.12s ease;
+    transition: background 0.16s ${EASING.standard};
+    /* Accent rail — collapsed by default, grows in on hover/active. */
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 3px;
+      height: 0;
+      border-radius: 0 3px 3px 0;
+      background: ${token.colorPrimary};
+      transform: translateY(-50%);
+      opacity: 0;
+      transition:
+        height 0.18s ${EASING.emphasized},
+        opacity 0.18s ${EASING.standard};
+    }
     &:hover {
       background: ${token.colorFillTertiary};
+    }
+    &:hover::before {
+      height: 38%;
+      opacity: 0.45;
     }
     /* reveal the ⋯ button only on hover (or while its menu is open) */
     &:hover .row-more {
@@ -103,13 +137,12 @@ const useStyles = createStyles(({ token, css }) => ({
     }
     &::before {
       content: '';
-      position: absolute;
-      left: 0;
-      top: 8px;
-      bottom: 8px;
-      width: 3px;
-      border-radius: 0 3px 3px 0;
-      background: ${token.colorPrimary};
+      height: calc(100% - 16px);
+      opacity: 1;
+    }
+    &:hover::before {
+      height: calc(100% - 16px);
+      opacity: 1;
     }
   `,
   circle: css`
@@ -123,9 +156,15 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: 50%;
     color: ${token.colorTextTertiary};
     cursor: pointer;
-    transition: color 0.15s;
+    transition:
+      color 0.15s ${EASING.standard},
+      transform 0.15s ${EASING.emphasized};
     &:hover {
       color: ${token.colorText};
+      transform: scale(1.12);
+    }
+    &:active {
+      transform: scale(0.92);
     }
   `,
   circleDone: css`
@@ -191,7 +230,48 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-wrap: wrap;
     gap: 4px;
   `,
-}));
+  tag: css`
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    color: rgba(${tagTint}, 1);
+    background: rgba(${tagTint}, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(${tagTint}, 0.22);
+  `,
+  empty: css`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 56px 24px 40px;
+    gap: 16px;
+  `,
+  emptyArt: css`
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `,
+  emptyOrb: css`
+    position: absolute;
+    right: -8px;
+    bottom: -8px;
+  `,
+  emptyTitle: css`
+    margin: 4px 0 0;
+  `,
+  emptyDesc: css`
+    max-width: 220px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: ${token.colorTextTertiary};
+  `,
+  };
+});
 
 export default function SessionsView({
   view,
@@ -212,6 +292,7 @@ export default function SessionsView({
   onDelete?: (id: string) => void;
 }) {
   const { styles, cx } = useStyles();
+  const reduceMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState<Set<SessionStatus>>(new Set());
   const [editId, setEditId] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
@@ -246,14 +327,20 @@ export default function SessionsView({
   return (
     <ListPane view={view} onView={onView} onNewChat={onNewChat}>
       {sessions.length === 0 ? (
-        <Empty
-          icon={MessageSquare}
-          title="还没有会话"
-          description="开始一段新对话,它会出现在这里。"
-          paddingBlock={40}
-        />
+        <div className={styles.empty}>
+          <div className={styles.emptyArt}>
+            <GradientThumb seed="sessions-empty" size={72} radius={20} icon={MessagesSquare} />
+            <span className={styles.emptyOrb}>
+              <IconOrb icon={Pencil} size="sm" tone="brand" />
+            </span>
+          </div>
+          <DisplayHeading level={3} className={styles.emptyTitle}>
+            还没有会话
+          </DisplayHeading>
+          <Text className={styles.emptyDesc}>开始一段新对话,它会出现在这里。</Text>
+        </div>
       ) : (
-        SECTIONS.map(({ status, label }) => {
+        SECTIONS.map(({ status, label, badge }) => {
           const items = sessions.filter((s) => s.status === status);
           if (items.length === 0) return null;
           const isCollapsed = collapsed.has(status);
@@ -264,15 +351,23 @@ export default function SessionsView({
                   {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                 </span>
                 <Text className={styles.sectionLabel}>{label}</Text>
-                <Text className={styles.count}>{items.length}</Text>
+                <StatusBadge status={badge} size="sm">
+                  {items.length}
+                </StatusBadge>
               </div>
-              {!isCollapsed &&
-                items.map((s) => {
+              {!isCollapsed && (
+                <motion.div
+                  variants={staggerContainer}
+                  initial={reduceMotion ? false : 'hidden'}
+                  animate="visible"
+                >
+                {items.map((s) => {
                   const active = s.id === activeId;
                   const done = s.status === 'done';
                   return (
-                    <div
+                    <motion.div
                       key={s.id}
+                      variants={reduceMotion ? undefined : staggerItem}
                       className={cx(styles.row, active && styles.rowActive)}
                       onClick={() => onSelect(s.id)}
                     >
@@ -352,14 +447,18 @@ export default function SessionsView({
                         {s.tags.length > 0 && (
                           <Flexbox className={styles.tags}>
                             {s.tags.map((t) => (
-                              <Tag key={t}>{t}</Tag>
+                              <span key={t} className={styles.tag}>
+                                {t}
+                              </span>
                             ))}
                           </Flexbox>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
+                </motion.div>
+              )}
             </div>
           );
         })

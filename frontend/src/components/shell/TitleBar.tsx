@@ -1,6 +1,7 @@
 import { createStyles, cx } from 'antd-style';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PanelLeftRounded, PanelRightRounded } from './craftIcons';
+import { EASING } from '../../ui/motion';
 
 const useStyles = createStyles(({ token, css }) => ({
   bar: css`
@@ -11,7 +12,8 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 2px;
     /* Reserve 78px on the left for macOS traffic lights (close/minimize/zoom). */
     padding: 0 10px 0 78px;
-    background: ${token.colorBgLayout};
+    /* Transparent so the app-shell aurora (colorSceneBg) reads through the chrome. */
+    background: transparent;
     user-select: none;
   `,
   spacer: css`
@@ -22,8 +24,10 @@ const useStyles = createStyles(({ token, css }) => ({
     justify-content: center;
   `,
   title: css`
+    font-family: ${token.fontFamilyDisplay};
     font-size: 13px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: ${token.colorTextSecondary};
     pointer-events: none;
   `,
@@ -37,9 +41,12 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusSM}px;
     cursor: pointer;
     color: ${token.colorTextSecondary};
-    transition: background 0.15s ease, color 0.15s ease;
+    border: 1px solid transparent;
+    transition: background 0.15s ${EASING.standard}, color 0.15s ${EASING.standard},
+      border-color 0.15s ${EASING.standard};
     &:hover {
-      background: ${token.colorFillTertiary};
+      background: ${token.colorFillSecondary};
+      border-color: ${token.colorBorderSecondary};
       color: ${token.colorText};
     }
   `,

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { createStyles } from 'antd-style';
+import Surface from '../ui/Surface';
 
 // The pre-built design system the model's SVG targets via class names (t/ts/th/box,
 // c-{ramp}). A curated, warm-leaning ramp palette — [bg tint, stroke, ink] — with a
@@ -46,9 +47,6 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => {
     card: css`
       align-self: stretch;
       width: 100%;
-      border: 1px solid ${token.colorBorderSecondary};
-      border-radius: ${token.borderRadiusLG}px;
-      background: ${token.colorBgContainer};
       padding: 14px 16px;
       overflow: hidden;
     `,
@@ -122,9 +120,11 @@ export default function DiagramCard({ svg, title }: { svg: string; title?: strin
     [svg],
   );
   return (
-    <div className={styles.card} role="img" aria-label={title || '图示'}>
-      {title && <div className={styles.title}>{title}</div>}
-      <div className={styles.body} dangerouslySetInnerHTML={{ __html: clean }} />
-    </div>
+    <Surface variant="solid" glow className={styles.card}>
+      <div role="img" aria-label={title || '图示'}>
+        {title && <div className={styles.title}>{title}</div>}
+        <div className={styles.body} dangerouslySetInnerHTML={{ __html: clean }} />
+      </div>
+    </Surface>
   );
 }

@@ -128,7 +128,7 @@ export default function SettingsView({
         </ListPane>
       )}
 
-      <DetailPane title={active.title} align="between">
+      <DetailPane title={active.title} align="between" glow>
         <div className={styles.detailScroll}>
           <div className={styles.detailInner}>
             <Panel />

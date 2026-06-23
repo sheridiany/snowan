@@ -1,8 +1,10 @@
-import { memo, useEffect, useState, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActionIcon, Button, Empty, Markdown } from '@lobehub/ui';
 import { App, Dropdown, Popconfirm } from 'antd';
 import { createStyles } from 'antd-style';
+import { motion } from 'motion/react';
 import {
+  BookOpen,
   Calendar,
   ChevronDown,
   ChevronLeft,
@@ -10,20 +12,30 @@ import {
   FileCode,
   FileText,
   FileType,
+  Folder,
   FolderOpen,
+  MessageSquare,
   Mic,
+  PencilLine,
   RotateCw,
   StickyNote,
   Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-import { ListRow } from './ListPane';
 import CalendarSource from './CalendarSource';
 import { useResizableWidth } from './useResizableWidth';
 import DailyExpand from '../daily/DailyExpand';
 import { LAYOUT } from '../../theme/themes';
 import RecordingPanel from '../recording/RecordingPanel';
+import GradientThumb from '../../ui/GradientThumb';
+import IconOrb from '../../ui/IconOrb';
+import Stat from '../../ui/Stat';
+import StatusBadge from '../../ui/StatusBadge';
+import Surface from '../../ui/Surface';
+import DisplayHeading from '../../ui/DisplayHeading';
+import { CHART_COLORS } from '../../ui/gradients';
+import { EASING, staggerContainer, staggerItem } from '../../ui/motion';
 import {
   listNotes,
   listFolders,
@@ -117,9 +129,14 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorText};
     font-size: 14px;
     font-weight: 600;
-    transition: background 0.12s ease;
+    transition:
+      background 0.16s ${EASING.standard},
+      transform 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorFillTertiary};
+    }
+    &:active {
+      transform: scale(0.98);
     }
   `,
   chevron: css`
@@ -181,17 +198,128 @@ const useStyles = createStyles(({ token, css }) => ({
     overflow-y: auto;
     padding: 8px 18px 24px;
   `,
+  detailCard: css`
+    margin: 6px 0 16px;
+    padding: 18px 18px 16px;
+  `,
   detailTitle: css`
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 1.4;
-    color: ${token.colorText};
-    margin: 8px 0 4px;
+    margin: 0 0 10px;
   `,
   detailMeta: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 12px;
     color: ${token.colorTextTertiary};
-    margin-bottom: 14px;
+    font-variant-numeric: tabular-nums;
+  `,
+  detailBody: css`
+    line-height: 1.72;
+    color: ${token.colorText};
+    /* Tighten the first heading so it doesn't fight the display title above. */
+    & > :first-child {
+      margin-top: 0;
+    }
+  `,
+  // The stats band atop the 笔记 list — a restrained row of real metrics.
+  statBand: css`
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 2px 2px 12px;
+  `,
+  // A Stat wrapped with a thin top-accent bar (CHART_COLORS) for a touch of color.
+  statCard: css`
+    position: relative;
+    border-radius: ${token.borderRadiusLG}px;
+    overflow: hidden;
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--stat-accent);
+      opacity: 0.85;
+    }
+  `,
+  // Rich note row: gradient cover + serif title + secondary snippet.
+  noteRow: css`
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: ${token.borderRadius}px;
+    cursor: pointer;
+    transition:
+      background 0.16s ${EASING.standard},
+      box-shadow 0.16s ${EASING.standard};
+    &:hover {
+      background: ${token.colorFillTertiary};
+      box-shadow: ${token.boxShadowTertiary};
+    }
+    &:hover [data-rowdate] {
+      opacity: 0;
+    }
+    &:hover [data-rowdel] {
+      opacity: 1;
+    }
+  `,
+  noteText: css`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  `,
+  noteTitle: css`
+    font-family: ${token.fontFamilyDisplay};
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: ${token.colorText};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  noteSnippet: css`
+    font-size: 11.5px;
+    color: ${token.colorTextTertiary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  noteRight: css`
+    flex: none;
+    font-size: 11px;
+    color: ${token.colorTextQuaternary};
+    font-variant-numeric: tabular-nums;
+    transition: opacity 0.14s ease;
+  `,
+  noteDel: css`
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: ${token.borderRadius}px;
+    color: ${token.colorTextQuaternary};
+    opacity: 0;
+    cursor: pointer;
+    transition:
+      opacity 0.14s ease,
+      color 0.14s ease,
+      background 0.14s ease;
+    &:hover {
+      color: ${token.colorError};
+      background: ${token.colorFillSecondary};
+    }
   `,
   notice: css`
     display: flex;
@@ -217,7 +345,32 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 10px;
+    padding: 30px 16px;
+    text-align: center;
+  `,
+  emptyTitle: css`
+    margin: 2px 0 0;
+  `,
+  emptyDesc: css`
+    max-width: 240px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: ${token.colorTextTertiary};
+  `,
+  // Folder rows reuse the note-row shell but carry a folder gradient cover.
+  folderRow: css`
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: ${token.borderRadius}px;
+    cursor: default;
+    transition: background 0.16s ${EASING.standard};
+    &:hover {
+      background: ${token.colorFillTertiary};
+    }
   `,
 }));
 
@@ -271,6 +424,19 @@ function RightPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSelect]);
 
+  // A refreshKey bump means a note was just saved elsewhere (App bumps it and
+  // opens the panel). Surface that note: jump to 笔记 instead of leaving the user
+  // on the default 日程 source where the fresh note isn't visible. Skip the first
+  // render so the initial default (calendar / contextual) is respected.
+  const prevRefreshKey = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKey !== prevRefreshKey.current) {
+      prevRefreshKey.current = refreshKey;
+      setSource('notes');
+      setOpen(null);
+    }
+  }, [refreshKey]);
+
   // Fetch only what the active source needs; scope the spinner over all
   // in-flight requests with one finally. Returns a no-op for sources that
   // carry their own data (contextual / recording).
@@ -303,6 +469,25 @@ function RightPanel({
     : SOURCES;
   const active = sources.find((s) => s.key === source) ?? sources[0];
   const isContextual = source === contextual?.key;
+
+  // Play the list entrance stagger only the first time a source shows content;
+  // refreshing or switching back must not replay it (the container stays mounted,
+  // so a refetch with stable keys would otherwise flash a re-stagger). Returns
+  // motion props that animate on the first call per source and stay static after.
+  const animatedSources = useRef<Set<string>>(new Set());
+  const enterOnce = (key: string) => {
+    if (animatedSources.current.has(key)) {
+      return { initial: false as const, animate: 'visible' };
+    }
+    animatedSources.current.add(key);
+    return { initial: 'hidden', animate: 'visible' };
+  };
+
+  // Restrained stats band for 笔记 — derived purely from the lists already fetched.
+  const chatNotes = useMemo(
+    () => notes.filter((n) => n.origin === 'chat').length,
+    [notes],
+  );
 
   const doExport = (note: Note, format: ExportFormat) =>
     exportNote(note.id, format).catch(() => message.error('导出失败,请重试'));
@@ -354,12 +539,20 @@ function RightPanel({
           </div>
         </div>
         <div className={styles.detail}>
-          <div className={styles.detailTitle}>{open.title || '无标题'}</div>
-          <div className={styles.detailMeta}>
-            {open.origin === 'chat' ? '来自对话 · ' : ''}
-            {noteDate(open.updated_at)}
+          <Surface variant="solid" glow className={styles.detailCard}>
+            <DisplayHeading level={2} className={styles.detailTitle}>
+              {open.title || '无标题'}
+            </DisplayHeading>
+            <div className={styles.detailMeta}>
+              <StatusBadge status={open.origin === 'chat' ? 'info' : 'neutral'}>
+                {open.origin === 'chat' ? '来自对话' : '手动创建'}
+              </StatusBadge>
+              <span>{noteDate(open.updated_at)}</span>
+            </div>
+          </Surface>
+          <div className={styles.detailBody}>
+            <Markdown>{open.body}</Markdown>
           </div>
-          <Markdown>{open.body}</Markdown>
         </div>
         <div className={styles.handle} onPointerDown={onResizeStart} />
       </aside>
@@ -424,45 +617,123 @@ function RightPanel({
             <Empty icon={FolderOpen} title="加载中…" paddingBlock={36} />
           ) : folders.length === 0 ? (
             <div className={styles.folderEmpty}>
-              <Empty
-                icon={FolderOpen}
-                title="还没有文件夹"
-                description="在设置里添加本地文件夹,里面的文件会进入知识库。"
-                paddingBlock={28}
-              />
+              <IconOrb icon={FolderOpen} size="lg" tone="brand" />
+              <DisplayHeading level={3} className={styles.emptyTitle}>
+                还没有文件夹
+              </DisplayHeading>
+              <p className={styles.emptyDesc}>
+                在设置里添加本地文件夹,里面的文件会进入知识库。
+              </p>
               <Button size="small" onClick={onOpenSettings}>
                 去设置添加
               </Button>
             </div>
           ) : (
-            folders.map((f) => (
-              <ListRow
-                key={f.id}
-                icon={FolderOpen}
-                label={f.path.split('/').filter(Boolean).pop() || f.path}
-                sub={f.path}
-                right={`${f.file_count} 文件`}
-              />
-            ))
+            <motion.div variants={staggerContainer} {...enterOnce('folders')}>
+              {folders.map((f) => (
+                <motion.div key={f.id} variants={staggerItem}>
+                  <div className={styles.folderRow}>
+                    <GradientThumb seed={f.id} size={40} icon={Folder} />
+                    <span className={styles.noteText}>
+                      <span className={styles.noteTitle}>
+                        {f.path.split('/').filter(Boolean).pop() || f.path}
+                      </span>
+                      <span className={styles.noteSnippet}>{f.path}</span>
+                    </span>
+                    <span className={styles.noteRight}>{f.file_count} 文件</span>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
           )
         ) : notes.length === 0 ? (
-          <Empty
-            icon={StickyNote}
-            title={loading ? '加载中…' : '还没有笔记'}
-            description="在对话里点「存为笔记」,它会出现在这里。"
-            paddingBlock={36}
-          />
+          loading ? (
+            <Empty icon={StickyNote} title="加载中…" paddingBlock={36} />
+          ) : (
+            <div className={styles.folderEmpty}>
+              <IconOrb icon={BookOpen} size="lg" tone="brand" />
+              <DisplayHeading level={3} className={styles.emptyTitle}>
+                还没有笔记
+              </DisplayHeading>
+              <p className={styles.emptyDesc}>
+                在对话里点「存为笔记」,它会出现在这里。
+              </p>
+            </div>
+          )
         ) : (
-          notes.map((n) => (
-            <ListRow
-              key={n.id}
-              label={n.title || '无标题'}
-              sub={snippet(n.body)}
-              right={noteDate(n.updated_at)}
-              onClick={() => setOpen(n)}
-              onDelete={() => onDelete(n)}
-            />
-          ))
+          <>
+            <div className={styles.statBand}>
+              <div
+                className={styles.statCard}
+                style={{ ['--stat-accent' as string]: CHART_COLORS[0] }}
+              >
+                <Stat
+                  value={notes.length}
+                  label="笔记"
+                  icon={StickyNote}
+                  accent
+                  trend={
+                    embReady === null
+                      ? undefined
+                      : embReady
+                        ? { status: 'success', text: '语义检索可用' }
+                        : { status: 'warning', text: '仅关键词' }
+                  }
+                />
+              </div>
+              <div
+                className={styles.statCard}
+                style={{ ['--stat-accent' as string]: CHART_COLORS[2] }}
+              >
+                <Stat
+                  value={chatNotes}
+                  label="来自对话"
+                  icon={MessageSquare}
+                  trend={
+                    notes.length - chatNotes > 0
+                      ? { status: 'neutral', text: `${notes.length - chatNotes} 手动创建` }
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
+            <motion.div variants={staggerContainer} {...enterOnce('notes')}>
+              {notes.map((n) => (
+                <motion.div key={n.id} variants={staggerItem}>
+                  <div className={styles.noteRow} onClick={() => setOpen(n)}>
+                    <GradientThumb
+                      seed={n.id}
+                      size={40}
+                      icon={n.origin === 'chat' ? MessageSquare : PencilLine}
+                    />
+                    <span className={styles.noteText}>
+                      <span className={styles.noteTitle}>{n.title || '无标题'}</span>
+                      <span className={styles.noteSnippet}>{snippet(n.body)}</span>
+                    </span>
+                    <span className={styles.noteRight} data-rowdate="">
+                      {noteDate(n.updated_at)}
+                    </span>
+                    <span
+                      data-rowdel
+                      className={styles.noteDel}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Popconfirm
+                        title="删除这份笔记?"
+                        description="删除后不可恢复。"
+                        okText="删除"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => onDelete(n)}
+                      >
+                        <Trash2 size={15} />
+                      </Popconfirm>
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </>
         )}
       </div>
       )}

@@ -12,6 +12,8 @@ import type { ReactNode } from 'react';
 import { SquarePenRounded } from './craftIcons';
 import { useResizableWidth } from './useResizableWidth';
 import { LAYOUT } from '../../theme/themes';
+import DisplayHeading from '../../ui/DisplayHeading';
+import { EASING } from '../../ui/motion';
 
 export type View =
   | 'conversations'
@@ -35,7 +37,9 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: none;
     display: flex;
     flex-direction: column;
-    background: ${token.colorBgContainer};
+    /* Ambient top spotlight layered over the solid container fill — large
+       surface, so no backdrop-filter (glass is reserved for overlays). */
+    background: ${token.colorSceneSpotlight}, ${token.colorBgContainer};
     border-radius: ${token.borderRadiusLG}px;
     box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
@@ -48,7 +52,7 @@ const useStyles = createStyles(({ token, css }) => ({
     width: ${LAYOUT.handle}px;
     cursor: col-resize;
     z-index: 5;
-    &:hover::after {
+    &::after {
       content: '';
       position: absolute;
       top: 0;
@@ -57,6 +61,10 @@ const useStyles = createStyles(({ token, css }) => ({
       width: 2px;
       border-radius: 2px;
       background: ${token.colorPrimary};
+      opacity: 0;
+      transition: opacity 0.16s ${EASING.standard};
+    }
+    &:hover::after {
       opacity: 0.5;
     }
   `,
@@ -66,10 +74,24 @@ const useStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 2px;
     height: ${LAYOUT.headerHeight}px;
-    padding: 0 10px;
+    padding: 0 12px 0 14px;
   `,
-  navSpacer: css`
+  brand: css`
     flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: linear-gradient(
+      135deg,
+      ${token.colorText} 0%,
+      ${token.colorTextSecondary} 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    user-select: none;
   `,
   newBtn: css`
     width: ${LAYOUT.navBtn}px;
@@ -83,10 +105,16 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorPrimaryBg};
     cursor: pointer;
     transition:
-      background 0.12s ease,
-      color 0.12s ease;
+      background 0.16s ${EASING.standard},
+      transform 0.16s ${EASING.emphasized},
+      box-shadow 0.16s ${EASING.standard};
     &:hover {
       background: ${token.colorPrimaryBgHover};
+      box-shadow: 0 0 0 1px ${token.colorPrimaryBorder};
+      transform: translateY(-1px);
+    }
+    &:active {
+      transform: translateY(0);
     }
   `,
   scroll: css`
@@ -114,11 +142,16 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
     cursor: pointer;
     transition:
-      background 0.12s ease,
-      color 0.12s ease;
+      background 0.16s ${EASING.standard},
+      color 0.16s ${EASING.standard},
+      transform 0.16s ${EASING.emphasized};
     &:hover {
       background: ${token.colorFillTertiary};
       color: ${token.colorText};
+      transform: translateY(-1px);
+    }
+    &:active {
+      transform: translateY(0);
     }
   `,
   footerItemActive: css`
@@ -135,7 +168,9 @@ function SideNav({ onNewChat }: Pick<NavProps, 'onNewChat'>) {
   const { styles } = useStyles();
   return (
     <nav className={styles.nav}>
-      <div className={styles.navSpacer} />
+      <DisplayHeading level={3} className={styles.brand}>
+        Snowan
+      </DisplayHeading>
       <Tooltip title="新建对话" placement="bottom">
         <div className={styles.newBtn} onClick={onNewChat}>
           <SquarePenRounded size={17} />
@@ -203,9 +238,31 @@ const useRowStyles = createStyles(({ token, css }) => ({
     padding: 9px 10px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;
-    transition: background 0.12s ease;
+    transition:
+      background 0.16s ${EASING.standard},
+      transform 0.16s ${EASING.standard};
+    /* Accent rail — present but collapsed; grows in on hover/active. */
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 3px;
+      height: 0;
+      border-radius: 0 3px 3px 0;
+      background: ${token.colorPrimary};
+      transform: translateY(-50%);
+      opacity: 0;
+      transition:
+        height 0.18s ${EASING.emphasized},
+        opacity 0.18s ${EASING.standard};
+    }
     &:hover {
       background: ${token.colorFillTertiary};
+    }
+    &:hover::before {
+      height: 40%;
+      opacity: 0.45;
     }
     &:hover [data-rowdate] {
       opacity: 0;
@@ -228,7 +285,10 @@ const useRowStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextQuaternary};
     opacity: 0;
     cursor: pointer;
-    transition: opacity 0.14s ease, color 0.14s ease, background 0.14s ease;
+    transition:
+      opacity 0.14s ${EASING.standard},
+      color 0.14s ${EASING.standard},
+      background 0.14s ${EASING.standard};
     &:hover {
       color: ${token.colorError};
       background: ${token.colorFillSecondary};
@@ -241,13 +301,12 @@ const useRowStyles = createStyles(({ token, css }) => ({
     }
     &::before {
       content: '';
-      position: absolute;
-      left: 0;
-      top: 8px;
-      bottom: 8px;
-      width: 3px;
-      border-radius: 0 3px 3px 0;
-      background: ${token.colorPrimary};
+      height: calc(100% - 16px);
+      opacity: 1;
+    }
+    &:hover::before {
+      height: calc(100% - 16px);
+      opacity: 1;
     }
   `,
   icon: css`
@@ -295,6 +354,8 @@ export function ListRow({
   right,
   onClick,
   onDelete,
+  confirmTitle = '删除这一项?',
+  confirmDesc = '删除后不可恢复。',
 }: {
   icon?: LucideIcon;
   label: ReactNode;
@@ -303,6 +364,8 @@ export function ListRow({
   right?: ReactNode;
   onClick?: () => void;
   onDelete?: () => void;
+  confirmTitle?: ReactNode;
+  confirmDesc?: ReactNode;
 }) {
   const { styles, cx } = useRowStyles();
   return (
@@ -326,8 +389,8 @@ export function ListRow({
       {onDelete && (
         <span data-rowdel className={styles.del} onClick={(e) => e.stopPropagation()}>
           <Popconfirm
-            title="删除这份笔记?"
-            description="删除后不可恢复。"
+            title={confirmTitle}
+            description={confirmDesc}
             okText="删除"
             cancelText="取消"
             okButtonProps={{ danger: true }}
@@ -343,10 +406,12 @@ export function ListRow({
 
 const useGroupStyles = createStyles(({ token, css }) => ({
   group: css`
-    padding: 14px 10px 4px;
-    font-size: 11px;
+    padding: 14px 10px 5px;
+    font-size: 10.5px;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
     color: ${token.colorTextQuaternary};
     &:first-of-type {
       padding-top: 4px;

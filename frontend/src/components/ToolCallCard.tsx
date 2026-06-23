@@ -2,22 +2,42 @@ import { useState } from 'react';
 import { Highlighter, Text } from '@lobehub/ui';
 import { createStyles, useTheme } from 'antd-style';
 import { Brain, Check, ChevronRight, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import StatusBadge from '../ui/StatusBadge';
+import { EASING } from '../ui/motion';
 import type { ToolStep } from './types';
 
 const useStyles = createStyles(({ token, css }) => ({
   row: css`
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
     min-width: 0;
-    padding: 6px 8px;
+    padding: 6px 8px 6px 10px;
     border-radius: ${token.borderRadius}px;
-    transition: background 0.15s ease;
+    transition:
+      background ${EASING.standard} 0.18s,
+      box-shadow ${EASING.standard} 0.18s;
+  `,
+  // Category accent as a soft left edge — colored via inline style from the
+  // live colorCat* token, so the tool stream isn't a wall of grey.
+  accent: css`
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 2px;
+    opacity: 0.7;
   `,
   clickable: css`
     cursor: pointer;
     &:hover {
       background: ${token.colorFillQuaternary};
+    }
+    &:active {
+      background: ${token.colorFillTertiary};
     }
   `,
   icon: css`
@@ -33,6 +53,7 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 7px;
     border-radius: 50%;
     background: ${token.colorWarning};
+    box-shadow: 0 0 0 3px ${token.colorWarningBg};
   `,
   spin: css`
     width: 12px;
@@ -40,7 +61,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: 50%;
     border: 2px solid ${token.colorFillSecondary};
     border-top-color: ${token.colorPrimary};
-    animation: toolspin 0.8s linear infinite;
+    animation: toolspin 0.7s ${EASING.standard} infinite;
     @keyframes toolspin {
       to {
         transform: rotate(360deg);
@@ -69,32 +90,28 @@ const useStyles = createStyles(({ token, css }) => ({
     overflow: hidden;
     text-overflow: ellipsis;
   `,
-  tag: css`
+  badge: css`
     flex: none;
-    font-size: 11px;
-    font-weight: 600;
-  `,
-  tagWarn: css`
-    color: ${token.colorWarning};
-  `,
-  tagDenied: css`
-    color: ${token.colorError};
   `,
   chevron: css`
     flex: none;
     color: ${token.colorTextQuaternary};
-    transition: transform 0.15s ease;
+    transition: transform ${EASING.emphasized} 0.2s;
   `,
   chevronOpen: css`
     transform: rotate(90deg);
   `,
   body: css`
-    margin: 4px 0 6px 14px;
+    overflow: hidden;
+    margin-left: 14px;
     padding-left: 14px;
     border-left: 2px solid ${token.colorFillSecondary};
+  `,
+  bodyInner: css`
     display: flex;
     flex-direction: column;
     gap: 6px;
+    padding: 4px 0 6px;
   `,
   memPill: css`
     display: inline-flex;
@@ -178,6 +195,7 @@ function looksLikeJson(text: string): boolean {
 export default function ToolCallCard({ step }: { step: ToolStep }) {
   const { styles, cx } = useStyles();
   const theme = useTheme();
+  const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
 
   const categoryToken = CATEGORY_TOKENS[step.name];
@@ -210,47 +228,71 @@ export default function ToolCallCard({ step }: { step: ToolStep }) {
         className={cx(styles.row, expandable && styles.clickable)}
         onClick={() => expandable && setOpen((v) => !v)}
       >
+        {categoryColor && (
+          <span className={styles.accent} style={{ background: categoryColor }} />
+        )}
         <span className={styles.icon}>
           {pending && <span className={styles.dot} />}
           {running && <span className={styles.spin} />}
           {done && <Check size={14} className={styles.done} />}
           {denied && <X size={14} className={styles.denied} />}
         </span>
-        <Text className={styles.name} style={categoryColor ? { color: categoryColor } : undefined}>
-          {step.name}
-        </Text>
+        <Text className={styles.name}>{step.name}</Text>
         {summary && <span className={styles.summary}>{summary}</span>}
-        {pending && <span className={cx(styles.tag, styles.tagWarn)}>需要确认</span>}
-        {denied && <span className={cx(styles.tag, styles.tagDenied)}>已拒绝</span>}
+        {pending && (
+          <span className={styles.badge}>
+            <StatusBadge status="warning">需要确认</StatusBadge>
+          </span>
+        )}
+        {denied && (
+          <span className={styles.badge}>
+            <StatusBadge status="error">已拒绝</StatusBadge>
+          </span>
+        )}
         {expandable && (
           <ChevronRight size={14} className={cx(styles.chevron, open && styles.chevronOpen)} />
         )}
       </div>
-      {open && (
-        <div className={styles.body}>
-          {hasArgs && (
-            <>
-              <span className={styles.label}>参数</span>
-              <Highlighter language="json" variant="filled" copyable={false} className={styles.code}>
-                {pretty(step.args)}
-              </Highlighter>
-            </>
-          )}
-          {step.result !== undefined && (
-            <>
-              <span className={styles.label}>结果</span>
-              <Highlighter
-                language={looksLikeJson(step.result) ? 'json' : 'text'}
-                variant="filled"
-                copyable
-                className={styles.code}
-              >
-                {step.result}
-              </Highlighter>
-            </>
-          )}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            className={styles.body}
+            initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.2, 0, 0, 1] }}
+          >
+            <div className={styles.bodyInner}>
+              {hasArgs && (
+                <>
+                  <span className={styles.label}>参数</span>
+                  <Highlighter
+                    language="json"
+                    variant="filled"
+                    copyable={false}
+                    className={styles.code}
+                  >
+                    {pretty(step.args)}
+                  </Highlighter>
+                </>
+              )}
+              {step.result !== undefined && (
+                <>
+                  <span className={styles.label}>结果</span>
+                  <Highlighter
+                    language={looksLikeJson(step.result) ? 'json' : 'text'}
+                    variant="filled"
+                    copyable
+                    className={styles.code}
+                  >
+                    {step.result}
+                  </Highlighter>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { createStyles } from 'antd-style';
 
 const useStyles = createStyles(({ token, css }) => ({
   detail: css`
+    position: relative;
     flex: 1;
     min-width: 0;
     display: flex;
@@ -12,8 +13,10 @@ const useStyles = createStyles(({ token, css }) => ({
     box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
   `,
+  // Ambient top spotlight + a stronger hero bloom, layered above the base
+  // container fill. No backdrop-filter here — this is a large surface.
   glow: css`
-    background: ${token.colorSurfaceGlow}, ${token.colorBgContainer};
+    background: ${token.colorHeroGlow}, ${token.colorSceneSpotlight}, ${token.colorBgContainer};
   `,
   header: css`
     flex: none;
@@ -30,8 +33,10 @@ const useStyles = createStyles(({ token, css }) => ({
     justify-content: space-between;
   `,
   title: css`
-    font-size: 14px;
+    font-family: ${token.fontFamilyDisplay};
+    font-size: 15px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: ${token.colorText};
     overflow: hidden;
     text-overflow: ellipsis;

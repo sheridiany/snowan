@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Markdown } from '@lobehub/ui';
 import { App as AntApp, Image } from 'antd';
-import { createStyles, useTheme } from 'antd-style';
+import { createStyles } from 'antd-style';
 import { Check, Code2, Copy, Download, FileDown, ListChecks, NotebookPen, Paperclip, Search } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 
 import { workspaceFileUrl } from '../api/chat';
 import { imageFileUrl } from '../api/imagegen';
@@ -10,6 +11,9 @@ import { getPrefs } from '../api/system';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
 import DiagramCard from './DiagramCard';
+import DisplayHeading from '../ui/DisplayHeading';
+import GradientThumb from '../ui/GradientThumb';
+import { EASING, fadeRise, lift, staggerContainer, staggerItem } from '../ui/motion';
 import { textOfBlocks, type Block, type Message, type ToolStep } from './types';
 
 // Render blocks in order, but coalesce consecutive tool calls into one run so
@@ -61,102 +65,95 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
   `,
   hero: css`
+    position: relative;
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 9px;
+    gap: 10px;
     padding: 24px;
+  `,
+  // Soft top-down bloom behind the greeting; sits under content, never intercepts clicks.
+  heroGlow: css`
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: ${token.colorHeroGlow};
+    z-index: 0;
+  `,
+  greeting: css`
+    position: relative;
+    z-index: 1;
+    text-align: center;
   `,
   greetingName: css`
     color: ${token.colorPrimary};
   `,
-  greeting: css`
-    font-size: 31px;
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    color: ${token.colorText};
-  `,
   heroDesc: css`
+    position: relative;
+    z-index: 1;
     font-size: 13.5px;
     color: ${token.colorTextTertiary};
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   `,
   cardGrid: css`
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
     width: 100%;
-    max-width: 480px;
+    max-width: 500px;
   `,
   promptCard: css`
     display: flex;
     align-items: center;
-    gap: 11px;
+    gap: 12px;
     padding: 12px 14px;
     border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorFillQuaternary};
+    background: ${token.colorBgContainer};
     border: 1px solid ${token.colorBorderSecondary};
+    box-shadow: ${token.boxShadowTertiary};
     text-align: left;
     cursor: pointer;
     transition:
-      transform 0.15s ease,
-      border-color 0.15s ease,
-      background 0.15s ease,
-      box-shadow 0.15s ease;
-    animation: cardin 0.34s ease-out both;
+      border-color ${EASING.standard} 0.18s,
+      box-shadow ${EASING.standard} 0.18s,
+      background ${EASING.standard} 0.18s;
     &:hover {
-      transform: translateY(-2px);
       background: ${token.colorBgElevated};
       border-color: ${token.colorBorder};
       box-shadow: ${token.boxShadowSecondary};
     }
-    @keyframes cardin {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    &:focus-visible {
+      outline: none;
+      border-color: ${token.colorPrimary};
+      box-shadow: 0 0 0 3px ${token.colorBrandGlow};
     }
-    @media (prefers-reduced-motion: reduce) {
-      animation: none;
-    }
-  `,
-  promptIcon: css`
-    flex: none;
-    width: 30px;
-    height: 30px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: ${token.colorFillTertiary};
   `,
   promptText: css`
     flex: 1;
     min-width: 0;
     font-size: 13px;
-    line-height: 1.35;
+    line-height: 1.4;
     color: ${token.colorText};
   `,
   user: css`
     align-self: flex-end;
     max-width: 80%;
-    padding: 11px 15px;
-    border-radius: 16px;
+    padding: 11px 16px;
+    border-radius: 18px 18px 5px 18px;
     background: ${token.colorPrimary};
     color: #fff;
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
     box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+      inset 0 -1px 0 0 rgba(0, 0, 0, 0.08),
       0 2px 6px -2px ${token.colorBrandGlow},
-      0 8px 20px -8px ${token.colorBrandGlow};
+      0 10px 24px -10px ${token.colorBrandGlow};
   `,
   attachRow: css`
     display: flex;
@@ -182,8 +179,20 @@ const useStyles = createStyles(({ token, css }) => ({
     align-self: stretch;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 9px;
     color: ${token.colorText};
+    /* Comfortable long-form reading: roomy lines, breathing room around blocks. */
+    .lobe-markdown,
+    & p,
+    & li {
+      line-height: 1.72;
+    }
+    & p {
+      margin: 0 0 0.7em;
+    }
+    & p:last-child {
+      margin-bottom: 0;
+    }
     /* reveal per-message actions on hover */
     &:hover .msg-actions {
       opacity: 1;
@@ -199,7 +208,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 2px;
     margin-top: -2px;
     opacity: 0;
-    transition: opacity 0.15s ease;
+    transition: opacity ${EASING.standard} 0.18s;
   `,
   thinking: css`
     display: inline-flex;
@@ -211,20 +220,20 @@ const useStyles = createStyles(({ token, css }) => ({
       height: 6px;
       border-radius: 50%;
       background: ${token.colorTextQuaternary};
-      animation: dotpulse 1.2s ease-in-out infinite both;
+      animation: dotpulse 1.3s ${EASING.standard} infinite both;
     }
     & span:nth-child(2) {
-      animation-delay: 0.18s;
+      animation-delay: 0.16s;
     }
     & span:nth-child(3) {
-      animation-delay: 0.36s;
+      animation-delay: 0.32s;
     }
     @keyframes dotpulse {
       0%,
       80%,
       100% {
-        opacity: 0.25;
-        transform: scale(0.85);
+        opacity: 0.28;
+        transform: scale(0.8);
       }
       40% {
         opacity: 1;
@@ -244,22 +253,6 @@ const useStyles = createStyles(({ token, css }) => ({
       50% {
         opacity: 0;
       }
-    }
-  `,
-  rise: css`
-    animation: msgrise 0.28s ease-out both;
-    @keyframes msgrise {
-      from {
-        opacity: 0;
-        transform: translateY(6px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      animation: none;
     }
   `,
   artifactCard: css`
@@ -453,11 +446,14 @@ type Props = {
   onPickPrompt?: (text: string) => void;
 };
 
+// Each card's GradientThumb is seeded by a stable index so its mesh color is
+// fixed per prompt and distinct from its neighbours (0..3 hash to four
+// different GRADIENT_ACCENTS buckets; the string seeds 'note'/'summary' collided).
 const SUGGESTED_PROMPTS = [
-  { text: '把这段对话存成笔记', icon: NotebookPen, color: 'colorCatKnowledge' },
-  { text: '总结一下今天的工作', icon: ListChecks, color: 'colorCatTime' },
-  { text: '搜索最新的 AI 进展', icon: Search, color: 'colorCatSearch' },
-  { text: '帮我解释一段代码', icon: Code2, color: 'colorCatFile' },
+  { text: '把这段对话存成笔记', icon: NotebookPen, seed: 0 },
+  { text: '总结一下今天的工作', icon: ListChecks, seed: 1 },
+  { text: '搜索最新的 AI 进展', icon: Search, seed: 2 },
+  { text: '帮我解释一段代码', icon: Code2, seed: 3 },
 ] as const;
 
 export default function ChatView({
@@ -468,7 +464,10 @@ export default function ChatView({
   onPickPrompt,
 }: Props) {
   const { styles } = useStyles();
-  const theme = useTheme();
+  // framer-motion's JS transform/opacity tweens aren't covered by the global
+  // CSS prefers-reduced-motion rule, so honour the setting explicitly: when
+  // reduced, skip the entrance/stagger/lift props entirely.
+  const reduceMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   // Stick to the bottom only while the user is already there; if they scroll up
   // to read history, streamed updates must not yank them back down.
@@ -502,30 +501,31 @@ export default function ChatView({
     return (
       <div className={styles.emptyScroll} ref={scrollRef}>
         <div className={styles.hero}>
-          <div className={styles.greeting}>
+          <div className={styles.heroGlow} />
+          <DisplayHeading level={1} className={styles.greeting}>
             {greeting}
             {name && <span className={styles.greetingName}>,{name}</span>}
-          </div>
+          </DisplayHeading>
           <div className={styles.heroDesc}>今天想从哪里开始?</div>
-          <div className={styles.cardGrid}>
-            {SUGGESTED_PROMPTS.map((p, i) => {
-              const Ico = p.icon;
-              return (
-                <button
-                  key={p.text}
-                  type="button"
-                  className={styles.promptCard}
-                  style={{ animationDelay: `${i * 60}ms` }}
-                  onClick={() => onPickPrompt?.(p.text)}
-                >
-                  <span className={styles.promptIcon}>
-                    <Ico size={16} color={theme[p.color] as string} />
-                  </span>
-                  <span className={styles.promptText}>{p.text}</span>
-                </button>
-              );
-            })}
-          </div>
+          <motion.div
+            className={styles.cardGrid}
+            {...(reduceMotion
+              ? {}
+              : { variants: staggerContainer, initial: 'hidden', animate: 'visible' })}
+          >
+            {SUGGESTED_PROMPTS.map((p) => (
+              <motion.button
+                key={p.text}
+                type="button"
+                className={styles.promptCard}
+                {...(reduceMotion ? {} : { variants: staggerItem, whileHover: lift })}
+                onClick={() => onPickPrompt?.(p.text)}
+              >
+                <GradientThumb seed={p.seed} size={36} radius={10} icon={p.icon} />
+                <span className={styles.promptText}>{p.text}</span>
+              </motion.button>
+            ))}
+          </motion.div>
         </div>
       </div>
     );
@@ -536,9 +536,12 @@ export default function ChatView({
       <div className={styles.list}>
         {messages.map((m, i) =>
           m.role === 'user' ? (
-            <div
+            <motion.div
               key={i}
-              className={`${styles.user}${i === messages.length - 1 ? ` ${styles.rise}` : ''}`}
+              className={styles.user}
+              {...(!reduceMotion && i === messages.length - 1
+                ? { variants: fadeRise, initial: 'hidden', animate: 'visible' }
+                : {})}
             >
               {m.attachments && m.attachments.length > 0 && (
                 <div className={styles.attachRow}>
@@ -551,7 +554,7 @@ export default function ChatView({
                 </div>
               )}
               {textOfBlocks(m.blocks)}
-            </div>
+            </motion.div>
           ) : (
             (() => {
               const isStreaming = !!busy && i === messages.length - 1;
@@ -565,11 +568,12 @@ export default function ChatView({
               ).length;
 
               return (
-                <div
+                <motion.div
                   key={i}
-                  className={`${styles.assistant}${
-                    i === messages.length - 1 ? ` ${styles.rise}` : ''
-                  }`}
+                  className={styles.assistant}
+                  {...(!reduceMotion && i === messages.length - 1
+                    ? { variants: fadeRise, initial: 'hidden', animate: 'visible' }
+                    : {})}
                 >
                   {groupBlocks(m.blocks).map((item) =>
                     item.kind === 'text' ? (
@@ -639,7 +643,7 @@ export default function ChatView({
                       )}
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })()
           ),

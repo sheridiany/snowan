@@ -20,6 +20,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import ModelSelect from './ModelSelect';
 import ImageModelSelect from './draw/ImageModelSelect';
+import { EASING } from '../ui/motion';
 import type { Attachment } from '../api/chat';
 import type { ImgParams } from '../api/imagegen';
 
@@ -47,19 +48,24 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 8px;
     padding: 12px 12px 10px;
     border-radius: 16px;
-    background: ${token.colorBgElevated};
-    border: 1px solid ${token.colorBorderSecondary};
-    box-shadow: ${token.boxShadowTertiary};
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    background: ${token.colorGlassBg};
+    backdrop-filter: blur(${token.glassBlur});
+    -webkit-backdrop-filter: blur(${token.glassBlur});
+    border: 1px solid ${token.colorGlassBorder};
+    box-shadow: ${token.shadowGlass};
+    transition: border-color 0.2s ${EASING.standard}, box-shadow 0.2s ${EASING.standard},
+      transform 0.2s ${EASING.standard};
     &:hover {
       transform: translateY(-1px);
-      box-shadow: ${token.boxShadowSecondary};
     }
-    &:focus-within {
+    /* The active-input affordance is scoped to the textarea (see .ta), so opening a
+       dropdown or clicking a bottom-row control doesn't lift/ring the whole card. */
+    &:has(textarea:focus) {
       border-color: ${token.colorPrimaryBorder};
+      box-shadow: ${token.shadowGlass}, 0 0 0 3px ${token.colorBrandGlow};
     }
     @media (prefers-reduced-motion: reduce) {
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: border-color 0.2s ${EASING.standard}, box-shadow 0.2s ${EASING.standard};
       &:hover {
         transform: none;
       }
@@ -67,7 +73,8 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   dragging: css`
     border-color: ${token.colorPrimary};
-    box-shadow: inset 0 0 0 1px ${token.colorPrimary};
+    box-shadow: ${token.shadowGlass}, inset 0 0 0 1px ${token.colorPrimary},
+      0 0 0 3px ${token.colorBrandGlow};
     background: ${token.colorPrimaryBg};
   `,
   chips: css`
@@ -82,10 +89,16 @@ const useStyles = createStyles(({ token, css }) => ({
     max-width: 220px;
     height: 30px;
     padding: 0 4px 0 6px;
-    border-radius: 9px;
+    border-radius: 8px;
     background: ${token.colorFillTertiary};
+    border: 1px solid ${token.colorBorderSecondary};
     color: ${token.colorTextSecondary};
     font-size: 12px;
+    transition: background 0.15s ${EASING.standard}, border-color 0.15s ${EASING.standard};
+    &:hover {
+      background: ${token.colorFillSecondary};
+      border-color: ${token.colorBorder};
+    }
   `,
   chipInert: css`
     opacity: 0.45;
@@ -117,9 +130,14 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: 5px;
     cursor: pointer;
     color: ${token.colorTextTertiary};
+    transition: background 0.15s ${EASING.standard}, color 0.15s ${EASING.standard},
+      transform 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorFill};
       color: ${token.colorText};
+    }
+    &:active {
+      transform: scale(0.88);
     }
   `,
   ta: css`
@@ -146,6 +164,28 @@ const useStyles = createStyles(({ token, css }) => ({
     align-items: center;
     justify-content: center;
     padding: 0 !important;
+    border: none !important;
+    background: ${token.colorBrandGradient} !important;
+    box-shadow: 0 1px 2px ${token.colorBrandGlow} !important;
+    transition: transform 0.12s ${EASING.standard}, box-shadow 0.18s ${EASING.standard},
+      opacity 0.18s ${EASING.standard} !important;
+    &:not(:disabled):hover {
+      box-shadow: 0 2px 10px ${token.colorBrandGlow} !important;
+      transform: translateY(-1px);
+    }
+    &:not(:disabled):active {
+      transform: translateY(0) scale(0.94);
+    }
+    &:disabled {
+      opacity: 0.55;
+      box-shadow: none !important;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      &:not(:disabled):hover,
+      &:not(:disabled):active {
+        transform: none;
+      }
+    }
   `,
   hint: css`
     margin-top: 8px;
@@ -166,16 +206,30 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 5px;
     height: 30px;
     padding: 0 11px;
-    border-radius: 9px;
+    border-radius: 8px;
     background: ${token.colorFillTertiary};
     color: ${token.colorTextSecondary};
     border: 1px solid transparent;
     font-size: 12.5px;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ${EASING.standard}, color 0.15s ${EASING.standard},
+      border-color 0.15s ${EASING.standard}, transform 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorFill};
       color: ${token.colorText};
+    }
+    &:focus-visible {
+      outline: none;
+      border-color: ${token.colorPrimaryBorder};
+      box-shadow: 0 0 0 2px ${token.colorBrandGlow};
+    }
+    &:active {
+      transform: scale(0.96);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      &:active {
+        transform: none;
+      }
     }
   `,
   skillChipActive: css`
@@ -191,6 +245,16 @@ const useStyles = createStyles(({ token, css }) => ({
     .ant-select-selector {
       height: 30px !important;
       border-radius: 8px !important;
+      background: ${token.colorFillTertiary} !important;
+      border-color: transparent !important;
+      transition: background 0.15s ${EASING.standard}, border-color 0.15s ${EASING.standard} !important;
+    }
+    &:hover .ant-select-selector {
+      background: ${token.colorFill} !important;
+    }
+    &.ant-select-focused .ant-select-selector {
+      border-color: ${token.colorPrimaryBorder} !important;
+      box-shadow: 0 0 0 2px ${token.colorBrandGlow} !important;
     }
     .ant-select-selection-item {
       line-height: 28px !important;

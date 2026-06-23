@@ -34,15 +34,20 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => ({
     height: 100vh;
     display: flex;
     flex-direction: column;
-    background: ${token.colorBgLayout};
+    background: ${token.colorSceneBg};
     color: ${token.colorText};
     font-feature-settings: 'cv11' 1, 'ss01' 1;
     font-variant-numeric: tabular-nums;
+    /* The grain sits just above the scene bg and beneath everything else. Keep
+       its z-index at 0 and never give an in-flow child of .app a positive
+       z-index, or the grain will paint inconsistently (some surfaces grained,
+       some not). Floating chrome — modals, popovers — renders in body-level
+       portals (antd), so it stays above the grain regardless. */
     &::after {
       content: '';
       position: fixed;
       inset: 0;
-      z-index: 1;
+      z-index: 0;
       pointer-events: none;
       background-image: ${NOISE_URL};
       background-size: 140px 140px;
@@ -63,7 +68,7 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => ({
     flex: 1;
     min-height: 0;
     display: flex;
-    background: ${token.colorBgLayout};
+    background: transparent;
   `,
   stage: css`
     flex: 1;

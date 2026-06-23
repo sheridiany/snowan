@@ -13,6 +13,7 @@ import { ProviderIcon } from './providerIcon';
 import { ModelManageModal } from './ModelManageModal';
 import { ProviderConfigModal } from './ProviderConfigModal';
 import { CustomProviderModal } from './CustomProviderModal';
+import { EASING } from '../../ui/motion';
 
 const useStyles = createStyles(({ token, css }) => ({
   head: css`
@@ -42,7 +43,7 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusLG}px;
     background: ${token.colorFillQuaternary};
     cursor: pointer;
-    transition: background 0.12s ease, box-shadow 0.12s ease;
+    transition: background 0.12s ${EASING.standard}, box-shadow 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorFillTertiary};
     }
@@ -127,7 +128,7 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
     font-size: 12px;
     cursor: pointer;
-    transition: background 0.12s ease, color 0.12s ease;
+    transition: background 0.12s ${EASING.standard}, color 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorFillSecondary};
       color: ${token.colorText};
@@ -144,7 +145,7 @@ const useStyles = createStyles(({ token, css }) => ({
     background: ${token.colorBgContainer};
     color: ${token.colorTextTertiary};
     cursor: pointer;
-    transition: background 0.12s ease, color 0.12s ease;
+    transition: background 0.12s ${EASING.standard}, color 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorErrorBg};
       color: ${token.colorError};
@@ -163,7 +164,7 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    transition: background 0.12s ${EASING.standard}, color 0.12s ${EASING.standard}, border-color 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorFillQuaternary};
       border-color: ${token.colorPrimary};

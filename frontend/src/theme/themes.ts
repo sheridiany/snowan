@@ -15,11 +15,28 @@ declare module 'antd-style' {
     colorBrandGradient: string;
     colorBrandGlow: string;
     colorSurfaceGlow: string;
+    // Ambient app shell + glass overlays + hero glow. All rgb-budgeted (no
+    // color-mix). See sceneTokens / glassTokens below.
+    colorSceneBg: string;
+    colorSceneSpotlight: string;
+    colorGlassBg: string;
+    colorGlassBorder: string;
+    glassBlur: string;
+    shadowGlass: string;
+    colorHeroGlow: string;
+    // Serif display stack — not an antd-native key, so it must ride CustomToken
+    // (antd 6 drops unknown ThemeConfig.token keys).
+    fontFamilyDisplay: string;
   }
 }
 
 const FONT =
   "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+// Serif display stack. 'Fraunces Variable' is the self-hosted variable serif
+// (imported in main.tsx); CJK falls back to Songti/Noto Serif, then Georgia.
+const FONT_DISPLAY =
+  "'Fraunces Variable', 'Songti SC', 'Noto Serif SC', Georgia, serif";
 
 // A full, hand-tuned palette for one appearance.
 type Palette = {
@@ -170,12 +187,54 @@ function categoryTokens(p: Palette, dark: boolean) {
   };
 }
 // Brand gradient + glows for hero surfaces / the empty-state orb. rgb-budgeted.
+// Glows nudged one notch braver than before (still restrained, still in-theme).
 function gradientTokens(p: Palette, dark: boolean) {
   const a = hexToRgb(p.accent);
   return {
     colorBrandGradient: `linear-gradient(135deg, ${p.accent} 0%, ${mixHex(p.accent, p.bg, 0.35)} 100%)`,
-    colorBrandGlow: `rgba(${a}, ${dark ? 0.3 : 0.22})`,
-    colorSurfaceGlow: `radial-gradient(120% 120% at 50% 0%, rgba(${a}, ${dark ? 0.06 : 0.04}) 0%, transparent 60%)`,
+    colorBrandGlow: `rgba(${a}, ${dark ? 0.36 : 0.26})`,
+    colorSurfaceGlow: `radial-gradient(120% 120% at 50% 0%, rgba(${a}, ${dark ? 0.09 : 0.055}) 0%, transparent 62%)`,
+    // One step stronger than colorSurfaceGlow — for hero / welcome regions.
+    colorHeroGlow: `radial-gradient(130% 120% at 50% -10%, rgba(${a}, ${dark ? 0.16 : 0.1}) 0%, transparent 64%)`,
+  };
+}
+
+// Aurora app-shell backdrop: 2-3 ultra-low-alpha soft blooms (accent + info)
+// floated over palette.bg. Content-safe — meant to be felt, not seen.
+function sceneTokens(p: Palette, dark: boolean) {
+  const a = hexToRgb(p.accent);
+  const i = hexToRgb(p.info);
+  const bloomA = dark ? 0.1 : 0.06;
+  const bloomB = dark ? 0.08 : 0.045;
+  const bloomC = dark ? 0.06 : 0.035;
+  return {
+    colorSceneBg: [
+      `radial-gradient(58% 42% at 12% 4%, rgba(${a}, ${bloomA}) 0%, transparent 60%)`,
+      `radial-gradient(50% 46% at 92% 8%, rgba(${i}, ${bloomB}) 0%, transparent 62%)`,
+      `radial-gradient(64% 50% at 78% 96%, rgba(${a}, ${bloomC}) 0%, transparent 64%)`,
+      p.bg,
+    ].join(', '),
+    // Top spotlight overlay for hero strips — more present in the dark.
+    colorSceneSpotlight: `radial-gradient(80% 60% at 50% -16%, rgba(${a}, ${dark ? 0.18 : 0.1}) 0%, transparent 60%)`,
+  };
+}
+
+// Frosted-glass overlay surface: translucent fill + hairline highlight border +
+// layered glass shadow. blur lives as a string so consumers feed backdrop-filter.
+function glassTokens(p: Palette, dark: boolean) {
+  const fill = hexToRgb(p.elevated);
+  const ring = hexToRgb(p.text);
+  return {
+    colorGlassBg: `rgba(${fill}, ${dark ? 0.56 : 0.66})`,
+    // Dark: a bright white hairline reads as the lit top edge. Light: a near-white
+    // glass on a near-white scene makes a white border vanish, so trace the outline
+    // in the foreground color instead — the white top highlight still lives in
+    // shadowGlass's inset, keeping the lit-edge feel.
+    colorGlassBorder: dark ? 'rgba(255,255,255,0.1)' : `rgba(${ring}, 0.1)`,
+    glassBlur: '18px',
+    shadowGlass: dark
+      ? `inset 0 1px 0 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(${ring}, 0.14), 0 12px 36px -10px rgba(0,0,0,0.55)`
+      : `inset 0 1px 0 0 rgba(255,255,255,0.8), 0 0 0 1px rgba(${ring}, 0.06), 0 12px 32px -12px rgba(0,0,0,0.14)`,
   };
 }
 
@@ -184,7 +243,13 @@ export function snowanCustomToken(themeId: string, appearance: ThemeAppearance) 
   const preset = presetById(themeId);
   const dark = appearance === 'dark';
   const p = dark ? preset.dark : preset.light;
-  return { ...categoryTokens(p, dark), ...gradientTokens(p, dark) };
+  return {
+    ...categoryTokens(p, dark),
+    ...gradientTokens(p, dark),
+    ...sceneTokens(p, dark),
+    ...glassTokens(p, dark),
+    fontFamilyDisplay: FONT_DISPLAY,
+  };
 }
 
 // Appearance-aware antd ThemeConfig. `algorithm` is included so this wins over

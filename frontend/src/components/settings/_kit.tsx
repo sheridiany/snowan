@@ -4,6 +4,7 @@ import { App, Button, Input } from 'antd';
 import { createStyles } from 'antd-style';
 import { Check } from 'lucide-react';
 import type { ReactNode } from 'react';
+import DisplayHeading from '../../ui/DisplayHeading';
 
 const useStyles = createStyles(({ token, css }) => ({
   section: css`
@@ -18,10 +19,7 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 0 2px;
   `,
   sectionTitle: css`
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: ${token.colorText};
+    font-size: 16px;
   `,
   sectionSub: css`
     font-size: 12.5px;
@@ -31,9 +29,10 @@ const useStyles = createStyles(({ token, css }) => ({
   card: css`
     display: flex;
     flex-direction: column;
-    border: 1px solid ${token.colorBorderSecondary};
     border-radius: ${token.borderRadiusLG}px;
-    background: ${token.colorFillQuaternary};
+    background: ${token.colorBgContainer};
+    /* Lit-surface shadow stands in for a hard border (matches app-wide cards). */
+    box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
     /* hairline divider between rows, macOS / Linear grouped-settings style */
     & > * + * {
@@ -110,7 +109,11 @@ export function Section({
     <div className={styles.section}>
       {(title || subtitle) && (
         <div className={styles.sectionHead}>
-          {title && <Text className={styles.sectionTitle}>{title}</Text>}
+          {title && (
+            <DisplayHeading level={3} className={styles.sectionTitle}>
+              {title}
+            </DisplayHeading>
+          )}
           {subtitle && <Text className={styles.sectionSub}>{subtitle}</Text>}
         </div>
       )}

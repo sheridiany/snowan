@@ -12,6 +12,7 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
     "@lobehub/fluent-emoji": "^4.0.0",
     "@lobehub/icons": "^5.0.0",
     "@lobehub/ui": "^5.15.0",
