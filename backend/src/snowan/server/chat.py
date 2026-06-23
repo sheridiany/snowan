@@ -121,8 +121,32 @@ def _approval_event(requests: DeferredToolRequests) -> dict[str, Any]:
 async def _stream_run(run: Any) -> AsyncIterator[str]:
     """Stream one agent run, emitting delta/tool_call/tool_result/approval_required events."""
     pending: dict[str, str] = {}  # tool_call_id -> arg summary, for the audit log
-    arts: dict[str, dict] = {}  # present_artifact tool_call_id -> {path, title}
-    diagrams: dict[str, dict] = {}  # render_diagram tool_call_id -> {svg, title}
+    # Tools whose call/result is surfaced as a synthetic event instead of a tool card.
+    # Each: a per-call stash of the call args, the call-args key used as the audit label
+    # (with its max length), and a builder turning the stashed args into the SSE event
+    # (returns None to emit nothing).
+    special: dict[str, dict[str, Any]] = {
+        "render_diagram": {
+            "stash": {},
+            "label_key": "title",
+            "label_len": 80,
+            "event": lambda m: (
+                {"type": "diagram", "svg": str(m["svg"]), "title": str(m.get("title") or "")}
+                if m.get("svg")
+                else None
+            ),
+        },
+        "present_artifact": {
+            "stash": {},
+            "label_key": "path",
+            "label_len": 200,
+            "event": lambda m: (
+                {"type": "artifact", "path": str(m["path"]), "title": str(m.get("title") or "")}
+                if m.get("path")
+                else None
+            ),
+        },
+    }
     async for node in run:
         if Agent.is_model_request_node(node):
             async with node.stream(run.ctx) as request_stream:
@@ -140,12 +164,11 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                                 args = json.loads(args)
                             except json.JSONDecodeError:
                                 pass
-                        if part.tool_name == "render_diagram":
-                            diagrams[part.tool_call_id] = args if isinstance(args, dict) else {}
-                            continue  # surfaced as a `diagram` event on its result, not a tool card
-                        if part.tool_name == "present_artifact":
-                            arts[part.tool_call_id] = args if isinstance(args, dict) else {}
-                            continue  # surfaced as an `artifact` event on its result, not a tool card
+                        if part.tool_name in special:
+                            special[part.tool_name]["stash"][part.tool_call_id] = (
+                                args if isinstance(args, dict) else {}
+                            )
+                            continue  # surfaced as a synthetic event on its result, not a tool card
                         pending[part.tool_call_id] = audit.summarize(args)
                         yield _sse({
                             "type": "tool_call",
@@ -155,27 +178,16 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                         })
                     elif isinstance(ev, FunctionToolResultEvent):
                         result = ev.result
-                        if result.tool_name == "render_diagram":
-                            meta = diagrams.pop(result.tool_call_id, {})
+                        if result.tool_name in special:
+                            spec = special[result.tool_name]
+                            meta = spec["stash"].pop(result.tool_call_id, {})
                             ok = not str(result.content).startswith("error")
-                            audit.log("render_diagram", str(meta.get("title", ""))[:80], "ok" if ok else "error")
-                            if ok and meta.get("svg"):
-                                yield _sse({
-                                    "type": "diagram",
-                                    "svg": str(meta["svg"]),
-                                    "title": str(meta.get("title") or ""),
-                                })
-                            continue
-                        if result.tool_name == "present_artifact":
-                            meta = arts.pop(result.tool_call_id, {})
-                            ok = not str(result.content).startswith("error")
-                            audit.log("present_artifact", str(meta.get("path", ""))[:200], "ok" if ok else "error")
-                            if ok and meta.get("path"):
-                                yield _sse({
-                                    "type": "artifact",
-                                    "path": str(meta["path"]),
-                                    "title": str(meta.get("title") or ""),
-                                })
+                            label = str(meta.get(spec["label_key"], ""))[: spec["label_len"]]
+                            audit.log(result.tool_name, label, "ok" if ok else "error")
+                            if ok:
+                                event = spec["event"](meta)
+                                if event is not None:
+                                    yield _sse(event)
                             continue
                         # Status from the authoritative result type, not an English
                         # substring: a retry part is an error; a return part carries the
@@ -294,9 +306,11 @@ async def _run_new(
         _session_skill.pop(session_id, None)
     # Per-turn retrieved memory rides in the USER message (a <相关记忆> block), NOT in the
     # instructions — that keeps the system+tools prefix byte-stable so prompt caching lands.
+    # Skip retrieval on empty / pure-image / attachment-only turns: no query text to match.
+    query = _query_text(prompt).strip()
     mem_ctx = (
-        await asyncio.to_thread(memory.auto_context, _query_text(prompt))
-        if load_prefs().get("memory_enabled", True)
+        await asyncio.to_thread(memory.auto_context, query)
+        if load_prefs().get("memory_enabled", True) and len(query) >= 2
         else ""
     )
     if mem_ctx:

@@ -48,7 +48,7 @@ type Props = {
 };
 
 // Focused, centered overlay for a single day's note: a wide writing surface plus the
-// 早计划 / 晚复盘 AI drafts and the read-only assembly band. Owns its own useDaily(date)
+// 晚复盘 AI draft and the read-only assembly band. Owns its own useDaily(date)
 // so the panel doesn't have to thread the day's buffer in — load/save behavior is
 // identical to the (now-removed) DailyView.
 export default function DailyExpand({ date, open, onClose }: Props) {
@@ -71,7 +71,7 @@ export default function DailyExpand({ date, open, onClose }: Props) {
     setAiBusy('summarize');
     try {
       const { draft } = await summarizeDay(date);
-      // Same staged-not-saved contract as runPlan, under the 晚复盘 heading.
+      // Stage (not save) the draft under the 晚复盘 heading; the user reviews it before autosave.
       d.edit(insertUnderHeading(d.body, '晚复盘', draft), true);
       setEditSignal((s) => s + 1);
     } catch {

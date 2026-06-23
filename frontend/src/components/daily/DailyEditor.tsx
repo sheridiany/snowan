@@ -141,7 +141,7 @@ export default function DailyEditor({ body, onChange, onBlur, editSignal }: Prop
             className={styles.ta}
             value={body}
             autoFocus
-            placeholder="写点什么…早计划 / 随手记 / 晚复盘"
+            placeholder="写点什么…随手记 / 晚复盘"
             onChange={(e) => onChange(e.target.value, composing.current)}
             onBlur={onBlur}
             onCompositionStart={() => {

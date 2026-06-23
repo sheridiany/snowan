@@ -2,8 +2,23 @@
 only the selected provider's dependency is required at runtime."""
 from ..config import Settings
 
+# Cache built models keyed on the resolved settings so an unchanged config reuses
+# the same provider/httpx client (and its connection pool) across turns. build_agent
+# runs per-turn, so a Settings change yields a new key and rebuilds immediately.
+_MODEL_CACHE: dict[tuple, object] = {}
+
 
 def build_model(settings: Settings):
+    key = (settings.provider, settings.model, settings.api_key, settings.base_url)
+    cached = _MODEL_CACHE.get(key)
+    if cached is not None:
+        return cached
+    model = _build_model(settings)
+    _MODEL_CACHE[key] = model
+    return model
+
+
+def _build_model(settings: Settings):
     if settings.provider == "test" or not settings.api_key:
         from pydantic_ai.models.test import TestModel
 

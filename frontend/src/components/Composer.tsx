@@ -323,6 +323,8 @@ export default function Composer({
   }, [skill, onModeChange]);
 
   const imageMode = skill === 'image';
+  // In image mode the send button also blocks on the image-gen request.
+  const sendBusy = imageMode ? busy || imgBusy : busy;
 
   const addFiles = async (files: FileList | File[] | null) => {
     if (!files) return;
@@ -530,13 +532,13 @@ export default function Composer({
             <Button
               type="primary"
               className={styles.send}
-              loading={imageMode ? busy || imgBusy : busy}
+              loading={sendBusy}
               disabled={imageMode && imgBusy}
               onClick={submit}
               title={imageMode ? '生成' : '发送'}
               aria-label={imageMode ? '生成' : '发送'}
               icon={
-                (imageMode ? busy || imgBusy : busy)
+                sendBusy
                   ? undefined
                   : imageMode
                     ? <Sparkles size={15} />

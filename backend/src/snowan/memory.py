@@ -14,7 +14,6 @@ user request or an approved consolidation diff."""
 import hashlib
 import math
 import os
-import re
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -22,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-from . import knowledge_index, knowledge_search
+from . import knowledge_index, knowledge_search, vault
 from .config import SNOWAN_HOME
 
 MEMORY_DIR = SNOWAN_HOME / "memory"
@@ -35,7 +34,6 @@ TYPES = ("fact", "preference", "decision", "project", "todo", "person")
 _KNOWN_FM = {"id", "type", "importance", "strength", "confidence", "valid",
              "created", "updated", "last_recalled", "source"}
 _DECAY_BASE_DAYS = 30.0  # R = exp(-age_days / (base * strength)); larger strength = slower forgetting
-_ILLEGAL = re.compile(r'[\\/:*?"<>|\n\r\t]+')
 
 
 def _now() -> str:
@@ -70,8 +68,7 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 def _slug(text: str) -> str:
-    s = re.sub(r"\s+", " ", _ILLEGAL.sub(" ", text)).strip()[:48].strip()
-    return s or "memory"
+    return vault.slugify(text, 48, "memory")
 
 
 # --- L2 atomic entries -----------------------------------------------------
@@ -81,18 +78,7 @@ def _parse(path: Path) -> dict | None:
         raw = path.read_text(encoding="utf-8")
     except OSError:
         return None
-    fm: dict = {}
-    body = raw
-    if raw.startswith("---"):
-        end = raw.find("\n---", 3)
-        if end != -1:
-            try:
-                fm = yaml.safe_load(raw[3:end]) or {}
-            except yaml.YAMLError:
-                fm = {}
-            body = raw[end + 4 :].lstrip("\n")
-    if not isinstance(fm, dict):
-        fm = {}
+    fm, body = vault.split_frontmatter(raw)
     st = path.stat()
     mtime = datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     content = body.strip()
@@ -168,16 +154,7 @@ def _find(mem_id: str) -> dict | None:
 
 
 def _free_path(content: str, mem_id: str) -> Path:
-    base = _slug(content)
-    p = ENTRIES / f"{base}.md"
-    n = 2
-    while p.exists():
-        ex = _parse(p)
-        if ex and ex["id"] == mem_id:
-            return p
-        p = ENTRIES / f"{base}-{n}.md"
-        n += 1
-    return p
+    return vault.dedup_path(ENTRIES, _slug(content), mem_id, _parse)
 
 
 def _index(m: dict) -> None:

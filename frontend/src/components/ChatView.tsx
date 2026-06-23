@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Markdown } from '@lobehub/ui';
-import { Image } from 'antd';
+import { App as AntApp, Image } from 'antd';
 import { createStyles, useTheme } from 'antd-style';
-import { Check, Code2, Copy, FileDown, ListChecks, NotebookPen, Paperclip, Search } from 'lucide-react';
+import { Check, Code2, Copy, Download, FileDown, ListChecks, NotebookPen, Paperclip, Search } from 'lucide-react';
 
 import { workspaceFileUrl } from '../api/chat';
 import { imageFileUrl } from '../api/imagegen';
@@ -10,7 +10,7 @@ import { getPrefs } from '../api/system';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
 import DiagramCard from './DiagramCard';
-import type { Block, Message, ToolStep } from './types';
+import { textOfBlocks, type Block, type Message, type ToolStep } from './types';
 
 // Render blocks in order, but coalesce consecutive tool calls into one run so
 // they can collapse into a single grouped card.
@@ -19,7 +19,7 @@ type RenderItem =
   | { kind: 'tools'; key: string; steps: ToolStep[] }
   | { kind: 'artifact'; key: string; path: string; title: string }
   | { kind: 'diagram'; key: string; svg: string; title: string }
-  | { kind: 'image'; key: string; ids: string[]; prompt: string };
+  | { kind: 'image'; key: string; ids: string[]; prompt: string; pending?: boolean };
 
 function groupBlocks(blocks: Block[]): RenderItem[] {
   const items: RenderItem[] = [];
@@ -35,7 +35,7 @@ function groupBlocks(blocks: Block[]): RenderItem[] {
     } else if (b.kind === 'diagram') {
       items.push({ kind: 'diagram', key: `d${j}`, svg: b.svg, title: b.title });
     } else if (b.kind === 'image') {
-      items.push({ kind: 'image', key: `i${j}`, ids: b.ids, prompt: b.prompt });
+      items.push({ kind: 'image', key: `i${j}`, ids: b.ids, prompt: b.prompt, pending: b.pending });
     }
   });
   return items;
@@ -312,6 +312,9 @@ const useStyles = createStyles(({ token, css }) => ({
     overflow: hidden;
     background: ${token.colorFillTertiary};
     border: 1px solid ${token.colorBorderSecondary};
+    &:hover .img-actions {
+      opacity: 1;
+    }
     & .ant-image {
       display: block;
       width: 100%;
@@ -323,7 +326,81 @@ const useStyles = createStyles(({ token, css }) => ({
       cursor: zoom-in;
     }
   `,
+  // Mirrors ImgLibraryPanel's hover scrim: legible white icons over any photo.
+  imgActions: css`
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: ${token.borderRadius}px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    button,
+    a {
+      color: #fff !important;
+    }
+    button:hover,
+    a:hover {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.22) !important;
+    }
+  `,
+  imgPending: css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    color: ${token.colorTextTertiary};
+    font-size: 12px;
+    background: linear-gradient(
+      100deg,
+      ${token.colorFillTertiary} 30%,
+      ${token.colorFillSecondary} 50%,
+      ${token.colorFillTertiary} 70%
+    );
+    background-size: 200% 100%;
+    animation: imgshimmer 1.4s ease-in-out infinite;
+    @keyframes imgshimmer {
+      from {
+        background-position: 200% 0;
+      }
+      to {
+        background-position: -200% 0;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  `,
 }));
+
+// Generated-image hover bar: download the file, or copy its prompt — mirrors the
+// 收藏 panel's actions. No 重新生成 (would need lifting Composer's input — out of scope).
+function ImageActions({ id, prompt }: { id: string; prompt: string }) {
+  const { styles } = useStyles();
+  const { message } = AntApp.useApp();
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      message.success('提示词已复制');
+    } catch {
+      // clipboard unavailable — nothing to recover
+    }
+  };
+  return (
+    <div className={`${styles.imgActions} img-actions`}>
+      <a href={imageFileUrl(id)} download={`${id}.png`} title="下载">
+        <ActionIcon icon={Download} size="small" title="下载" />
+      </a>
+      <ActionIcon icon={Copy} size="small" title="复制提示词" onClick={copyPrompt} />
+    </div>
+  );
+}
 
 function CopyAction({ text }: { text: string }) {
   const [done, setDone] = useState(false);
@@ -473,14 +550,12 @@ export default function ChatView({
                   ))}
                 </div>
               )}
-              {m.blocks.map((b) => (b.kind === 'text' ? b.text : '')).join('')}
+              {textOfBlocks(m.blocks)}
             </div>
           ) : (
             (() => {
               const isStreaming = !!busy && i === messages.length - 1;
-              const textContent = m.blocks
-                .map((b) => (b.kind === 'text' ? b.text : ''))
-                .join('');
+              const textContent = textOfBlocks(m.blocks);
               const hasTool = m.blocks.some((b) => b.kind === 'tool');
               const lastBlock = m.blocks[m.blocks.length - 1];
               const showThinking = isStreaming && !textContent && !hasTool;
@@ -509,15 +584,22 @@ export default function ChatView({
                       <DiagramCard key={item.key} svg={item.svg} title={item.title} />
                     ) : item.kind === 'image' ? (
                       <div key={item.key} className={styles.imageGrid}>
-                        {item.ids.map((id) => (
-                          <div key={id} className={styles.imageCard}>
-                            <Image
-                              src={imageFileUrl(id)}
-                              alt={item.prompt}
-                              preview={{ mask: false }}
-                            />
+                        {item.pending && item.ids.length === 0 ? (
+                          <div className={styles.imageCard}>
+                            <div className={styles.imgPending}>生成中…</div>
                           </div>
-                        ))}
+                        ) : (
+                          item.ids.map((id) => (
+                            <div key={id} className={styles.imageCard}>
+                              <Image
+                                src={imageFileUrl(id)}
+                                alt={item.prompt}
+                                preview={{ mask: false }}
+                              />
+                              <ImageActions id={id} prompt={item.prompt} />
+                            </div>
+                          ))
+                        )}
                       </div>
                     ) : (
                       <div key={item.key} className={styles.tool}>

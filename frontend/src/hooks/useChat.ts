@@ -45,9 +45,45 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
   );
   const [busy, setBusy] = useState(false);
 
+  // localStorage only needs eventual consistency — in-memory `threads` is the
+  // render source of truth. Debounce writes so streaming (a setState per token)
+  // doesn't reserialize the whole threads map on every delta.
+  const threadsRef = useRef(threads);
+  threadsRef.current = threads;
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushThreads = () => {
+    if (flushTimer.current) {
+      clearTimeout(flushTimer.current);
+      flushTimer.current = null;
+    }
+    localStorage.setItem(LS_THREADS, JSON.stringify(threadsRef.current));
+  };
   useEffect(() => {
-    localStorage.setItem(LS_THREADS, JSON.stringify(threads));
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(flushThreads, 350);
+    return () => {
+      if (flushTimer.current) clearTimeout(flushTimer.current);
+    };
   }, [threads]);
+  // Quitting or backgrounding the tab must not lose the last few hundred ms.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushThreads();
+    };
+    window.addEventListener('beforeunload', flushThreads);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('beforeunload', flushThreads);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, []);
+  // Flush as soon as a turn finishes streaming, so a settled thread is durable
+  // without waiting on the debounce.
+  const prevBusy = useRef(busy);
+  useEffect(() => {
+    if (prevBusy.current && !busy) flushThreads();
+    prevBusy.current = busy;
+  }, [busy]);
 
   const messages = threads[activeId] ?? [];
 
@@ -63,6 +99,11 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       next[next.length - 1] = { ...last, blocks: fn(last.blocks) };
       return next;
     });
+
+  // Surface a failure as an inline marker on the trailing assistant turn.
+  const showError = (msg: string) => patchAssistant((b) => appendDelta(b, `\n\n⚠️ ${msg}`));
+  // A session's title is its first message, truncated to fit the list row.
+  const titleFrom = (text: string) => (text.length > 24 ? text.slice(0, 24) + '…' : text);
 
   // Streamed events patch the trailing assistant message identically whether they
   // arrive from the initial turn or from an approval continuation.
@@ -83,8 +124,7 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       patchAssistant((b) => [...b, { kind: 'artifact', path: a.path, title: a.title }]),
     onDiagram: (d) =>
       patchAssistant((b) => [...b, { kind: 'diagram', svg: d.svg, title: d.title }]),
-    onError: (message) =>
-      patchAssistant((b) => appendDelta(b, `\n\n⚠️ ${message}`)),
+    onError: (message) => showError(message),
   };
 
   const abortRef = useRef<AbortController | null>(null);
@@ -95,7 +135,7 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
 
     const sid = activeId;
     if (messages.length === 0 && text) {
-      onTitle?.(sid, text.length > 24 ? text.slice(0, 24) + '…' : text);
+      onTitle?.(sid, titleFrom(text));
     }
 
     setActiveMessages((prev) => [
@@ -113,7 +153,7 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     try {
       await streamChat(text, sid, attachments, streamHandlers, ctrl.signal, skill);
     } catch (e) {
-      patchAssistant((b) => appendDelta(b, `\n\n⚠️ ${(e as Error).message}`));
+      showError((e as Error).message);
     } finally {
       setBusy(false);
       abortRef.current = null;
@@ -151,7 +191,7 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     try {
       await approveChat(activeId, decisions, streamHandlers);
     } catch (e) {
-      patchAssistant((b) => appendDelta(b, `\n\n⚠️ ${(e as Error).message}`));
+      showError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -172,19 +212,36 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     await steerChat(activeId, t);
   };
 
-  // An image turn is a complete client-side exchange: a user prompt bubble plus
-  // an assistant message holding the generated image ids. No backend round-trip —
-  // generation already happened, so this just records the result in the thread.
-  const addImageTurn = (prompt: string, ids: string[]) => {
+  // An image turn shows immediately as a user prompt bubble plus an assistant
+  // message holding a *pending* image block, so the thread isn't empty during the
+  // 30–60s generation. completeImageTurn / failImageTurn settle the trailing block
+  // once generation resolves.
+  const addImageTurn = (prompt: string) => {
     if (messages.length === 0 && prompt) {
-      onTitle?.(activeId, prompt.length > 24 ? prompt.slice(0, 24) + '…' : prompt);
+      onTitle?.(activeId, titleFrom(prompt));
     }
     setActiveMessages((prev) => [
       ...prev,
       { role: 'user', blocks: [{ kind: 'text', text: prompt }] },
-      { role: 'assistant', blocks: [{ kind: 'image', ids, prompt }] },
+      { role: 'assistant', blocks: [{ kind: 'image', ids: [], prompt, pending: true }] },
     ]);
   };
+
+  // Patch the trailing pending image block with its generated ids.
+  const completeImageTurn = (ids: string[]) =>
+    patchAssistant((b) =>
+      b.map((bl) => (bl.kind === 'image' && bl.pending ? { ...bl, ids, pending: false } : bl)),
+    );
+
+  // Replace the trailing pending image block with an inline error.
+  const failImageTurn = () =>
+    patchAssistant((b) =>
+      b.map((bl) =>
+        bl.kind === 'image' && bl.pending
+          ? ({ kind: 'text', text: '⚠️ 图像生成失败,请重试' } as Block)
+          : bl,
+      ),
+    );
 
   // Dropping a thread cascades to its generated images so PNGs don't orphan on
   // the backend: collect every image block's ids and delete them best-effort.
@@ -199,5 +256,16 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       return next;
     });
 
-  return { messages, busy, send, stop, steer, approve, addImageTurn, dropThread };
+  return {
+    messages,
+    busy,
+    send,
+    stop,
+    steer,
+    approve,
+    addImageTurn,
+    completeImageTurn,
+    failImageTurn,
+    dropThread,
+  };
 }

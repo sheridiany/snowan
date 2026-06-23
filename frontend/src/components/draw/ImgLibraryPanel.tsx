@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { ActionIcon, Empty } from '@lobehub/ui';
 import { Image, Modal } from 'antd';
 import { createStyles } from 'antd-style';
@@ -86,7 +87,7 @@ type Props = {
   onDelete: (entry: LibraryEntry) => void;
 };
 
-export default function ImgLibraryPanel({ library, onUsePrompt, onDelete }: Props) {
+function ImgLibraryPanel({ library, onUsePrompt, onDelete }: Props) {
   const { styles } = useStyles();
 
   const confirmDelete = (entry: LibraryEntry) =>
@@ -135,3 +136,5 @@ export default function ImgLibraryPanel({ library, onUsePrompt, onDelete }: Prop
     </div>
   );
 }
+
+export default memo(ImgLibraryPanel);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createStyles, useThemeMode } from 'antd-style';
 import { App as AntApp } from 'antd';
 import { Heart } from 'lucide-react';
@@ -12,9 +12,11 @@ import DetailPane from './ui/DetailPane';
 import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
 import type { ImgParams } from './api/imagegen';
+import { reconcileImages } from './api/imagegen';
 import SessionsView from './components/views/SessionsView';
 import SettingsView from './components/settings/SettingsView';
-import type { Block, Message } from './components/types';
+import type { Message } from './components/types';
+import { textOfBlocks } from './components/types';
 import { useViewHistory } from './hooks/useViewHistory';
 import { useSessions } from './hooks/useSessions';
 import { useChat } from './hooks/useChat';
@@ -90,20 +92,42 @@ export default function App() {
   const [imageMode, setImageMode] = useState(false);
   const [imgBusy, setImgBusy] = useState(false);
 
-  // Image generation completes client-side, then records the result as a chat turn.
+  // Image generation shows a pending turn immediately, then settles it once the
+  // (30–60s) generation resolves.
   const handleGenerateImage = async (prompt: string, params: ImgParams, refs: string[]) => {
     setImgBusy(true);
+    chat.addImageTurn(prompt);
     try {
       // generate rejects only on real generation failure; copy-to-收藏 is best-effort,
-      // so a returned id list always yields a chat turn.
+      // so a returned id list always settles the pending turn.
       const ids = await lib.generate(prompt, params, refs);
-      chat.addImageTurn(prompt, ids);
+      chat.completeImageTurn(ids);
     } catch (e) {
+      chat.failImageTurn();
       message.error(e instanceof Error ? e.message.replace(/^\d+\s*/, '') : '图像生成失败,请重试');
     } finally {
       setImgBusy(false);
     }
   };
+
+  // Best-effort GC on launch: unlink backend PNGs no chat thread or library entry
+  // still references (e.g. images orphaned by a crash mid-turn or a cleared cache).
+  useEffect(() => {
+    const threads = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('snowan.threads') || '{}') as Record<string, Message[]>;
+      } catch {
+        return {} as Record<string, Message[]>;
+      }
+    })();
+    const keep = new Set<string>();
+    for (const msgs of Object.values(threads)) {
+      for (const m of msgs) for (const b of m.blocks) if (b.kind === 'image') for (const id of b.ids) keep.add(id);
+    }
+    for (const e of lib.library) keep.add(e.previewId);
+    void reconcileImages([...keep]).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleNew = () => {
     sessions.addSession();
@@ -123,12 +147,7 @@ export default function App() {
   });
   // Bumped when a note is saved, so the right panel re-fetches and shows it.
   const [notesVersion, setNotesVersion] = useState(0);
-  const textOf = (m: Message) =>
-    m.blocks
-      .filter((b): b is Extract<Block, { kind: 'text' }> => b.kind === 'text')
-      .map((b) => b.text)
-      .join('')
-      .trim();
+  const textOf = (m: Message) => textOfBlocks(m.blocks).trim();
   const handleSaveNote = (messageIndex: number) => {
     const { messages } = chat;
     const prevUser = messages.slice(0, messageIndex).reverse().find((m) => m.role === 'user');
@@ -139,6 +158,22 @@ export default function App() {
     if (!entries.length) return;
     setNoteDraft({ open: true, entries, topic: prevUser ? textOf(prevUser).slice(0, 40) : '' });
   };
+
+  // The contextual 收藏 panel only depends on the library; memoize it so streaming
+  // chat tokens (frequent App re-renders) don't rebuild the right-panel subtree.
+  const imgLibNode = useMemo(
+    () => (
+      <ImgLibraryPanel
+        library={lib.library}
+        onUsePrompt={(prompt) => {
+          navigator.clipboard?.writeText(prompt);
+          message.success('提示词已复制');
+        }}
+        onDelete={lib.removeLibrary}
+      />
+    ),
+    [lib.library, lib.removeLibrary, message],
+  );
 
   return (
     <div className={styles.app}>
@@ -206,16 +241,7 @@ export default function App() {
                 key: 'imagelib',
                 label: '收藏',
                 icon: Heart,
-                node: (
-                  <ImgLibraryPanel
-                    library={lib.library}
-                    onUsePrompt={(prompt) => {
-                      navigator.clipboard?.writeText(prompt);
-                      message.success('提示词已复制');
-                    }}
-                    onDelete={lib.removeLibrary}
-                  />
-                ),
+                node: imgLibNode,
               }}
             />
           )}

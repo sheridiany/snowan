@@ -12,13 +12,12 @@ from pathlib import Path
 
 import yaml
 
-from . import config, knowledge_index, knowledge_search
+from . import config, knowledge_index, knowledge_search, vault
 from .config import SNOWAN_HOME
 
 KNOWLEDGE_DIR = SNOWAN_HOME / "knowledge"
 VAULT = KNOWLEDGE_DIR / "notes"
 _LEGACY_JSON = KNOWLEDGE_DIR / "notes.json"
-_ILLEGAL = re.compile(r'[\\/:*?"<>|\n\r\t]+')
 
 # Frontmatter keys the parser/serializer handle explicitly; everything else the
 # user hand-wrote (tags/aliases/…) is captured in _extra and re-emitted untouched
@@ -40,8 +39,7 @@ def _title_from_body(body: str) -> str:
 
 
 def _slug(title: str) -> str:
-    s = re.sub(r"\s+", " ", _ILLEGAL.sub(" ", title)).strip()[:60].strip()
-    return s or "未命名笔记"
+    return vault.slugify(title, 60, "未命名笔记")
 
 
 def _parse(path: Path) -> dict | None:
@@ -49,18 +47,7 @@ def _parse(path: Path) -> dict | None:
         raw = path.read_text(encoding="utf-8")
     except OSError:
         return None
-    fm: dict = {}
-    body = raw
-    if raw.startswith("---"):
-        end = raw.find("\n---", 3)
-        if end != -1:
-            try:
-                fm = yaml.safe_load(raw[3:end]) or {}
-            except yaml.YAMLError:
-                fm = {}
-            body = raw[end + 4 :].lstrip("\n")
-    if not isinstance(fm, dict):
-        fm = {}
+    fm, body = vault.split_frontmatter(raw)
     st = path.stat()
     mtime = datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(
         timespec="milliseconds"
@@ -144,17 +131,7 @@ def _find(note_id: str) -> dict | None:
 
 
 def _free_path(title: str, note_id: str) -> Path:
-    vault = _vault()
-    base = _slug(title)
-    p = vault / f"{base}.md"
-    n = 2
-    while p.exists():
-        existing = _parse(p)
-        if existing and existing["id"] == note_id:
-            return p
-        p = vault / f"{base}-{n}.md"
-        n += 1
-    return p
+    return vault.dedup_path(_vault(), _slug(title), note_id, _parse)
 
 
 def _path_for(note: dict) -> Path:

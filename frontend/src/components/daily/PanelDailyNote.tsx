@@ -6,7 +6,7 @@ import { Maximize2, Moon } from 'lucide-react';
 import { ConflictError, getDaily, saveDaily } from '../../api/daily';
 
 // The compact daily-note jotter shown under the selected-day events inside the
-// 日程 right-panel source. Quick capture only: drafting (早计划/晚复盘) and serious
+// 日程 right-panel source. Quick capture only: drafting (晚复盘) and serious
 // writing happen in the expand modal, so every header button just calls onExpand.
 
 const AUTOSAVE_MS = 800;

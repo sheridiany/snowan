@@ -63,6 +63,10 @@ class IdsBody(BaseModel):
     ids: list[str]
 
 
+class ReconcileBody(BaseModel):
+    keep_ids: list[str]
+
+
 _MAX_N = 4  # one generation request yields at most 4 images
 _EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 
@@ -213,3 +217,23 @@ def delete_files(body: IdsBody) -> dict:
     for image_id in body.ids:
         _path(image_id).unlink(missing_ok=True)
     return {"ok": True}
+
+
+@router.post("/reconcile")
+def reconcile(body: ReconcileBody) -> dict:
+    # Drop orphaned PNGs the frontend no longer tracks. Scoped to *.png in the one
+    # image dir; per-file errors are swallowed so a single locked file can't abort.
+    keep = set(body.keep_ids)
+    removed = 0
+    image_dir = _dir()
+    if not image_dir.is_dir():
+        return {"removed": 0}
+    for p in image_dir.glob("*.png"):
+        if not p.is_file() or p.stem in keep:
+            continue
+        try:
+            p.unlink()
+            removed += 1
+        except OSError:
+            pass
+    return {"removed": removed}

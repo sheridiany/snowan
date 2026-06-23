@@ -16,9 +16,17 @@ export type Block =
   | { kind: 'tool'; step: ToolStep }
   | { kind: 'artifact'; path: string; title: string }
   | { kind: 'diagram'; svg: string; title: string }
-  | { kind: 'image'; ids: string[]; prompt: string };
+  | { kind: 'image'; ids: string[]; prompt: string; pending?: boolean };
 
 export type Attachment = { name: string; mime: string };
+
+// Concatenate the text-kind blocks of a turn into a single plain string.
+export function textOfBlocks(blocks: Block[]): string {
+  return blocks
+    .filter((b): b is Extract<Block, { kind: 'text' }> => b.kind === 'text')
+    .map((b) => b.text)
+    .join('');
+}
 
 export type Message = {
   role: 'user' | 'assistant';

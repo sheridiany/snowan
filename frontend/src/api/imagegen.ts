@@ -37,3 +37,13 @@ export const deleteImage = (id: string) =>
 
 export const copyToLibrary = (id: string) =>
   fetch(api(`/api/imagegen/file/${id}/copy`), { method: 'POST' }).then(j<{ id: string }>);
+
+// Delete every stored image whose id the frontend no longer tracks (garbage
+// collection); keepIds is the full set of live ids the UI still references.
+export async function reconcileImages(keepIds: string[]): Promise<void> {
+  await fetch(api('/api/imagegen/reconcile'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keep_ids: keepIds }),
+  }).then(j<{ removed: number }>);
+}

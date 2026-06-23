@@ -14,6 +14,7 @@ from pathlib import Path
 
 import yaml
 
+from . import vault
 from .config import SNOWAN_HOME
 
 SKILLS_DIR = SNOWAN_HOME / "skills"
@@ -33,18 +34,7 @@ def _parse(skill_dir: Path) -> dict | None:
         raw = md.read_text(encoding="utf-8")
     except OSError:
         return None
-    fm: dict = {}
-    body = raw
-    if raw.startswith("---"):
-        end = raw.find("\n---", 3)
-        if end != -1:
-            try:
-                fm = yaml.safe_load(raw[3:end]) or {}
-            except yaml.YAMLError:
-                fm = {}
-            body = raw[end + 4 :].lstrip("\n")
-    if not isinstance(fm, dict):
-        fm = {}
+    fm, body = vault.split_frontmatter(raw)
     return {
         "name": str(fm.get("name") or skill_dir.name),
         "description": str(fm.get("description") or ""),

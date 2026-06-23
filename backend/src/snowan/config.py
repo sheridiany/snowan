@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import uuid
@@ -84,22 +85,40 @@ def _model(model_id: str, name: str | None = None) -> dict:
 
 # --- store -----------------------------------------------------------------
 
+# Parsed config cached by the file's mtime — _read runs several times per turn but
+# the file rarely changes. Callers mutate the dict in place (migration, seeding,
+# save_*), so hand back a deep copy and keep the cached parse pristine.
+_READ_CACHE: tuple[float, dict] | None = None
+
+
 def _read() -> dict:
-    if not CONFIG_PATH.exists():
-        return {}
+    global _READ_CACHE
     try:
-        return json.loads(CONFIG_PATH.read_text())
-    except (json.JSONDecodeError, OSError):
+        mtime = CONFIG_PATH.stat().st_mtime
+    except OSError:
+        _READ_CACHE = None
         return {}
+    if _READ_CACHE is not None and _READ_CACHE[0] == mtime:
+        return copy.deepcopy(_READ_CACHE[1])
+    try:
+        data = json.loads(CONFIG_PATH.read_text())
+    except (json.JSONDecodeError, OSError):
+        _READ_CACHE = None
+        return {}
+    _READ_CACHE = (mtime, data)
+    return copy.deepcopy(data)
 
 
 def _write(data: dict) -> None:
+    global _READ_CACHE
     SNOWAN_HOME.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(data, indent=2))
     try:
         CONFIG_PATH.chmod(0o600)  # holds secrets
     except OSError:
         pass
+    # Drop the cache so a sub-second-resolution mtime can't serve the pre-write parse.
+    _READ_CACHE = None
 
 
 def _migrate(data: dict) -> dict:
