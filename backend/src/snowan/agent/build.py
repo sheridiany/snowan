@@ -14,7 +14,7 @@ from .tools.memory_tools import recall_memory, remember
 from .tools.search_tools import glob_search, grep_search
 from .tools.shell_tools import execute_shell_command
 from .tools.skill_tools import create_skill, load_skill, read_skill_resource
-from .tools.note_tools import save_note
+from .tools.note_tools import append_note, read_note, rewrite_note, save_note
 from .tools.artifact_tools import present_artifact
 from .tools.diagram_tools import render_diagram
 from .tools.time_tools import get_current_time
@@ -24,7 +24,10 @@ from .tools.browse_tools import browse
 INSTRUCTIONS = """You are Snowan, a local-first personal AI assistant and knowledge \
 workbench. Be concise and direct. Use tools when they help; otherwise just answer. \
 解释结构/流程/架构等概念、或用户想看图时,用 render_diagram 画一张干净的内联 SVG 图示帮助理解\
-(画前先 load_skill("make-diagram") 读规范)。"""
+(画前先 load_skill("make-diagram") 读规范)。\
+关于知识库笔记:把内容存进笔记前,先用 knowledge_search 查有没有同主题的已有笔记;有就用 \
+append_note 补充进去(需要重排/合并时先 read_note 读全文再 rewrite_note),没有才用 save_note \
+新建。用户说「补充 / 记到之前那篇里」时,务必追加到那篇已有笔记,绝不另开一篇。"""
 
 # Read-only tools are safe to auto-run; mutating + shell tools change the user's
 # machine. The approval_mode preference decides which get gated.
@@ -44,9 +47,12 @@ READONLY_FNS = [
     web_fetch,
     load_skill,
     read_skill_resource,
-    # save_note persists a deliverable into the vault; present_artifact just surfaces a
-    # generated file to the UI — both are expected, reversible, visible, so they auto-run.
+    # save_note persists a deliverable into the vault; read_note/append_note read or add
+    # to an existing note (additive, like save_note); present_artifact surfaces a generated
+    # file — all expected, reversible, visible, so they auto-run.
     save_note,
+    read_note,
+    append_note,
     present_artifact,
     # render_diagram renders an inline SVG to the chat — pure presentation, auto-runs.
     render_diagram,
@@ -54,7 +60,9 @@ READONLY_FNS = [
 # browse renders arbitrary pages in a real (sandboxed) headless browser — same
 # threat class as web_fetch, but gated per the agreed design. Move it to
 # READONLY_FNS to let it auto-run during research.
-MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill, browse]
+# rewrite_note overwrites an existing note's body wholesale, so it's gated like the other
+# overwriting tools rather than auto-running.
+MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill, browse, rewrite_note]
 
 
 def _first_line(fn) -> str:
