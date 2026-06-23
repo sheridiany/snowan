@@ -50,7 +50,7 @@ hiddenimports = [
 
 # Packages that load native libs, data files, or submodules by name at runtime.
 # collect_all pulls binaries + datas + hidden submodules + metadata in one shot.
-for _pkg in ("onnxruntime", "fastembed", "tokenizers", "huggingface_hub", "tqdm"):
+for _pkg in ("onnxruntime", "fastembed", "tokenizers", "huggingface_hub", "tqdm", "ebooklib"):
     _d, _b, _h = collect_all(_pkg)
     datas += _d
     binaries += _b
@@ -105,7 +105,16 @@ analysis = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    # Heavy deps of WIP features are imported LAZILY (inside the function that uses
+    # them), so dropping them here keeps the app booting — the feature only errors if
+    # actually invoked. Re-enable a feature by deleting its line and rebuilding.
+    excludes=[
+        "playwright",  # browse 工具 (agent/tools/browse_tools.py) — needs runtime browsers anyway
+        "faster_whisper", "av", "ctranslate2",  # 录音转写 (transcribe.py)
+        "pandas", "matplotlib",  # analyze-data 技能跑 shell python;冻结副本从未被 import
+        # GUI / dev-only stdlib the backend never touches.
+        "tkinter", "_tkinter", "turtle", "turtledemo", "idlelib", "lib2to3", "pydoc_data",
+    ],
     noarchive=False,
 )
 
@@ -118,7 +127,7 @@ exe = EXE(
     name="snowan-backend",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=True,
     # UPX triggers antivirus false positives and can corrupt binaries.
     upx=False,
     console=False,
@@ -133,7 +142,7 @@ coll = COLLECT(
     exe,
     analysis.binaries,
     analysis.datas,
-    strip=False,
+    strip=True,
     upx=False,
     name="snowan-backend",
 )

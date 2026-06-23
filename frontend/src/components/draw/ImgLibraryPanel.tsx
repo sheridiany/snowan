@@ -50,6 +50,14 @@ const useStyles = createStyles(({ token, css }) => ({
     font-weight: 600;
     color: ${token.colorText};
   `,
+  // Embedded inside RightPanel: the host provides the chrome, header and width.
+  embeddedRoot: css`
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  `,
   scroll: css`
     flex: 1;
     overflow-y: auto;
@@ -120,9 +128,10 @@ type Props = {
   library: LibraryEntry[];
   onUsePrompt: (prompt: string) => void;
   onDelete: (entry: LibraryEntry) => void;
+  embedded?: boolean;
 };
 
-export default function ImgLibraryPanel({ library, onUsePrompt, onDelete }: Props) {
+export default function ImgLibraryPanel({ library, onUsePrompt, onDelete, embedded }: Props) {
   const { styles } = useStyles();
   const { width, onResizeStart } = useResizableWidth({
     key: 'snowan.imagegen.libraryWidth',
@@ -142,47 +151,51 @@ export default function ImgLibraryPanel({ library, onUsePrompt, onDelete }: Prop
       onOk: () => onDelete(entry),
     });
 
+  const content =
+    library.length === 0 ? (
+      <Empty
+        icon={Heart}
+        title="还没有收藏"
+        description="在生成的图上点收藏,它会出现在这里。"
+        paddingBlock={36}
+      />
+    ) : (
+      library.map((e) => (
+        <div key={e.id} className={styles.card}>
+          <div className={styles.thumbWrap}>
+            <Image src={imageFileUrl(e.previewId)} alt={e.prompt} preview={{ mask: false }} />
+            <div className={`${styles.actions} lib-actions`}>
+              <ActionIcon
+                icon={Copy}
+                size="small"
+                title="复制提示词到输入框"
+                onClick={() => onUsePrompt(e.prompt)}
+              />
+              <ActionIcon icon={Trash2} size="small" title="删除" onClick={() => confirmDelete(e)} />
+            </div>
+          </div>
+          <div className={styles.meta}>
+            <div className={styles.prompt}>{e.prompt}</div>
+          </div>
+        </div>
+      ))
+    );
+
+  if (embedded) {
+    return (
+      <div className={styles.embeddedRoot}>
+        <div className={styles.scroll}>{content}</div>
+      </div>
+    );
+  }
+
   return (
     <aside className={styles.panel} style={{ width }}>
       <div className={styles.header}>
         <Heart size={16} />
         收藏
       </div>
-      <div className={styles.scroll}>
-        {library.length === 0 ? (
-          <Empty
-            icon={Heart}
-            title="还没有收藏"
-            description="在生成的图上点收藏,它会出现在这里。"
-            paddingBlock={36}
-          />
-        ) : (
-          library.map((e) => (
-            <div key={e.id} className={styles.card}>
-              <div className={styles.thumbWrap}>
-                <Image src={imageFileUrl(e.previewId)} alt={e.prompt} preview={{ mask: false }} />
-                <div className={`${styles.actions} lib-actions`}>
-                  <ActionIcon
-                    icon={Copy}
-                    size="small"
-                    title="复制提示词到输入框"
-                    onClick={() => onUsePrompt(e.prompt)}
-                  />
-                  <ActionIcon
-                    icon={Trash2}
-                    size="small"
-                    title="删除"
-                    onClick={() => confirmDelete(e)}
-                  />
-                </div>
-              </div>
-              <div className={styles.meta}>
-                <div className={styles.prompt}>{e.prompt}</div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      <div className={styles.scroll}>{content}</div>
       <div className={styles.handle} onPointerDown={onResizeStart} />
     </aside>
   );

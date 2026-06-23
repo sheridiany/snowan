@@ -21,6 +21,7 @@ _RRF_K = 60
 _SOURCE_WEIGHTS = {
     "memory": 1.1,  # long-term memory outranks everything at equal relevance
     "note": 1.0,
+    "book": 0.9,
     "file": 0.85,
     "ai_chat": 0.7,
     "web_page": 0.7,

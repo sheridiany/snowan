@@ -16,11 +16,9 @@ export type DailyNote = {
   updated_at: string;
 };
 
-export type AssemblyReading = { id: string; title: string; url: string; feedTitle: string };
 export type AssemblyMemory = { id: string; title: string; snippet: string };
 export type Assembly = {
   events: CalendarEvent[];
-  reading: AssemblyReading[];
   memory: AssemblyMemory[];
 };
 

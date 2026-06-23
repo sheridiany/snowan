@@ -213,9 +213,8 @@ export default function AssemblyBand({
 }: Props) {
   const { styles, cx } = useStyles();
   const events = assembly?.events ?? [];
-  const reading = assembly?.reading ?? [];
   const memory = assembly?.memory ?? [];
-  const captureCount = reading.length + chats.length + images.length;
+  const captureCount = chats.length + images.length;
 
   // Writing-first: a section only appears when it has content, and the whole band
   // disappears on a quiet day — an empty day is a clean writing surface, not a wall
@@ -241,13 +240,6 @@ export default function AssemblyBand({
       {captureCount > 0 && (
         <Section icon={BookOpen} label="今日捕获" count={captureCount}>
           <div className={styles.rows}>
-            {reading.map((a) => (
-              <div key={a.id} className={styles.row} onClick={() => onView('reading')}>
-                <BookOpen size={13} />
-                <span className={styles.rowText}>{a.title || a.url}</span>
-                <span className={styles.rowMeta}>{a.feedTitle}</span>
-              </div>
-            ))}
             {chats.map((c) => (
               <div key={c.id} className={styles.row} onClick={() => onView('conversations')}>
                 <MessagesSquare size={13} />

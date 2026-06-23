@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActionIcon, Button, Empty, Markdown } from '@lobehub/ui';
 import { App, Dropdown, Popconfirm } from 'antd';
 import { createStyles } from 'antd-style';
@@ -201,6 +201,14 @@ const useStyles = createStyles(({ token, css }) => ({
     overflow-y: auto;
     padding: 6px 8px 12px;
   `,
+  // Holds a view-provided contextual source (e.g. 伴读) — it owns its own scroll.
+  ctxBody: css`
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  `,
   detail: css`
     flex: 1;
     overflow-y: auto;
@@ -366,9 +374,14 @@ const useStyles = createStyles(({ token, css }) => ({
 export default function RightPanel({
   refreshKey,
   onOpenSettings,
+  contextual,
 }: {
   refreshKey?: number;
   onOpenSettings?: () => void;
+  // A view-provided source pinned to the top of the dropdown and selected by
+  // default (e.g. 阅读's 伴读, 画图's 收藏). Lets a per-view panel live inside the
+  // one shared RightPanel shell instead of being a bespoke right column.
+  contextual?: { key: string; label: string; icon: LucideIcon; node: ReactNode };
 }) {
   const { styles, cx, theme } = useStyles();
   const { message } = App.useApp();
@@ -379,7 +392,7 @@ export default function RightPanel({
     max: 560,
     side: 'left',
   });
-  const [source, setSource] = useState<SourceKey>('calendar');
+  const [source, setSource] = useState<string>(contextual?.key ?? 'calendar');
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<KbFolder[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -425,7 +438,12 @@ export default function RightPanel({
     if (source === 'calendar') getCalendar().then((d) => setEvents(d.events)).catch(() => {});
   }, [source]);
 
-  const active = SOURCES.find((s) => s.key === source) ?? SOURCES[0];
+  // The contextual source (if any) sits atop the built-in sources in the dropdown.
+  const sources: { key: string; label: string; icon: LucideIcon; ready: boolean }[] = contextual
+    ? [{ key: contextual.key, label: contextual.label, icon: contextual.icon, ready: true }, ...SOURCES]
+    : SOURCES;
+  const active = sources.find((s) => s.key === source) ?? sources[0];
+  const isContextual = source === contextual?.key;
 
   // Calendar: events bucketed by local day, a Mon-aligned 6-week grid, selected-day list.
   const byDay = new Map<string, CalendarEvent[]>();
@@ -522,13 +540,13 @@ export default function RightPanel({
         <Dropdown
           trigger={['click']}
           menu={{
-            items: SOURCES.map((s) => ({
+            items: sources.map((s) => ({
               key: s.key,
               icon: <s.icon size={15} />,
               label: s.ready ? s.label : `${s.label}（即将上线）`,
             })),
             onClick: ({ key }) => {
-              setSource(key as SourceKey);
+              setSource(key);
               setOpen(null);
             },
           }}
@@ -539,14 +557,16 @@ export default function RightPanel({
             <ChevronDown size={15} className={styles.chevron} />
           </span>
         </Dropdown>
-        {active.ready && (
+        {active.ready && !isContextual && (
           <div className={styles.actions}>
             <ActionIcon icon={RotateCw} size="small" title="刷新" onClick={refresh} spin={loading} />
           </div>
         )}
       </div>
 
-      {source === 'recording' ? (
+      {isContextual ? (
+        <div className={styles.ctxBody}>{contextual!.node}</div>
+      ) : source === 'recording' ? (
         <RecordingPanel refreshKey={refreshKey} />
       ) : (
       <div className={styles.scroll}>

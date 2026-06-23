@@ -380,22 +380,16 @@ def _adapt_event(e: dict) -> dict | None:
 
 def daily_assembly(date: str) -> dict:
     """The read-only assembly band for a date, queried LIVE (never written into the
-    .md). events from the calendar (degrade to [] on empty/failure), today's reading,
-    and relevant long-term memory. Today's conversations/images are assembled on the
-    frontend (it owns them), so they're not here."""
-    from . import calendar, reading  # lazy: avoid an import cycle at module load
+    .md). events from the calendar (degrade to [] on empty/failure) and relevant
+    long-term memory. Today's conversations/images are assembled on the frontend
+    (it owns them), so they're not here."""
+    from . import calendar  # lazy: avoid an import cycle at module load
 
     try:
         raw_events = calendar.events_on(date)
     except Exception:  # noqa: BLE001 — an empty/broken calendar must not break the band
         raw_events = []
     events = [a for e in raw_events if (a := _adapt_event(e))]
-
-    reading_rows = [
-        {"id": a["id"], "title": a["title"], "url": a.get("url"), "feedTitle": a.get("feed_title")}
-        for a in reading.list_articles(limit=200)
-        if (a.get("fetched_at") or a.get("published_at") or "")[:10] == date
-    ]
 
     # Relevance comes from what the user has written today, not the date string;
     # an unwritten note has nothing to relate to, so memory stays empty.
@@ -409,7 +403,7 @@ def daily_assembly(date: str) -> dict:
             if h["source_type"] == "memory"
         ]
 
-    return {"events": events, "reading": reading_rows, "memory": memory}
+    return {"events": events, "memory": memory}
 
 
 def _carryover_free(body: str) -> str:

@@ -1,10 +1,11 @@
-import { App } from 'antd';
-
+import { BookOpenText } from 'lucide-react';
 import { type NavProps } from '../shell/ListPane';
-import FeedList from '../reading/FeedList';
-import ArticleList from '../reading/ArticleList';
-import Reader from '../reading/Reader';
-import { useReading } from '../../hooks/useReading';
+import BookShelf from '../books/BookShelf';
+import BookWorkspace from '../books/BookWorkspace';
+import BookCompanion, { type CompanionMessage } from '../books/BookCompanion';
+import SyntopicalView from '../books/SyntopicalView';
+import RightPanel from '../shell/RightPanel';
+import { useBooks } from '../../hooks/useBooks';
 
 export default function ReadingView({
   view,
@@ -12,51 +13,81 @@ export default function ReadingView({
   onNewChat,
   listCollapsed,
 }: NavProps & { listCollapsed?: boolean }) {
-  const r = useReading();
-  const { message } = App.useApp();
+  const b = useBooks();
+
+  // useBooks' chat uses role 'ai'; BookCompanion wants 'assistant'. Sources
+  // ({chapter,snippet}) already match CompanionSource, so just remap the role.
+  const messages: CompanionMessage[] = b.chat.map((m) =>
+    m.role === 'user'
+      ? { role: 'user', text: m.text }
+      : { role: 'assistant', text: m.text, sources: m.sources },
+  );
 
   return (
     <>
       {!listCollapsed && (
-        <FeedList
+        <BookShelf
           view={view}
           onView={onView}
           onNewChat={onNewChat}
-          feeds={r.feeds}
-          sel={r.sel}
-          totalUnread={r.totalUnread}
-          refreshing={r.refreshing}
-          onSelectView={r.selectView}
-          onSelectFeed={r.selectFeed}
-          onRefresh={() => r.refresh().then((n) => message.success(`刷新完成,新增 ${n} 篇`))}
-          onSubscribe={r.subscribe}
-          onSaveArticle={r.saveArticleUrl}
-          onImportOpml={r.importFeeds}
-          onAddRecommended={r.addRecommendedFeeds}
-          onRename={r.rename}
-          onUnsubscribe={r.unsubscribe}
+          books={b.books}
+          activeId={b.activeId}
+          loading={b.listLoading}
+          uploading={b.uploading}
+          coverBusy={b.coverBusy}
+          syntopicalMode={b.syntopicalMode}
+          onToggleSyntopical={b.toggleSyntopical}
+          onSelect={b.select}
+          onUpload={b.upload}
+          onGenCover={b.genCover}
+          onDelete={b.remove}
         />
       )}
 
-      <ArticleList
-        articles={r.articles}
-        feeds={r.feeds}
-        activeId={r.activeId}
-        loading={r.listLoading}
-        query={r.query}
-        onQuery={r.setQuery}
-        onOpen={r.open}
-        onToggleStar={r.toggleStar}
-      />
+      {b.syntopicalMode ? (
+        <SyntopicalView
+          books={b.books}
+          selected={b.syntSelected}
+          onToggleBook={b.toggleSyntBook}
+          busy={b.syntBusy}
+          result={b.syntResult}
+          onAsk={b.runSyntopical}
+        />
+      ) : (
+        <>
+          <BookWorkspace
+            book={b.book}
+            overview={b.overview}
+            skeleton={b.skeleton}
+            busy={{ overview: b.overviewBusy, skeleton: b.skeletonBusy }}
+            onOverview={b.runOverview}
+            onSkeleton={b.runSkeleton}
+            artifacts={b.artifacts}
+            artifactBusy={b.artifactBusy}
+            onGenArtifact={b.genArtifact}
+          />
 
-      <Reader
-        article={r.article}
-        onSetArticle={r.setArticle}
-        onToggleRead={r.markRead}
-        onToggleStar={r.toggleStar}
-        onToggleLater={r.toggleLater}
-        onOpenSource={r.open}
-      />
+          <RightPanel
+            onOpenSettings={() => onView('settings')}
+            contextual={{
+              key: 'companion',
+              label: '伴读',
+              icon: BookOpenText,
+              node: (
+                <BookCompanion
+                  embedded
+                  messages={messages}
+                  busy={b.asking}
+                  onAsk={b.ask}
+                  mode={b.mode}
+                  onSetMode={b.setMode}
+                  onSaveInsight={b.saveInsight}
+                />
+              ),
+            }}
+          />
+        </>
+      )}
     </>
   );
 }

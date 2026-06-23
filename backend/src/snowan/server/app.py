@@ -17,7 +17,6 @@ from .mcp import router as mcp_router  # noqa: E402
 from .memory import router as memory_router  # noqa: E402
 from .persona import router as persona_router  # noqa: E402
 from .providers import router as providers_router  # noqa: E402
-from .reading import router as reading_router  # noqa: E402
 from .recordings import router as recordings_router  # noqa: E402
 from .skills import router as skills_router  # noqa: E402
 from .system import router as system_router  # noqa: E402
@@ -57,7 +56,6 @@ app.include_router(memory_router)
 app.include_router(persona_router)
 app.include_router(skills_router)
 app.include_router(imagegen_router)
-app.include_router(reading_router)
 app.include_router(recordings_router)
 app.include_router(books_router)
 app.include_router(calendar_router)

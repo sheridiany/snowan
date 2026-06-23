@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Heart } from 'lucide-react';
 
 import { type NavProps } from '../shell/ListPane';
 import DetailPane from '../../ui/DetailPane';
@@ -6,6 +7,7 @@ import ImgSessionList from '../draw/ImgSessionList';
 import ImgConversation from '../draw/ImgConversation';
 import ImgInputBar from '../draw/ImgInputBar';
 import ImgLibraryPanel from '../draw/ImgLibraryPanel';
+import RightPanel from '../shell/RightPanel';
 import { useImagegen, type ImgParams } from '../../hooks/useImagegen';
 import { imageFileUrl } from '../../api/imagegen';
 
@@ -75,10 +77,21 @@ export default function DrawView({
         />
       </DetailPane>
 
-      <ImgLibraryPanel
-        library={img.library}
-        onUsePrompt={setPrompt}
-        onDelete={img.removeLibrary}
+      <RightPanel
+        onOpenSettings={() => onView('settings')}
+        contextual={{
+          key: 'library',
+          label: '收藏',
+          icon: Heart,
+          node: (
+            <ImgLibraryPanel
+              embedded
+              library={img.library}
+              onUsePrompt={setPrompt}
+              onDelete={img.removeLibrary}
+            />
+          ),
+        }}
       />
     </>
   );
