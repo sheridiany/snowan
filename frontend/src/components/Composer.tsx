@@ -462,6 +462,9 @@ export default function Composer({
           onChange={(e) => setValue(e.target.value)}
           onPaste={onPaste}
           onPressEnter={(e) => {
+            // While an IME candidate is composing (e.g. pinyin), Enter confirms the
+            // candidate — never treat it as send, or CJK input sends half-typed text.
+            if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
             if (!e.shiftKey) {
               e.preventDefault();
               submit();
