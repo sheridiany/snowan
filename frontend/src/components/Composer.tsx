@@ -87,6 +87,9 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
     font-size: 12px;
   `,
+  chipInert: css`
+    opacity: 0.45;
+  `,
   thumb: css`
     width: 22px;
     height: 22px;
@@ -289,6 +292,7 @@ const COUNTS = [1, 2, 3, 4];
 
 export interface ComposerProps {
   busy: boolean;
+  imgBusy?: boolean;
   onSend: (text: string, attachments: Attachment[], skill?: string) => void;
   onStop?: () => void;
   onSteer?: (text: string) => void;
@@ -298,6 +302,7 @@ export interface ComposerProps {
 
 export default function Composer({
   busy,
+  imgBusy = false,
   onSend,
   onStop,
   onSteer,
@@ -373,7 +378,7 @@ export default function Composer({
       return;
     }
     if (imageMode) {
-      if (!text) return;
+      if (!text || imgBusy) return;
       const refs = attachments
         .filter((a) => a.mime.startsWith('image/'))
         .map((a) => `data:${a.mime};base64,${a.data}`);
@@ -419,16 +424,24 @@ export default function Composer({
       >
         {attachments.length > 0 && (
           <div className={styles.chips}>
-            {attachments.map((a, i) => (
-              <span key={i} className={styles.chip} title={a.name}>
-                {a.mime.startsWith('image/') ? (
+            {attachments.map((a, i) => {
+              const isImage = a.mime.startsWith('image/');
+              // In image mode only image attachments are used as refs; others are inert.
+              const inert = imageMode && !isImage;
+              return (
+              <span
+                key={i}
+                className={cx(styles.chip, inert && styles.chipInert)}
+                title={inert ? `${a.name}(图像生成不支持此附件)` : a.name}
+              >
+                {isImage ? (
                   <img className={styles.thumb} src={`data:${a.mime};base64,${a.data}`} alt={a.name} />
                 ) : (
                   <span className={styles.chipIcon}>
                     <Paperclip size={12} />
                   </span>
                 )}
-                <span className={styles.chipName}>{a.name}</span>
+                <span className={styles.chipName}>{imageMode && isImage ? '参考图' : a.name}</span>
                 <span
                   className={styles.chipX}
                   onClick={() => setAttachments((prev) => prev.filter((_, k) => k !== i))}
@@ -436,7 +449,8 @@ export default function Composer({
                   <X size={12} />
                 </span>
               </span>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -516,11 +530,18 @@ export default function Composer({
             <Button
               type="primary"
               className={styles.send}
-              loading={busy}
+              loading={imageMode ? busy || imgBusy : busy}
+              disabled={imageMode && imgBusy}
               onClick={submit}
               title={imageMode ? '生成' : '发送'}
               aria-label={imageMode ? '生成' : '发送'}
-              icon={busy ? undefined : imageMode ? <Sparkles size={15} /> : <ArrowUp size={18} />}
+              icon={
+                (imageMode ? busy || imgBusy : busy)
+                  ? undefined
+                  : imageMode
+                    ? <Sparkles size={15} />
+                    : <ArrowUp size={18} />
+              }
             />
           )}
         </div>

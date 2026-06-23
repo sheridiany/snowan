@@ -4,51 +4,8 @@ import { createStyles } from 'antd-style';
 import { Copy, Heart, Trash2 } from 'lucide-react';
 
 import { imageFileUrl, type LibraryEntry } from '../../api/imagegen';
-import { useResizableWidth } from '../shell/useResizableWidth';
-import { LAYOUT } from '../../theme/themes';
 
 const useStyles = createStyles(({ token, css }) => ({
-  panel: css`
-    position: relative;
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: ${token.boxShadowTertiary};
-    overflow: hidden;
-  `,
-  handle: css`
-    position: absolute;
-    top: 8px;
-    bottom: 8px;
-    left: 0;
-    width: ${LAYOUT.handle}px;
-    cursor: col-resize;
-    z-index: 5;
-    &:hover::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      width: 2px;
-      border-radius: 2px;
-      background: ${token.colorPrimary};
-      opacity: 0.5;
-    }
-  `,
-  header: css`
-    flex: none;
-    height: ${LAYOUT.headerHeight}px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 14px;
-    font-size: 14px;
-    font-weight: 600;
-    color: ${token.colorText};
-  `,
   // Embedded inside RightPanel: the host provides the chrome, header and width.
   embeddedRoot: css`
     display: flex;
@@ -127,18 +84,10 @@ type Props = {
   library: LibraryEntry[];
   onUsePrompt: (prompt: string) => void;
   onDelete: (entry: LibraryEntry) => void;
-  embedded?: boolean;
 };
 
-export default function ImgLibraryPanel({ library, onUsePrompt, onDelete, embedded }: Props) {
+export default function ImgLibraryPanel({ library, onUsePrompt, onDelete }: Props) {
   const { styles } = useStyles();
-  const { width, onResizeStart } = useResizableWidth({
-    key: 'snowan.imagegen.libraryWidth',
-    initial: 300,
-    min: 240,
-    max: 480,
-    side: 'left',
-  });
 
   const confirmDelete = (entry: LibraryEntry) =>
     Modal.confirm({
@@ -155,7 +104,7 @@ export default function ImgLibraryPanel({ library, onUsePrompt, onDelete, embedd
       <Empty
         icon={Heart}
         title="还没有收藏"
-        description="在生成的图上点收藏,它会出现在这里。"
+        description="生成的图会自动收藏到这里"
         paddingBlock={36}
       />
     ) : (
@@ -167,7 +116,7 @@ export default function ImgLibraryPanel({ library, onUsePrompt, onDelete, embedd
               <ActionIcon
                 icon={Copy}
                 size="small"
-                title="复制提示词到输入框"
+                title="复制提示词"
                 onClick={() => onUsePrompt(e.prompt)}
               />
               <ActionIcon icon={Trash2} size="small" title="删除" onClick={() => confirmDelete(e)} />
@@ -180,22 +129,9 @@ export default function ImgLibraryPanel({ library, onUsePrompt, onDelete, embedd
       ))
     );
 
-  if (embedded) {
-    return (
-      <div className={styles.embeddedRoot}>
-        <div className={styles.scroll}>{content}</div>
-      </div>
-    );
-  }
-
   return (
-    <aside className={styles.panel} style={{ width }}>
-      <div className={styles.header}>
-        <Heart size={16} />
-        收藏
-      </div>
+    <div className={styles.embeddedRoot}>
       <div className={styles.scroll}>{content}</div>
-      <div className={styles.handle} onPointerDown={onResizeStart} />
-    </aside>
+    </div>
   );
 }

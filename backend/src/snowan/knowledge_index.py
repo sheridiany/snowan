@@ -16,6 +16,19 @@ from .config import SNOWAN_HOME
 DB_PATH = SNOWAN_HOME / "knowledge" / "index.db"
 _CHUNK_CHARS = 600  # notes are short, so this rarely splits a note
 
+# Bumped on every write so knowledge_search can cache the stacked, unit-normalized
+# embedding matrix across queries and invalidate it the instant chunks change.
+_version = 0
+
+
+def version() -> int:
+    return _version
+
+
+def _bump() -> None:
+    global _version
+    _version += 1
+
 
 def _conn() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -130,6 +143,7 @@ def index_document(doc: dict) -> None:
             [(doc["id"], i, hd, tx, vectors[i]) for i, (hd, tx) in enumerate(chunks)],
         )
         conn.commit()
+        _bump()
     finally:
         conn.close()
 
@@ -140,6 +154,7 @@ def remove_document(doc_id: str) -> None:
         conn.execute("DELETE FROM chunks WHERE document_id=?", (doc_id,))
         conn.execute("DELETE FROM documents WHERE id=?", (doc_id,))
         conn.commit()
+        _bump()
     finally:
         conn.close()
 

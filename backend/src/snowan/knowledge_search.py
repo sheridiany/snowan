@@ -60,6 +60,37 @@ def keywords(query: str) -> list[str]:
     return sorted(terms, key=len, reverse=True)
 
 
+# Per-query, search() used to reload every chunk, b"".join + frombuffer + reshape
+# the whole embedding matrix, and recompute per-row L2 norms — on every keystroke.
+# Cache the rows + the stacked, ALREADY-unit-normalized matrix (+ the embedded row
+# indices) here; the (version, DIM, ready) key invalidates the instant a write bumps
+# knowledge_index.version() or the model/its dimension changes, keeping results exact.
+_cache: dict | None = None
+
+
+def _load() -> tuple[list[dict], list[int], np.ndarray | None]:
+    global _cache
+    ready = embeddings.is_ready()
+    key = (knowledge_index.version(), embeddings.DIM, ready)
+    if _cache is not None and _cache["key"] == key:
+        return _cache["rows"], _cache["embedded"], _cache["matrix"]
+
+    rows = [dict(r) for r in knowledge_index.all_chunks()]
+    # Only stack blobs of the exact current dimension — a truncated write or a vector
+    # from an old model/DIM would make the reshape raise and fail the whole search.
+    want = embeddings.DIM * 4  # float32
+    embedded = [i for i, r in enumerate(rows) if r["embedding"] and len(r["embedding"]) == want]
+    matrix: np.ndarray | None = None
+    if embedded and ready:
+        mat = np.frombuffer(
+            b"".join(rows[i]["embedding"] for i in embedded), dtype=np.float32
+        ).reshape(len(embedded), embeddings.DIM)
+        matrix = mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-9)
+
+    _cache = {"key": key, "rows": rows, "embedded": embedded, "matrix": matrix}
+    return rows, embedded, matrix
+
+
 def _hit_count(text: str, terms: list[str]) -> int:
     t = text.lower()
     return sum(t.count(term) for term in terms)
@@ -76,10 +107,12 @@ def search(query: str, limit: int = 8, reinforce: bool = False,
     Memory rows get a soft-forgetting decay (recency × importance); set reinforce=True
     when this recall represents real usage so surfaced memories are strengthened.
     exclude_sources drops whole source types (the notes browse excludes 'memory')."""
-    rows = knowledge_index.all_chunks()
-    if exclude_sources:
-        rows = [r for r in rows if r["source_type"] not in exclude_sources]
-    if not rows:
+    rows, embedded, matrix = _load()
+    keep = (
+        {i for i, r in enumerate(rows) if r["source_type"] not in exclude_sources}
+        if exclude_sources else None
+    )
+    if not rows or (keep is not None and not keep):
         return []
 
     # keyword leg
@@ -89,24 +122,22 @@ def search(query: str, limit: int = 8, reinforce: bool = False,
         scored = [
             (i, _hit_count(f"{r['text']} {r['title']} {r['heading']}", terms))
             for i, r in enumerate(rows)
+            if keep is None or i in keep
         ]
         kw_ranked = [i for i, s in sorted(scored, key=lambda x: x[1], reverse=True) if s > 0][:50]
 
     # semantic leg — only when the model is downloaded and some chunks are embedded
-    # (chunks saved before the download carry no vector); otherwise keyword-only.
+    # (chunks saved before the download carry no vector); otherwise keyword-only. The
+    # matrix is cached pre-unit-normalized, so per query we only embed + dot the query.
     vec_ranked: list[int] = []
-    # Only stack blobs of the exact current dimension — a truncated write or a vector
-    # from an old model/DIM would make the reshape raise and fail the whole search.
-    _want = embeddings.DIM * 4  # float32
-    embedded = [i for i, r in enumerate(rows) if r["embedding"] and len(r["embedding"]) == _want]
-    if embedded and embeddings.is_ready():
-        mat = np.frombuffer(
-            b"".join(rows[i]["embedding"] for i in embedded), dtype=np.float32
-        ).reshape(len(embedded), embeddings.DIM)
+    if matrix is not None:
         qv = embeddings.embed_query(query)
         qn = qv / (np.linalg.norm(qv) + 1e-9)
-        sims = (mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-9)) @ qn
-        vec_ranked = [embedded[int(k)] for k in np.argsort(-sims)[:50]]
+        sims = matrix @ qn
+        vec_ranked = [
+            embedded[int(k)] for k in np.argsort(-sims)
+            if keep is None or embedded[int(k)] in keep
+        ][:50]
 
     # Reciprocal Rank Fusion, then weight by source so notes outrank other sources.
     fused: dict[int, float] = {}

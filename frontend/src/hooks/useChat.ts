@@ -7,6 +7,7 @@ import {
   type Attachment as ApiAttachment,
 } from '../api/chat';
 import type { Block, Message, ToolStep } from '../components/types';
+import { deleteImage } from '../api/imagegen';
 import { readLS } from './useSessions';
 
 const LS_THREADS = 'snowan.threads';
@@ -82,6 +83,8 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       patchAssistant((b) => [...b, { kind: 'artifact', path: a.path, title: a.title }]),
     onDiagram: (d) =>
       patchAssistant((b) => [...b, { kind: 'diagram', svg: d.svg, title: d.title }]),
+    onError: (message) =>
+      patchAssistant((b) => appendDelta(b, `\n\n⚠️ ${message}`)),
   };
 
   const abortRef = useRef<AbortController | null>(null);
@@ -109,6 +112,8 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     abortRef.current = ctrl;
     try {
       await streamChat(text, sid, attachments, streamHandlers, ctrl.signal, skill);
+    } catch (e) {
+      patchAssistant((b) => appendDelta(b, `\n\n⚠️ ${(e as Error).message}`));
     } finally {
       setBusy(false);
       abortRef.current = null;
@@ -145,6 +150,8 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     setBusy(true);
     try {
       await approveChat(activeId, decisions, streamHandlers);
+    } catch (e) {
+      patchAssistant((b) => appendDelta(b, `\n\n⚠️ ${(e as Error).message}`));
     } finally {
       setBusy(false);
     }
@@ -179,8 +186,14 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     ]);
   };
 
+  // Dropping a thread cascades to its generated images so PNGs don't orphan on
+  // the backend: collect every image block's ids and delete them best-effort.
   const dropThread = (id: string) =>
     setThreads((t) => {
+      const imageIds = (t[id] ?? []).flatMap((m) =>
+        m.blocks.flatMap((b) => (b.kind === 'image' ? b.ids : [])),
+      );
+      for (const imgId of imageIds) void deleteImage(imgId).catch(() => {});
       const next = { ...t };
       delete next[id];
       return next;

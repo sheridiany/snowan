@@ -375,6 +375,7 @@ export default function RightPanel({
   refreshKey,
   onOpenSettings,
   contextual,
+  autoSelect,
 }: {
   refreshKey?: number;
   onOpenSettings?: () => void;
@@ -382,6 +383,9 @@ export default function RightPanel({
   // default (e.g. 画图's 收藏). Lets a per-view panel live inside the one shared
   // RightPanel shell instead of being a bespoke right column.
   contextual?: { key: string; label: string; icon: LucideIcon; node: ReactNode };
+  // When this transitions to true, switch the panel to the contextual source
+  // (e.g. entering image mode auto-opens 收藏).
+  autoSelect?: boolean;
 }) {
   const { styles, cx, theme } = useStyles();
   const { message } = App.useApp();
@@ -392,7 +396,9 @@ export default function RightPanel({
     max: 560,
     side: 'left',
   });
-  const [source, setSource] = useState<string>(contextual?.key ?? 'calendar');
+  const [source, setSource] = useState<string>(
+    autoSelect && contextual ? contextual.key : 'calendar',
+  );
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<KbFolder[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -414,29 +420,37 @@ export default function RightPanel({
       .catch(() => setOnboarded(true));
   }, []);
 
-  const refresh = () => {
+  // When autoSelect turns on (e.g. entering image mode), switch to 收藏.
+  useEffect(() => {
+    if (autoSelect && contextual) setSource(contextual.key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSelect]);
+
+  // Fetch only what the active source needs; scope the spinner over all
+  // in-flight requests with one finally. Returns a no-op for sources that
+  // carry their own data (contextual / recording).
+  const fetchSource = (key: string) => {
+    const jobs: Promise<unknown>[] = [];
+    if (key === 'notes') {
+      jobs.push(listNotes().then(setNotes).catch(() => setNotes([])));
+      jobs.push(getEmbeddingStatus().then((s) => setEmbReady(s.ready)).catch(() => setEmbReady(null)));
+    } else if (key === 'folders') {
+      jobs.push(listFolders().then((s) => setFolders(s.folders)).catch(() => setFolders([])));
+    } else if (key === 'calendar') {
+      jobs.push(getCalendar().then((d) => setEvents(d.events)).catch(() => setEvents([])));
+    }
+    if (jobs.length === 0) return;
     setLoading(true);
-    listNotes()
-      .then(setNotes)
-      .catch(() => setNotes([]))
-      .finally(() => setLoading(false));
-    listFolders()
-      .then((s) => setFolders(s.folders))
-      .catch(() => setFolders([]));
-    getEmbeddingStatus()
-      .then((s) => setEmbReady(s.ready))
-      .catch(() => setEmbReady(null));
-    getCalendar()
-      .then((d) => setEvents(d.events))
-      .catch(() => setEvents([]));
+    void Promise.all(jobs).finally(() => setLoading(false));
   };
 
-  useEffect(refresh, [refreshKey]); // re-fetch when a note is saved elsewhere
-  // re-fetch each time that source is opened (it can change in Settings)
+  // Re-fetch the active source when a note is saved elsewhere (refreshKey bump)
+  // or when the source changes (it can change in Settings). A source switch
+  // shows the spinner so calendar/folders don't flash the empty state.
   useEffect(() => {
-    if (source === 'folders') listFolders().then((s) => setFolders(s.folders)).catch(() => {});
-    if (source === 'calendar') getCalendar().then((d) => setEvents(d.events)).catch(() => {});
-  }, [source]);
+    fetchSource(source);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, refreshKey]);
 
   // The contextual source (if any) sits atop the built-in sources in the dropdown.
   const sources: { key: string; label: string; icon: LucideIcon; ready: boolean }[] = contextual
@@ -559,7 +573,7 @@ export default function RightPanel({
         </Dropdown>
         {active.ready && !isContextual && (
           <div className={styles.actions}>
-            <ActionIcon icon={RotateCw} size="small" title="刷新" onClick={refresh} spin={loading} />
+            <ActionIcon icon={RotateCw} size="small" title="刷新" onClick={() => fetchSource(source)} spin={loading} />
           </div>
         )}
       </div>
@@ -588,7 +602,9 @@ export default function RightPanel({
         ) : source === 'calendar' ? (
           <>
             {onboarded === false && <PersonaNudge onDone={() => setOnboarded(true)} />}
-            {events.length === 0 ? (
+            {loading && events.length === 0 ? (
+              <Empty icon={Calendar} title="加载中…" paddingBlock={36} />
+            ) : events.length === 0 ? (
               <div className={styles.folderEmpty}>
                 <Empty
                   icon={Calendar}
@@ -680,7 +696,9 @@ export default function RightPanel({
           )}
           </>
         ) : source === 'folders' ? (
-          folders.length === 0 ? (
+          loading && folders.length === 0 ? (
+            <Empty icon={FolderOpen} title="加载中…" paddingBlock={36} />
+          ) : folders.length === 0 ? (
             <div className={styles.folderEmpty}>
               <Empty
                 icon={FolderOpen}

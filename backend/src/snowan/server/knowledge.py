@@ -235,8 +235,6 @@ async def daily_summarize(date: DailyDate) -> dict:
     一条教训 / 明日重点). Returns an EDITABLE draft; never writes the note."""
     note = knowledge.get_daily(date)
     body = (note["body"] if note else "").strip() or "(今天还没写什么)"
-    assembly = knowledge.daily_assembly(date)
-    reading_lines = "\n".join(f"- 读了《{r['title']}》" for r in assembly["reading"]) or "(无)"
     from pydantic_ai import Agent
 
     agent = Agent(
@@ -245,7 +243,7 @@ async def daily_summarize(date: DailyDate) -> dict:
         "产出一份可编辑的晚复盘草稿:今天的成就、遇到的挑战、一条可带走的教训、明日重点。"
         "只是起草供他修改,不要说教、不要编造没发生的事。只输出 Markdown 草稿本身,简体中文,简洁。",
     )
-    prompt = f"今天日期:{date}\n\n今天写的内容:\n{body}\n\n今天的阅读:\n{reading_lines}"
+    prompt = f"今天日期:{date}\n\n今天写的内容:\n{body}"
     persona = memory.profile_text() if load_prefs().get("memory_enabled", True) else ""
     if persona:
         prompt += (

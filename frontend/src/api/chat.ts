@@ -12,6 +12,7 @@ export type ChatHandlers = {
   onApprovalRequired?: (calls: ToolCall[]) => void;
   onArtifact?: (a: { path: string; title: string }) => void;
   onDiagram?: (d: { svg: string; title: string }) => void;
+  onError?: (message: string) => void;
   onDone?: () => void;
 };
 
@@ -22,6 +23,7 @@ type SSEEvent =
   | { type: 'approval_required'; calls: ToolCall[] }
   | { type: 'artifact'; path: string; title: string }
   | { type: 'diagram'; svg: string; title: string }
+  | { type: 'error'; message: string }
   | { type: 'done' };
 
 // URL for a file generated into the workspace (a deck, a chart). download=true forces save-as.
@@ -119,6 +121,9 @@ function dispatch(raw: string, handlers: ChatHandlers): void {
       break;
     case 'diagram':
       handlers.onDiagram?.({ svg: payload.svg, title: payload.title });
+      break;
+    case 'error':
+      handlers.onError?.(payload.message);
       break;
     case 'done':
       handlers.onDone?.();

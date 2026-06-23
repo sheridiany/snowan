@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 from collections.abc import AsyncIterator
@@ -264,8 +265,18 @@ async def _drive(
                 except UndrainedPendingMessagesError:
                     stranded = _drain_pending_text(run)
                     yield _sse({"type": "done"})
-                save_history(session_id, run.all_messages())
                 usage.record(run.result)
+            except BaseException as e:
+                # Persist the partial turn on Stop (GeneratorExit/CancelledError) and on
+                # any mid-stream failure, then surface the error to the client. The turn
+                # is saved exactly once — here on the failure path, in finally on success.
+                save_history(session_id, run.all_messages())
+                if not isinstance(e, GeneratorExit):
+                    yield _sse({"type": "error", "message": str(e)})
+                    yield _sse({"type": "done"})
+                raise
+            else:
+                save_history(session_id, run.all_messages())
             finally:
                 _active_runs.pop(session_id, None)
     if stranded:
@@ -283,7 +294,11 @@ async def _run_new(
         _session_skill.pop(session_id, None)
     # Per-turn retrieved memory rides in the USER message (a <相关记忆> block), NOT in the
     # instructions — that keeps the system+tools prefix byte-stable so prompt caching lands.
-    mem_ctx = memory.auto_context(_query_text(prompt)) if load_prefs().get("memory_enabled", True) else ""
+    mem_ctx = (
+        await asyncio.to_thread(memory.auto_context, _query_text(prompt))
+        if load_prefs().get("memory_enabled", True)
+        else ""
+    )
     if mem_ctx:
         block = f"<相关记忆>\n{mem_ctx}\n</相关记忆>"
         prompt = [block, *prompt] if isinstance(prompt, list) else [block, prompt]

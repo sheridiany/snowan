@@ -26,5 +26,27 @@ export default defineConfig({
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // Produce sourcemaps for Tauri debug builds.
     sourcemap: !!process.env.TAURI_DEBUG,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@lobehub/ui')) return 'lobehub';
+          if (id.includes('lucide-react')) return 'icons';
+          if (
+            id.includes('react-markdown') ||
+            id.includes('remark') ||
+            id.includes('rehype') ||
+            id.includes('mermaid') ||
+            id.includes('micromark') ||
+            id.includes('mdast') ||
+            id.includes('hast')
+          )
+            return 'markdown';
+          if (id.includes('antd') || id.includes('@ant-design') || id.includes('rc-'))
+            return 'antd';
+          return undefined;
+        },
+      },
+    },
   },
 });

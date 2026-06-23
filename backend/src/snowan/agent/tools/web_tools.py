@@ -117,42 +117,76 @@ def _blocked(ip) -> bool:
     return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_unspecified
 
 
-def _is_public(url: str) -> bool:
-    """Block obvious SSRF targets. Literal private/loopback IPs and localhost-ish
-    names are rejected; for real domains we try to resolve and reject private
-    results, but ALLOW when resolution fails (restricted/proxied DNS) so legit
-    public domains still work — the fetch itself fails if the host is truly bad."""
-    host = urlparse(url).hostname
-    if not host:
-        return False
+def _resolve_public_ips(host: str) -> list[str] | None:
+    """Resolve a hostname and return its IPs only if EVERY one is public. Returns
+    None on any resolution failure or if any IP is non-public (FAIL CLOSED) — a
+    DNS error must not become an allow, and a single private answer poisons the host."""
     h = host.lower()
     if h == "localhost" or h.endswith((".local", ".internal", ".localhost")):
-        return False
+        return None
     try:
-        return not _blocked(ipaddress.ip_address(host))  # literal IP
+        ip = ipaddress.ip_address(host)  # literal IP
+        return None if _blocked(ip) else [host]
     except ValueError:
         pass  # it's a domain name
     try:
-        for info in socket.getaddrinfo(host, None):
-            if _blocked(ipaddress.ip_address(info[4][0])):
-                return False
-    except (socket.gaierror, ValueError):
-        return True  # can't resolve locally; don't block a possibly-valid public host
-    return True
+        infos = socket.getaddrinfo(host, None)
+    except (socket.gaierror, OSError):
+        return None  # FAIL CLOSED: can't resolve -> don't allow
+    ips: list[str] = []
+    for info in infos:
+        addr = info[4][0]
+        try:
+            if _blocked(ipaddress.ip_address(addr)):
+                return None  # any private result poisons the whole host
+        except ValueError:
+            return None
+        ips.append(addr)
+    return ips or None
+
+
+def _is_public(url: str) -> bool:
+    """Block SSRF targets, FAIL CLOSED. Literal private/loopback IPs and localhost-ish
+    names are rejected; real domains are resolved and rejected unless EVERY resolved
+    IP is public (a resolution failure is treated as not-public)."""
+    host = urlparse(url).hostname
+    if not host:
+        return False
+    return _resolve_public_ips(host) is not None
 
 
 _UA = "Mozilla/5.0 (compatible; Snowan/0.1)"
 
 
+def _guarded_get(client: httpx.Client, url: str) -> httpx.Response | None:
+    """GET a URL after validating it, connecting to a PINNED validated IP with the
+    original Host header so a DNS rebind between check and connect can't redirect us
+    to a private address (TOCTOU). Returns None if the host isn't public."""
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        return None
+    ips = _resolve_public_ips(host)
+    if not ips:
+        return None
+    # Connect to the validated IP; keep the original Host header + SNI so vhosts/TLS work.
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    netloc = f"[{ips[0]}]:{port}" if ":" in ips[0] else f"{ips[0]}:{port}"
+    pinned = parsed._replace(netloc=netloc).geturl()
+    headers = {"Host": host if not parsed.port else f"{host}:{parsed.port}"}
+    extensions = {"sni_hostname": host}
+    return client.get(pinned, headers=headers, extensions=extensions)
+
+
 def _fetch_html(url: str) -> str | None:
-    """Fetch a page, following redirects MANUALLY so every hop is SSRF-checked.
-    trafilatura.fetch_url (urllib) would follow a 302 to http://127.0.0.1/ or the
-    cloud-metadata IP unguarded; here each redirect target is re-validated."""
+    """Fetch a page, following redirects MANUALLY so every hop is SSRF-checked and
+    pinned to a validated IP. trafilatura.fetch_url (urllib) would follow a 302 to
+    http://127.0.0.1/ or the cloud-metadata IP unguarded; here each hop is re-validated."""
     with httpx.Client(follow_redirects=False, timeout=20, headers={"User-Agent": _UA}) as client:
         for _ in range(4):  # cap redirect chain
-            if not _is_public(url):
+            r = _guarded_get(client, url)
+            if r is None:
                 return None
-            r = client.get(url)
             if r.is_redirect and r.next_request is not None:
                 url = str(r.next_request.url)
                 continue

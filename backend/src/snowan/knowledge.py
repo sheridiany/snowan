@@ -397,11 +397,12 @@ def daily_assembly(date: str) -> dict:
     query = _carryover_free(note["body"]) if note else ""
     memory = []
     if query.strip():
-        memory = [
+        hits = [
             {"id": h["document_id"], "title": h["title"], "snippet": h["snippet"]}
-            for h in knowledge_search.search(query, limit=4)
+            for h in knowledge_search.search(query, limit=12)
             if h["source_type"] == "memory"
         ]
+        memory = hits[:4]
 
     return {"events": events, "memory": memory}
 

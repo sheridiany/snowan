@@ -41,13 +41,16 @@ export function useImageLibrary() {
     };
     const res = await generateImage(req);
     const ids = res.images.map((im) => im.id);
-    for (const id of ids) {
-      const { id: previewId } = await copyToLibrary(id);
-      setLibrary((prev) => [
-        { id: crypto.randomUUID(), prompt, params, previewId },
-        ...prev,
-      ]);
-    }
+    // Best-effort: a copy-to-收藏 failure must never lose the generated result.
+    await Promise.allSettled(
+      ids.map(async (id) => {
+        const { id: previewId } = await copyToLibrary(id);
+        setLibrary((prev) => [
+          { id: crypto.randomUUID(), prompt, params, previewId },
+          ...prev,
+        ]);
+      }),
+    );
     return ids;
   };
 

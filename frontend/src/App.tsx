@@ -88,14 +88,20 @@ export default function App() {
   // 图像生成 is a composer mode, not a separate view: when active, the right panel
   // swaps to the 收藏 library so generated images land in context.
   const [imageMode, setImageMode] = useState(false);
+  const [imgBusy, setImgBusy] = useState(false);
 
   // Image generation completes client-side, then records the result as a chat turn.
   const handleGenerateImage = async (prompt: string, params: ImgParams, refs: string[]) => {
+    setImgBusy(true);
     try {
+      // generate rejects only on real generation failure; copy-to-收藏 is best-effort,
+      // so a returned id list always yields a chat turn.
       const ids = await lib.generate(prompt, params, refs);
       chat.addImageTurn(prompt, ids);
-    } catch {
-      message.error('图像生成失败,请重试');
+    } catch (e) {
+      message.error(e instanceof Error ? e.message.replace(/^\d+\s*/, '') : '图像生成失败,请重试');
+    } finally {
+      setImgBusy(false);
     }
   };
 
@@ -173,6 +179,7 @@ export default function App() {
                 />
                 <Composer
                   busy={chat.busy}
+                  imgBusy={imgBusy}
                   onSend={chat.send}
                   onStop={chat.stop}
                   onSteer={chat.steer}
@@ -194,26 +201,22 @@ export default function App() {
             <RightPanel
               refreshKey={notesVersion}
               onOpenSettings={() => nav.go('settings')}
-              contextual={
-                imageMode
-                  ? {
-                      key: 'imagelib',
-                      label: '收藏',
-                      icon: Heart,
-                      node: (
-                        <ImgLibraryPanel
-                          embedded
-                          library={lib.library}
-                          onUsePrompt={(prompt) => {
-                            navigator.clipboard?.writeText(prompt);
-                            message.success('提示词已复制');
-                          }}
-                          onDelete={lib.removeLibrary}
-                        />
-                      ),
-                    }
-                  : undefined
-              }
+              autoSelect={imageMode}
+              contextual={{
+                key: 'imagelib',
+                label: '收藏',
+                icon: Heart,
+                node: (
+                  <ImgLibraryPanel
+                    library={lib.library}
+                    onUsePrompt={(prompt) => {
+                      navigator.clipboard?.writeText(prompt);
+                      message.success('提示词已复制');
+                    }}
+                    onDelete={lib.removeLibrary}
+                  />
+                ),
+              }}
             />
           )}
         </main>

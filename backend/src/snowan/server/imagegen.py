@@ -89,7 +89,11 @@ def _decode_refs(refs: list[str]) -> list[tuple[bytes, str]]:
 
 
 async def _collect(data) -> list[bytes]:
-    """Image bytes from an OpenAI image response: inline b64, else fetch the url."""
+    """Image bytes from an OpenAI image response: prefer inline b64, else fetch the
+    provider-returned url — but only after an SSRF check, and with redirects disabled
+    so the url can't bounce to a private/metadata address."""
+    from ..agent.tools.web_tools import _is_public
+
     out: list[bytes] = []
     for img in data or []:
         if getattr(img, "b64_json", None):
@@ -97,7 +101,9 @@ async def _collect(data) -> list[bytes]:
         elif getattr(img, "url", None):
             import httpx
 
-            async with httpx.AsyncClient(timeout=60) as c:
+            if not _is_public(img.url):
+                raise HTTPException(400, "图像下载地址不是公网地址,已拒绝")
+            async with httpx.AsyncClient(timeout=60, follow_redirects=False) as c:
                 resp = await c.get(img.url)
                 resp.raise_for_status()
                 out.append(resp.content)

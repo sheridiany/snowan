@@ -37,10 +37,3 @@ export const deleteImage = (id: string) =>
 
 export const copyToLibrary = (id: string) =>
   fetch(api(`/api/imagegen/file/${id}/copy`), { method: 'POST' }).then(j<{ id: string }>);
-
-export const deleteImages = (ids: string[]) =>
-  fetch(api('/api/imagegen/files/delete'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids }),
-  }).then(j<{ ok: boolean }>);

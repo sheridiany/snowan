@@ -2,7 +2,6 @@ import { Icon } from '@lobehub/ui';
 import { Popconfirm, Tooltip } from 'antd';
 import { createStyles, useThemeMode } from 'antd-style';
 import {
-  MessageSquare,
   Moon,
   Settings,
   Sun,
@@ -18,17 +17,13 @@ export type View =
   | 'conversations'
   | 'settings';
 
-// Section nav + new-chat + settings/theme controls are threaded into every list
-// pane so the middle card is the single home for navigation (no left rail).
+// New-chat + settings/theme controls are threaded into every list pane so the
+// middle card is the single home for navigation (no left rail).
 export type NavProps = {
   view: View;
   onView: (v: View) => void;
   onNewChat: () => void;
 };
-
-const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
-  { view: 'conversations', label: '对话', icon: MessageSquare },
-];
 
 // Column 2 — the universal list pane. It carries the horizontal section nav at the
 // top and the settings / theme controls at the bottom; section-specific list
@@ -72,32 +67,6 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 2px;
     height: ${LAYOUT.headerHeight}px;
     padding: 0 10px;
-  `,
-  navItem: css`
-    width: ${LAYOUT.navBtn}px;
-    height: ${LAYOUT.navBtn}px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    color: ${token.colorTextSecondary};
-    cursor: pointer;
-    transition:
-      background 0.12s ease,
-      color 0.12s ease;
-    &:hover {
-      background: ${token.colorFillTertiary};
-      color: ${token.colorText};
-    }
-  `,
-  navItemActive: css`
-    background: ${token.colorFillSecondary};
-    color: ${token.colorPrimary};
-    &:hover {
-      background: ${token.colorFillSecondary};
-      color: ${token.colorPrimary};
-    }
   `,
   navSpacer: css`
     flex: 1;
@@ -162,20 +131,10 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-function SideNav({ view, onView, onNewChat }: NavProps) {
-  const { styles, cx } = useStyles();
+function SideNav({ onNewChat }: Pick<NavProps, 'onNewChat'>) {
+  const { styles } = useStyles();
   return (
     <nav className={styles.nav}>
-      {SECTIONS.map((s) => (
-        <Tooltip key={s.view} title={s.label} placement="bottom">
-          <div
-            className={cx(styles.navItem, view === s.view && styles.navItemActive)}
-            onClick={() => onView(s.view)}
-          >
-            <Icon icon={s.icon} size={19} />
-          </div>
-        </Tooltip>
-      ))}
       <div className={styles.navSpacer} />
       <Tooltip title="新建对话" placement="bottom">
         <div className={styles.newBtn} onClick={onNewChat}>
@@ -227,7 +186,7 @@ export function ListPane({
   });
   return (
     <div className={styles.col} style={{ width }}>
-      <SideNav view={view} onView={onView} onNewChat={onNewChat} />
+      <SideNav onNewChat={onNewChat} />
       <div className={styles.scroll}>{children}</div>
       <SideFooter view={view} onView={onView} />
       <div className={styles.handle} onPointerDown={onResizeStart} />

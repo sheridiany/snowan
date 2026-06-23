@@ -13,7 +13,9 @@ pass; see memory_consolidate). L3 is never written automatically — only on exp
 user request or an approved consolidation diff."""
 import hashlib
 import math
+import os
 import re
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,6 +54,19 @@ def _age_days(iso: str) -> float:
     except (ValueError, AttributeError, TypeError):
         return 0.0
     return max(0.0, (datetime.now(timezone.utc) - t).total_seconds() / 86400.0)
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    """Write via a temp file in the same dir + os.replace so a crash mid-write can't
+    truncate the existing .md — the vault is the source of truth and must never lose data."""
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".tmp-", suffix=path.suffix)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _slug(text: str) -> str:
@@ -198,7 +213,7 @@ def create_entry(content: str, *, type: str = "fact", importance: int = 3,
         "last_recalled": None,
         "source": source,
     }
-    _free_path(m["content"], m["id"]).write_text(_serialize(m), encoding="utf-8")
+    _atomic_write(_free_path(m["content"], m["id"]), _serialize(m))
     _index(m)
     return _public(m)
 
@@ -215,7 +230,7 @@ def update_entry(mem_id: str, **fields) -> dict | None:
     m["importance"] = max(1, min(int(m["importance"]), 5))
     m["updated_at"] = _now()
     new_path = _free_path(m["content"], m["id"])
-    new_path.write_text(_serialize(m), encoding="utf-8")
+    _atomic_write(new_path, _serialize(m))
     if new_path != old_path:
         old_path.unlink(missing_ok=True)
     if m["valid"]:
@@ -264,7 +279,7 @@ def reinforce(doc_ids: list[str]) -> None:
         if m["id"] in wanted and m["valid"]:
             m["strength"] = min(m["strength"] + 1.0, 10.0)
             m["last_recalled"] = now  # drives recency; updated_at stays the real edit time
-            m["_path"].write_text(_serialize(m), encoding="utf-8")
+            _atomic_write(m["_path"], _serialize(m))
 
 
 # --- L1 episodic daily log -------------------------------------------------
@@ -307,7 +322,7 @@ def set_profile(text: str) -> None:
     _ensure()
     if PROFILE_PATH.exists():
         _backup(PROFILE_PATH, "profile")
-    PROFILE_PATH.write_text(text.rstrip() + "\n", encoding="utf-8")
+    _atomic_write(PROFILE_PATH, text.rstrip() + "\n")
 
 
 def profile_text() -> str:
