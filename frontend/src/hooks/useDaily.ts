@@ -9,8 +9,8 @@ import {
   type Assembly,
   type CarryoverItem,
 } from '../api/daily';
-import { todaysChats, todaysImages } from '../components/daily/localCaptures';
-import type { ChatCapture, ImageCapture } from '../components/daily/localCaptures';
+import { todaysChats } from '../components/daily/localCaptures';
+import type { ChatCapture } from '../components/daily/localCaptures';
 
 const AUTOSAVE_MS = 1500;
 
@@ -31,7 +31,6 @@ export function useDaily(date: string) {
   const [carryover, setCarryover] = useState<CarryoverItem[]>([]);
   const [dates, setDates] = useState<Set<string>>(new Set());
   const [chats, setChats] = useState<ChatCapture[]>([]);
-  const [images, setImages] = useState<ImageCapture[]>([]);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
@@ -63,7 +62,6 @@ export function useDaily(date: string) {
     getCarryover(date).then((c) => alive && setCarryover(c)).catch(() => alive && setCarryover([]));
     listDailyDates().then((d) => alive && setDates(new Set(d))).catch(() => {});
     setChats(todaysChats(date));
-    setImages(todaysImages(date));
 
     return () => {
       alive = false;
@@ -139,7 +137,6 @@ export function useDaily(date: string) {
     carryover,
     dates,
     chats,
-    images,
     reloadFromDisk,
     overwriteDisk,
   };

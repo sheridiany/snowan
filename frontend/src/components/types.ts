@@ -15,7 +15,8 @@ export type Block =
   | { kind: 'text'; text: string }
   | { kind: 'tool'; step: ToolStep }
   | { kind: 'artifact'; path: string; title: string }
-  | { kind: 'diagram'; svg: string; title: string };
+  | { kind: 'diagram'; svg: string; title: string }
+  | { kind: 'image'; ids: string[]; prompt: string };
 
 export type Attachment = { name: string; mime: string };
 

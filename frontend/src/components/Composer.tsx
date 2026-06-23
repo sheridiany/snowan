@@ -1,9 +1,27 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Button, TextArea } from '@lobehub/ui';
+import { Select } from 'antd';
 import { createStyles } from 'antd-style';
-import { ArrowUp, FileText, Paperclip, Presentation, Square, Table2, Telescope, X } from 'lucide-react';
+import {
+  ArrowUp,
+  FileText,
+  Image as ImageIcon,
+  Paperclip,
+  Presentation,
+  RectangleHorizontal,
+  RectangleVertical,
+  Sparkles,
+  Square,
+  Table2,
+  Telescope,
+  Wand2,
+  X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import ModelSelect from './ModelSelect';
+import ImageModelSelect from './draw/ImageModelSelect';
 import type { Attachment } from '../api/chat';
+import type { ImgParams } from '../api/imagegen';
 
 const ACCEPT = 'image/*,.txt,.md,.json,.csv,.log,.py,.ts,.tsx,.js,.yaml,.yml,.toml,.pdf,.docx,.xlsx,.xlsm,.pptx';
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -166,6 +184,34 @@ const useStyles = createStyles(({ token, css }) => ({
       color: ${token.colorPrimary};
     }
   `,
+  mini: css`
+    .ant-select-selector {
+      height: 30px !important;
+      border-radius: 8px !important;
+    }
+    .ant-select-selection-item {
+      line-height: 28px !important;
+      font-size: 12px;
+    }
+  `,
+  sizeOpt: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    & svg {
+      flex: none;
+      color: ${token.colorTextSecondary};
+    }
+  `,
+  sizeDims: css`
+    font-size: 13px;
+  `,
+  sizeRatio: css`
+    margin-left: auto;
+    font-size: 11px;
+    color: ${token.colorTextTertiary};
+  `,
 }));
 
 const isGenericImageName = (f: File) =>
@@ -178,6 +224,7 @@ const SKILLS = [
   { id: 'make-slides', label: '生成幻灯片', icon: Presentation },
   { id: 'write-document', label: '文档编辑', icon: FileText },
   { id: 'analyze-data', label: '表格分析', icon: Table2 },
+  { id: 'image', label: '图像生成', icon: ImageIcon },
 ] as const;
 
 const SKILL_PLACEHOLDER: Record<string, string> = {
@@ -185,23 +232,92 @@ const SKILL_PLACEHOLDER: Record<string, string> = {
   'make-slides': '生成幻灯片:描述主题,或粘贴要点…',
   'write-document': '文档编辑:说说要写一篇什么文档…',
   'analyze-data': '表格分析:贴上数据,或描述你的表格…',
+  image: '描述你想要的画面…',
 };
+
+// Ported from draw/ImgInputBar: image generation is now a composer mode.
+type Orient = 'auto' | 'square' | 'land' | 'port';
+const ORIENT_ICON: Record<Orient, LucideIcon> = {
+  auto: Wand2,
+  square: Square,
+  land: RectangleHorizontal,
+  port: RectangleVertical,
+};
+
+// gpt-image-2 (the configured custom endpoint) accepts arbitrary size strings, so
+// these are presets, not a hard API limit. `auto` lets the model choose.
+const SIZE_GROUPS: { label: string; options: { value: string; ratio: string; orient: Orient }[] }[] = [
+  { label: '', options: [{ value: 'auto', ratio: '自动', orient: 'auto' }] },
+  {
+    label: '1K',
+    options: [
+      { value: '1024x1024', ratio: '1:1', orient: 'square' },
+      { value: '1024x576', ratio: '16:9', orient: 'land' },
+      { value: '576x1024', ratio: '9:16', orient: 'port' },
+    ],
+  },
+  {
+    label: '2K',
+    options: [
+      { value: '2048x2048', ratio: '1:1', orient: 'square' },
+      { value: '2048x1152', ratio: '16:9', orient: 'land' },
+      { value: '1152x2048', ratio: '9:16', orient: 'port' },
+    ],
+  },
+  {
+    label: '4K',
+    options: [
+      { value: '3840x2160', ratio: '16:9', orient: 'land' },
+      { value: '2160x3840', ratio: '9:16', orient: 'port' },
+    ],
+  },
+];
+
+const SIZE_META: Record<string, { ratio: string; orient: Orient }> = Object.fromEntries(
+  SIZE_GROUPS.flatMap((g) => g.options.map((o) => [o.value, { ratio: o.ratio, orient: o.orient }])),
+);
+const prettySize = (v: string) => (v === 'auto' ? 'Auto' : v.replace('x', '×'));
+const SIZE_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  ...SIZE_GROUPS.slice(1).map((g) => ({
+    label: g.label,
+    options: g.options.map((o) => ({ value: o.value, label: prettySize(o.value) })),
+  })),
+];
+
+const COUNTS = [1, 2, 3, 4];
 
 export interface ComposerProps {
   busy: boolean;
   onSend: (text: string, attachments: Attachment[], skill?: string) => void;
   onStop?: () => void;
   onSteer?: (text: string) => void;
+  onGenerateImage: (prompt: string, params: ImgParams, refs: string[]) => void;
+  onModeChange?: (skill: string | null) => void;
 }
 
-export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProps) {
+export default function Composer({
+  busy,
+  onSend,
+  onStop,
+  onSteer,
+  onGenerateImage,
+  onModeChange,
+}: ComposerProps) {
   const { styles, cx } = useStyles();
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [skill, setSkill] = useState<string | null>(null);
+  const [imageParams, setImageParams] = useState<ImgParams>({ size: 'auto', n: 1 });
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
+
+  useEffect(() => {
+    onModeChange?.(skill);
+  }, [skill, onModeChange]);
+
+  const imageMode = skill === 'image';
 
   const addFiles = async (files: FileList | File[] | null) => {
     if (!files) return;
@@ -254,6 +370,16 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
         setValue('');
         onSteer(text);
       }
+      return;
+    }
+    if (imageMode) {
+      if (!text) return;
+      const refs = attachments
+        .filter((a) => a.mime.startsWith('image/'))
+        .map((a) => `data:${a.mime};base64,${a.data}`);
+      setValue('');
+      setAttachments([]);
+      onGenerateImage(text, imageParams, refs);
       return;
     }
     if (!text && attachments.length === 0) return;
@@ -344,8 +470,39 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
             hidden
             onChange={(e) => addFiles(e.target.files)}
           />
+          {imageMode && (
+            <>
+              <Select
+                className={styles.mini}
+                size="small"
+                value={imageParams.size}
+                onChange={(size) => setImageParams((p) => ({ ...p, size }))}
+                options={SIZE_OPTIONS}
+                popupMatchSelectWidth={false}
+                optionRender={(opt) => {
+                  const meta = SIZE_META[opt.value as string] ?? { ratio: '', orient: 'auto' as Orient };
+                  const Icon = ORIENT_ICON[meta.orient];
+                  return (
+                    <div className={styles.sizeOpt}>
+                      <Icon size={14} />
+                      <span className={styles.sizeDims}>{opt.label}</span>
+                      {meta.ratio && <span className={styles.sizeRatio}>{meta.ratio}</span>}
+                    </div>
+                  );
+                }}
+              />
+              <Select
+                className={styles.mini}
+                size="small"
+                value={imageParams.n}
+                onChange={(n) => setImageParams((p) => ({ ...p, n }))}
+                options={COUNTS.map((c) => ({ value: c, label: `${c} 张` }))}
+                popupMatchSelectWidth={false}
+              />
+            </>
+          )}
           <span className={styles.spacer} />
-          <ModelSelect />
+          {imageMode ? <ImageModelSelect /> : <ModelSelect />}
           {busy && onStop ? (
             <Button
               type="primary"
@@ -361,9 +518,9 @@ export default function Composer({ busy, onSend, onStop, onSteer }: ComposerProp
               className={styles.send}
               loading={busy}
               onClick={submit}
-              title="发送"
-              aria-label="发送"
-              icon={busy ? undefined : <ArrowUp size={18} />}
+              title={imageMode ? '生成' : '发送'}
+              aria-label={imageMode ? '生成' : '发送'}
+              icon={busy ? undefined : imageMode ? <Sparkles size={15} /> : <ArrowUp size={18} />}
             />
           )}
         </div>

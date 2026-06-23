@@ -165,6 +165,20 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     await steerChat(activeId, t);
   };
 
+  // An image turn is a complete client-side exchange: a user prompt bubble plus
+  // an assistant message holding the generated image ids. No backend round-trip —
+  // generation already happened, so this just records the result in the thread.
+  const addImageTurn = (prompt: string, ids: string[]) => {
+    if (messages.length === 0 && prompt) {
+      onTitle?.(activeId, prompt.length > 24 ? prompt.slice(0, 24) + '…' : prompt);
+    }
+    setActiveMessages((prev) => [
+      ...prev,
+      { role: 'user', blocks: [{ kind: 'text', text: prompt }] },
+      { role: 'assistant', blocks: [{ kind: 'image', ids, prompt }] },
+    ]);
+  };
+
   const dropThread = (id: string) =>
     setThreads((t) => {
       const next = { ...t };
@@ -172,5 +186,5 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       return next;
     });
 
-  return { messages, busy, send, stop, steer, approve, dropThread };
+  return { messages, busy, send, stop, steer, approve, addImageTurn, dropThread };
 }

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Markdown } from '@lobehub/ui';
+import { Image } from 'antd';
 import { createStyles, useTheme } from 'antd-style';
 import { Check, Code2, Copy, FileDown, ListChecks, NotebookPen, Paperclip, Search } from 'lucide-react';
 
 import { workspaceFileUrl } from '../api/chat';
+import { imageFileUrl } from '../api/imagegen';
 import { getPrefs } from '../api/system';
 import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
@@ -16,7 +18,8 @@ type RenderItem =
   | { kind: 'text'; key: string; text: string }
   | { kind: 'tools'; key: string; steps: ToolStep[] }
   | { kind: 'artifact'; key: string; path: string; title: string }
-  | { kind: 'diagram'; key: string; svg: string; title: string };
+  | { kind: 'diagram'; key: string; svg: string; title: string }
+  | { kind: 'image'; key: string; ids: string[]; prompt: string };
 
 function groupBlocks(blocks: Block[]): RenderItem[] {
   const items: RenderItem[] = [];
@@ -31,6 +34,8 @@ function groupBlocks(blocks: Block[]): RenderItem[] {
       items.push({ kind: 'artifact', key: `a${j}`, path: b.path, title: b.title });
     } else if (b.kind === 'diagram') {
       items.push({ kind: 'diagram', key: `d${j}`, svg: b.svg, title: b.title });
+    } else if (b.kind === 'image') {
+      items.push({ kind: 'image', key: `i${j}`, ids: b.ids, prompt: b.prompt });
     }
   });
   return items;
@@ -295,6 +300,29 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorPrimary};
     cursor: pointer;
   `,
+  imageGrid: css`
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  `,
+  imageCard: css`
+    position: relative;
+    border-radius: ${token.borderRadiusLG}px;
+    overflow: hidden;
+    background: ${token.colorFillTertiary};
+    border: 1px solid ${token.colorBorderSecondary};
+    & .ant-image {
+      display: block;
+      width: 100%;
+    }
+    & .ant-image-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: zoom-in;
+    }
+  `,
 }));
 
 function CopyAction({ text }: { text: string }) {
@@ -479,6 +507,18 @@ export default function ChatView({
                       <ArtifactCard key={item.key} path={item.path} title={item.title} />
                     ) : item.kind === 'diagram' ? (
                       <DiagramCard key={item.key} svg={item.svg} title={item.title} />
+                    ) : item.kind === 'image' ? (
+                      <div key={item.key} className={styles.imageGrid}>
+                        {item.ids.map((id) => (
+                          <div key={id} className={styles.imageCard}>
+                            <Image
+                              src={imageFileUrl(id)}
+                              alt={item.prompt}
+                              preview={{ mask: false }}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div key={item.key} className={styles.tool}>
                         <ToolGroup steps={item.steps} />

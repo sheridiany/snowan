@@ -5,7 +5,6 @@ import {
   MessageSquare,
   Moon,
   Settings,
-  Shapes,
   Sun,
   Trash2,
   type LucideIcon,
@@ -17,7 +16,6 @@ import { LAYOUT } from '../../theme/themes';
 
 export type View =
   | 'conversations'
-  | 'draw'
   | 'settings';
 
 // Section nav + new-chat + settings/theme controls are threaded into every list
@@ -30,7 +28,6 @@ export type NavProps = {
 
 const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
   { view: 'conversations', label: '对话', icon: MessageSquare },
-  { view: 'draw', label: '画图', icon: Shapes },
 ];
 
 // Column 2 — the universal list pane. It carries the horizontal section nav at the

@@ -15,6 +15,9 @@ export type GenerateRequest = {
 };
 export type GenerateResult = { images: GenImage[]; revised_prompt: string | null };
 
+export type ImgParams = { size: string; n: number };
+export type LibraryEntry = { id: string; prompt: string; params: ImgParams; previewId: string };
+
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => '')}`);
   return res.json();

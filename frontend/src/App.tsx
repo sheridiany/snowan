@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react';
 import { createStyles, useThemeMode } from 'antd-style';
+import { App as AntApp } from 'antd';
+import { Heart } from 'lucide-react';
 import { persistThemeMode } from './theme/themes';
 import TitleBar from './components/shell/TitleBar';
 import RightPanel from './components/shell/RightPanel';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
+import ImgLibraryPanel from './components/draw/ImgLibraryPanel';
 import DetailPane from './ui/DetailPane';
 import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
+import type { ImgParams } from './api/imagegen';
 import SessionsView from './components/views/SessionsView';
-import DrawView from './components/views/DrawView';
 import SettingsView from './components/settings/SettingsView';
 import type { Block, Message } from './components/types';
 import { useViewHistory } from './hooks/useViewHistory';
 import { useSessions } from './hooks/useSessions';
 import { useChat } from './hooks/useChat';
+import { useImageLibrary } from './hooks/useImageLibrary';
 
 // A tiled fractal-noise texture (inline SVG data URI) overlaid app-wide for a
 // matte / frosted grain. Theme-agnostic: the blend mode flips per appearance so
@@ -70,6 +74,7 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => ({
 
 export default function App() {
   const { styles } = useStyles();
+  const { message } = AntApp.useApp();
   const { themeMode } = useThemeMode();
   // antd-style does not persist themeMode; mirror it to localStorage so the
   // light/dark/auto choice is restored as defaultThemeMode on the next reload.
@@ -79,6 +84,20 @@ export default function App() {
   const sessions = useSessions();
   // First message of a session sets its title — wire that through to the list.
   const chat = useChat(sessions.activeId, sessions.rename);
+  const lib = useImageLibrary();
+  // 图像生成 is a composer mode, not a separate view: when active, the right panel
+  // swaps to the 收藏 library so generated images land in context.
+  const [imageMode, setImageMode] = useState(false);
+
+  // Image generation completes client-side, then records the result as a chat turn.
+  const handleGenerateImage = async (prompt: string, params: ImgParams, refs: string[]) => {
+    try {
+      const ids = await lib.generate(prompt, params, refs);
+      chat.addImageTurn(prompt, ids);
+    } catch {
+      message.error('图像生成失败,请重试');
+    }
+  };
 
   const handleNew = () => {
     sessions.addSession();
@@ -152,17 +171,16 @@ export default function App() {
                   onSaveNote={handleSaveNote}
                   onPickPrompt={(t) => chat.send(t)}
                 />
-                <Composer busy={chat.busy} onSend={chat.send} onStop={chat.stop} onSteer={chat.steer} />
+                <Composer
+                  busy={chat.busy}
+                  onSend={chat.send}
+                  onStop={chat.stop}
+                  onSteer={chat.steer}
+                  onGenerateImage={handleGenerateImage}
+                  onModeChange={(skill) => setImageMode(skill === 'image')}
+                />
               </DetailPane>
             </>
-          )}
-          {nav.view === 'draw' && (
-            <DrawView
-              view={nav.view}
-              onView={nav.go}
-              onNewChat={handleNew}
-              listCollapsed={nav.listCollapsed}
-            />
           )}
           {nav.view === 'settings' && (
             <SettingsView
@@ -172,8 +190,31 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.rightOpen && nav.view !== 'draw' && (
-            <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
+          {nav.rightOpen && (
+            <RightPanel
+              refreshKey={notesVersion}
+              onOpenSettings={() => nav.go('settings')}
+              contextual={
+                imageMode
+                  ? {
+                      key: 'imagelib',
+                      label: '收藏',
+                      icon: Heart,
+                      node: (
+                        <ImgLibraryPanel
+                          embedded
+                          library={lib.library}
+                          onUsePrompt={(prompt) => {
+                            navigator.clipboard?.writeText(prompt);
+                            message.success('提示词已复制');
+                          }}
+                          onDelete={lib.removeLibrary}
+                        />
+                      ),
+                    }
+                  : undefined
+              }
+            />
           )}
         </main>
       </div>

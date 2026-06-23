@@ -3,10 +3,9 @@ import { Image, Modal } from 'antd';
 import { createStyles } from 'antd-style';
 import { Copy, Heart, Trash2 } from 'lucide-react';
 
-import { imageFileUrl } from '../../api/imagegen';
+import { imageFileUrl, type LibraryEntry } from '../../api/imagegen';
 import { useResizableWidth } from '../shell/useResizableWidth';
 import { LAYOUT } from '../../theme/themes';
-import type { LibraryEntry } from '../../hooks/useImagegen';
 
 const useStyles = createStyles(({ token, css }) => ({
   panel: css`

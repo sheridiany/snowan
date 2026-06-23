@@ -5,7 +5,6 @@ import {
   Brain,
   CalendarDays,
   ChevronRight,
-  Image as ImageIcon,
   MessagesSquare,
   Plus,
 } from 'lucide-react';
@@ -13,8 +12,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import { formatTimeRange, cleanCalendarField } from '../../api/calendar';
 import type { Assembly, CarryoverItem } from '../../api/daily';
-import type { ChatCapture, ImageCapture } from './localCaptures';
-import { imageFileUrl } from '../../api/imagegen';
+import type { ChatCapture } from './localCaptures';
 import type { View } from '../shell/ListPane';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -127,13 +125,6 @@ const useStyles = createStyles(({ token, css }) => ({
       color: ${token.colorPrimary};
     }
   `,
-  thumb: css`
-    width: 22px;
-    height: 22px;
-    flex: none;
-    border-radius: 4px;
-    object-fit: cover;
-  `,
 }));
 
 function Section({
@@ -195,7 +186,6 @@ type Props = {
   assembly: Assembly | null;
   carryover: CarryoverItem[];
   chats: ChatCapture[];
-  images: ImageCapture[];
   onView: (v: View) => void;
   onCarryover: (line: string) => void;
 };
@@ -207,14 +197,13 @@ export default function AssemblyBand({
   assembly,
   carryover,
   chats,
-  images,
   onView,
   onCarryover,
 }: Props) {
   const { styles, cx } = useStyles();
   const events = assembly?.events ?? [];
   const memory = assembly?.memory ?? [];
-  const captureCount = chats.length + images.length;
+  const captureCount = chats.length;
 
   // Writing-first: a section only appears when it has content, and the whole band
   // disappears on a quiet day — an empty day is a clean writing surface, not a wall
@@ -244,16 +233,6 @@ export default function AssemblyBand({
               <div key={c.id} className={styles.row} onClick={() => onView('conversations')}>
                 <MessagesSquare size={13} />
                 <span className={styles.rowText}>{c.title}</span>
-              </div>
-            ))}
-            {images.map((im) => (
-              <div key={im.sessionId} className={styles.row} onClick={() => onView('draw')}>
-                {im.previewId ? (
-                  <img className={styles.thumb} src={imageFileUrl(im.previewId)} alt={im.title} />
-                ) : (
-                  <ImageIcon size={13} />
-                )}
-                <span className={styles.rowText}>{im.title}</span>
               </div>
             ))}
           </div>

@@ -141,7 +141,6 @@ export default function DailyExpand({ date, open, onClose }: Props) {
           assembly={d.assembly}
           carryover={d.carryover}
           chats={d.chats}
-          images={d.images}
           // Deep-linking out of the band leaves the day view: close the modal so the
           // panel's host can navigate.
           onView={() => onClose()}
