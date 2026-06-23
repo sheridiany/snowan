@@ -259,17 +259,6 @@ def set_artifact(book_id: str, kind: str, content: str) -> None:
         conn.close()
 
 
-def get_artifact(book_id: str, kind: str) -> str | None:
-    conn = _conn()
-    try:
-        row = conn.execute(
-            "SELECT content FROM artifacts WHERE book_id=? AND kind=?", (book_id, kind)
-        ).fetchone()
-        return row["content"] if row else None
-    finally:
-        conn.close()
-
-
 def list_artifacts(book_id: str) -> dict:
     """{kind: content} for every cached artifact of this book."""
     conn = _conn()

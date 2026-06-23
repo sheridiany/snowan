@@ -181,12 +181,6 @@ def list_entries(include_invalid: bool = False) -> list[dict]:
     return [_public(m) for m in _all_entries() if include_invalid or m["valid"]]
 
 
-def get_entry(mem_id: str) -> dict | None:
-    _ensure()
-    m = _find(mem_id)
-    return _public(m) if m else None
-
-
 def create_entry(content: str, *, type: str = "fact", importance: int = 3,
                  confidence: float | None = None, source=None) -> dict:
     _ensure()

@@ -70,9 +70,6 @@ export const renameModel = (id: string, modelId: string, name: string) =>
 export const discoverModels = (id: string) =>
   post(`/api/providers/${id}/discover`).then(j<{ added: ModelInfo[]; total: number }>);
 
-export const testProvider = (id: string) =>
-  post(`/api/providers/${id}/test`).then(j<TestResult>);
-
 export const testModel = (id: string, modelId: string) =>
   post(`/api/providers/${id}/models/test`, { model_id: modelId }).then(j<TestResult>);
 

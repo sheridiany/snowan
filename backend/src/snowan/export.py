@@ -55,11 +55,6 @@ def _wrap_html(title: str, body_html: str) -> str:
     )
 
 
-def html_to_html_doc(title: str, body_html: str) -> str:
-    """Wrap already-sanitized article HTML into a standalone, styled page."""
-    return _wrap_html(title, nh3.clean(body_html))
-
-
 def md_to_docx(title: str, body_md: str) -> bytes:
     """Walk the markdown-it token stream into a Word document. Covers h1–h3,
     paragraphs, bullet/ordered lists, fenced code and inline bold/italic/links;

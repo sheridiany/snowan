@@ -74,11 +74,6 @@ export const getProfile = () =>
 export const saveProfile = (text: string) =>
   send<{ text: string }>('PUT', '/api/memory/profile', { text });
 
-export const getDaily = (date?: string) =>
-  fetch(api(`/api/memory/daily${date ? `?date=${encodeURIComponent(date)}` : ''}`)).then((r) =>
-    j<{ date: string; text: string }>(r),
-  );
-
 // Ask the LLM to propose a reviewable diff. Nothing is written here.
 export const consolidate = () => send<ConsolidationDiff>('POST', '/api/memory/consolidate', {});
 

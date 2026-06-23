@@ -58,10 +58,6 @@ def _save(d: dict) -> None:
     FOLDERS_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2))
 
 
-def is_indexing() -> bool:
-    return _indexing
-
-
 def list_folders() -> dict:
     folders = _load()["folders"]
     counts: dict[str, int] = {}

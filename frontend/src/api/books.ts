@@ -86,9 +86,6 @@ export const listBooks = () => fetch(api('/api/books/')).then((r) => j<BookOut[]
 export const getBook = (id: string) =>
   fetch(api(`/api/books/${id}`)).then((r) => j<BookDetail>(r));
 
-export const getChapter = (id: string, num: number) =>
-  fetch(api(`/api/books/${id}/chapter/${num}`)).then((r) => j<ChapterOut>(r));
-
 export const deleteBook = (id: string) => del(`/api/books/${id}`);
 
 // Cover is served as image/png bytes; use the URL directly in <img src>.

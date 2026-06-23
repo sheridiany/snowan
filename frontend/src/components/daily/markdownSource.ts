@@ -6,18 +6,6 @@
 
 const TASK_RE = /^(\s*[-*]\s+)\[( |x|X)\](.*)$/;
 
-// All "- [ ]" / "- [x]" task lines, with their source line index, in document order.
-export function taskLines(body: string): { index: number; checked: boolean; text: string }[] {
-  return body.split('\n').reduce<{ index: number; checked: boolean; text: string }[]>(
-    (acc, raw, index) => {
-      const m = raw.match(TASK_RE);
-      if (m) acc.push({ index, checked: m[2].toLowerCase() === 'x', text: m[3].trim() });
-      return acc;
-    },
-    [],
-  );
-}
-
 // Flip the checkbox on the Nth task line (matching XMarkdown's own task ordering),
 // rewriting only that line's "[ ]"/"[x]" marker.
 export function toggleTaskByOrdinal(body: string, ordinal: number): string {
