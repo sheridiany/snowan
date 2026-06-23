@@ -50,7 +50,7 @@ hiddenimports = [
 
 # Packages that load native libs, data files, or submodules by name at runtime.
 # collect_all pulls binaries + datas + hidden submodules + metadata in one shot.
-for _pkg in ("onnxruntime", "fastembed", "tokenizers", "huggingface_hub", "tqdm", "ebooklib"):
+for _pkg in ("onnxruntime", "fastembed", "tokenizers", "huggingface_hub", "tqdm"):
     _d, _b, _h = collect_all(_pkg)
     datas += _d
     binaries += _b

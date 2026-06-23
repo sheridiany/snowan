@@ -379,8 +379,8 @@ export default function RightPanel({
   refreshKey?: number;
   onOpenSettings?: () => void;
   // A view-provided source pinned to the top of the dropdown and selected by
-  // default (e.g. 阅读's 伴读, 画图's 收藏). Lets a per-view panel live inside the
-  // one shared RightPanel shell instead of being a bespoke right column.
+  // default (e.g. 画图's 收藏). Lets a per-view panel live inside the one shared
+  // RightPanel shell instead of being a bespoke right column.
   contextual?: { key: string; label: string; icon: LucideIcon; node: ReactNode };
 }) {
   const { styles, cx, theme } = useStyles();

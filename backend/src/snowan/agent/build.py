@@ -10,7 +10,6 @@ from .tools.file_tools import append_file, edit_file, read_file, write_file
 from .tools.calendar_tools import upcoming_events
 from .tools.daily_tools import daily_note
 from .tools.knowledge_tools import knowledge_search
-from .tools.book_tools import book_search
 from .tools.memory_tools import recall_memory, remember
 from .tools.search_tools import glob_search, grep_search
 from .tools.shell_tools import execute_shell_command
@@ -35,7 +34,6 @@ READONLY_FNS = [
     grep_search,
     glob_search,
     knowledge_search,
-    book_search,
     upcoming_events,
     daily_note,
     recall_memory,

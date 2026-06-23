@@ -10,7 +10,6 @@ import NoteDraftModal from './components/NoteDraftModal';
 import type { DraftEntry } from './api/knowledge';
 import SessionsView from './components/views/SessionsView';
 import DrawView from './components/views/DrawView';
-import ReadingView from './components/views/ReadingView';
 import SettingsView from './components/settings/SettingsView';
 import type { Block, Message } from './components/types';
 import { useViewHistory } from './hooks/useViewHistory';
@@ -165,14 +164,6 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.view === 'reading' && (
-            <ReadingView
-              view={nav.view}
-              onView={nav.go}
-              onNewChat={handleNew}
-              listCollapsed={nav.listCollapsed}
-            />
-          )}
           {nav.view === 'settings' && (
             <SettingsView
               view={nav.view}
@@ -181,11 +172,9 @@ export default function App() {
               listCollapsed={nav.listCollapsed}
             />
           )}
-          {nav.rightOpen &&
-            nav.view !== 'draw' &&
-            nav.view !== 'reading' && (
-              <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
-            )}
+          {nav.rightOpen && nav.view !== 'draw' && (
+            <RightPanel refreshKey={notesVersion} onOpenSettings={() => nav.go('settings')} />
+          )}
         </main>
       </div>
       <NoteDraftModal

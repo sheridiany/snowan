@@ -8,7 +8,6 @@ load_dotenv()  # before the agent reads provider settings
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
-from .books import router as books_router  # noqa: E402
 from .calendar import router as calendar_router  # noqa: E402
 from .chat import router  # noqa: E402
 from .imagegen import router as imagegen_router  # noqa: E402
@@ -57,7 +56,6 @@ app.include_router(persona_router)
 app.include_router(skills_router)
 app.include_router(imagegen_router)
 app.include_router(recordings_router)
-app.include_router(books_router)
 app.include_router(calendar_router)
 app.include_router(workspace_router)
 

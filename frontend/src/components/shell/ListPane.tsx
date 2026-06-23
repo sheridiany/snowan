@@ -2,7 +2,6 @@ import { Icon } from '@lobehub/ui';
 import { Popconfirm, Tooltip } from 'antd';
 import { createStyles, useThemeMode } from 'antd-style';
 import {
-  BookOpen,
   MessageSquare,
   Moon,
   Settings,
@@ -19,7 +18,6 @@ import { LAYOUT } from '../../theme/themes';
 export type View =
   | 'conversations'
   | 'draw'
-  | 'reading'
   | 'settings';
 
 // Section nav + new-chat + settings/theme controls are threaded into every list
@@ -33,7 +31,6 @@ export type NavProps = {
 const SECTIONS: { view: View; label: string; icon: LucideIcon }[] = [
   { view: 'conversations', label: '对话', icon: MessageSquare },
   { view: 'draw', label: '画图', icon: Shapes },
-  { view: 'reading', label: '阅读', icon: BookOpen },
 ];
 
 // Column 2 — the universal list pane. It carries the horizontal section nav at the
