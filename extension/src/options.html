@@ -75,6 +75,29 @@
       .status.err { color: var(--err); }
       .saved { color: var(--ok); font-size: 13px; margin-left: 10px; opacity: 0; transition: opacity 0.2s; }
       .saved.show { opacity: 1; }
+      hr { border: none; border-top: 1px solid var(--border); margin: 26px 0; }
+      .section-title { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+      input[type="number"] {
+        width: 110px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        font: inherit;
+        background: var(--bg);
+      }
+      input[type="number"]:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+      textarea {
+        width: 100%;
+        min-height: 96px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        font: inherit;
+        background: var(--bg);
+        resize: vertical;
+      }
+      textarea:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+      .inline { display: flex; align-items: center; gap: 8px; }
     </style>
   </head>
   <body>
@@ -94,6 +117,44 @@
           <label for="capture-html">同时抓取页面 HTML</label>
           <div class="hint">默认仅抓取抽取后的正文文本。开启后会附带原始 HTML(后端当前接收但暂不存储)。</div>
         </div>
+      </div>
+
+      <hr />
+
+      <p class="section-title">智能自动剪藏</p>
+      <p class="sub" style="margin-bottom:18px">
+        浏览网页时,在页面停留足够久、有实质正文、域名不在排除名单且本会话未抓过时,自动剪藏到 Snowan;
+        AI 对话页会被自动识别并随对话增长更新。
+      </p>
+
+      <div class="field checkbox">
+        <input id="auto-capture" type="checkbox" />
+        <div>
+          <label for="auto-capture">开启智能自动剪藏</label>
+          <div class="hint">关闭后将只保留手动剪藏。</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="dwell">停留秒数</label>
+        <div class="inline">
+          <input id="dwell" type="number" min="1" max="600" step="1" />
+          <span class="hint" style="margin-top:0">页面可见且聚焦累计达到此秒数后才考虑自动剪藏。默认 8。</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="min-chars">最小正文字数</label>
+        <div class="inline">
+          <input id="min-chars" type="number" min="0" max="100000" step="50" />
+          <span class="hint" style="margin-top:0">正文少于此字数的页面不自动抓取。默认 600。</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="denylist">排除域名</label>
+        <textarea id="denylist" spellcheck="false" placeholder="mail.google.com&#10;accounts.google.com&#10;*.bank"></textarea>
+        <div class="hint">每行一个域名,匹配该域名及其子域;支持 * 通配(如 *.bank)。这些站点永不自动剪藏。</div>
       </div>
 
       <div class="row">

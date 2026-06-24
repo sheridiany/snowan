@@ -48,6 +48,7 @@ import {
 } from '../../api/knowledge';
 import { getCalendar, type CalendarEvent } from '../../api/calendar';
 import { getPrefs } from '../../api/system';
+import type { Session } from '../types';
 
 // The right panel is the in-context knowledge browser (remio-style): a source
 // dropdown in the header, a list below, and click-to-open detail in place. 笔记
@@ -373,9 +374,15 @@ function RightPanel({
   onOpenSettings,
   contextual,
   autoSelect,
+  sessions,
+  onOpenSession,
 }: {
   refreshKey?: number;
   onOpenSettings?: () => void;
+  // Snowan's own conversations, surfaced inside the AI 对话 source so the panel
+  // lists them alongside externally-captured chats.
+  sessions?: Session[];
+  onOpenSession?: (id: string) => void;
   // A view-provided source pinned to the top of the dropdown and selected by
   // default (e.g. 画图's 收藏). Lets a per-view panel live inside the one shared
   // RightPanel shell instead of being a bespoke right column.
@@ -642,7 +649,12 @@ function RightPanel({
       ) : source === 'web' ? (
         <CapturesView kind="web" refreshKey={refreshKey} />
       ) : source === 'ai_chat' ? (
-        <CapturesView kind="ai_chat" refreshKey={refreshKey} />
+        <CapturesView
+          kind="ai_chat"
+          refreshKey={refreshKey}
+          sessions={sessions}
+          onOpenSession={onOpenSession}
+        />
       ) : (
       <div className={styles.scroll}>
         {embReady === false && (

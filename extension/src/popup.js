@@ -66,6 +66,26 @@ async function init() {
   }
   btn.disabled = false;
 
+  // Auto-capture status line.
+  const auto = $("auto-status");
+  if (!detected.autoEnabled) {
+    auto.textContent = "自动剪藏已关闭 · 仅手动";
+    auto.className = "auto-status off";
+    auto.hidden = false;
+  } else if (detected.autoEligible) {
+    auto.textContent =
+      detected.kind === "ai_chat"
+        ? "将自动剪藏:对话页(随对话更新)"
+        : "将自动剪藏:停留足够久且正文够长时";
+    auto.className = "auto-status";
+    auto.hidden = false;
+  } else {
+    auto.textContent =
+      detected.autoReason === "denylist" ? "本站在排除名单 · 仅手动" : "自动剪藏不适用 · 仅手动";
+    auto.className = "auto-status off";
+    auto.hidden = false;
+  }
+
   // Selection capture is offered opportunistically; the worker reports "no selection" if empty.
   $("capture-selection").hidden = false;
 }

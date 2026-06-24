@@ -7,27 +7,18 @@ importScripts(
   "content/aichat/chatgpt.js",
   "content/aichat/claude.js",
   "content/aichat/gemini.js",
-  "content/aichat/doubao.js"
+  "content/aichat/doubao.js",
+  "content/aichat/generic.js",
+  "content/detect.js"
 );
 
-// URL host -> AI-chat scraper function. background picks the first match by hostname.
-// Each function is self-contained and injected verbatim via executeScript({ func }).
-const AI_CHAT_SITES = [
-  { match: /(^|\.)chatgpt\.com$/i, scrape: snowanScrapeChatGPT, label: "ChatGPT" },
-  { match: /(^|\.)chat\.openai\.com$/i, scrape: snowanScrapeChatGPT, label: "ChatGPT" },
-  { match: /(^|\.)claude\.ai$/i, scrape: snowanScrapeClaude, label: "Claude" },
-  { match: /(^|\.)gemini\.google\.com$/i, scrape: snowanScrapeGemini, label: "Gemini" },
-  { match: /(^|\.)doubao\.com$/i, scrape: snowanScrapeDoubao, label: "豆包" },
-];
-
+// Resolve the AI-chat site for a URL via the shared detector. Returns { label, scrape } where
+// `scrape` is the self-contained scraper function to inject, or null for non-chat URLs.
 function detectAiSite(url) {
-  let host;
-  try {
-    host = new URL(url).hostname;
-  } catch (_) {
-    return null;
-  }
-  return AI_CHAT_SITES.find((s) => s.match.test(host)) || null;
+  const site = self.SnowanDetect.siteForUrl(url);
+  if (!site) return null;
+  const scrape = self[site.scraper] || self.snowanScrapeGeneric;
+  return scrape ? { label: site.label, scrape } : null;
 }
 
 function isInjectableUrl(url) {
@@ -68,7 +59,7 @@ async function buildCapture(tab, mode) {
 
   const aiSite = mode === "page" ? null : detectAiSite(tab.url);
   if (aiSite) {
-    const r = await runInTab(tab.id, aiSite.scrape);
+    const r = await runInTab(tab.id, aiSite.scrape, [aiSite.label]);
     if (r && r.ok && r.turns && r.turns.length) {
       return {
         kind: "ai_chat",
@@ -175,11 +166,85 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
+// ---- Auto-capture settings + status (shared keys with options.js / autocapture.js) ----
+const AUTO_DEFAULTS = {
+  autoCapture: true,
+  dwellSeconds: 8,
+  minChars: 600,
+  denylist: ["mail.google.com", "accounts.google.com", "login.microsoftonline.com", "localhost", "127.0.0.1"],
+};
+
+async function getAutoSettings() {
+  const s = await chrome.storage.sync.get({
+    autoCapture: AUTO_DEFAULTS.autoCapture,
+    dwellSeconds: AUTO_DEFAULTS.dwellSeconds,
+    minChars: AUTO_DEFAULTS.minChars,
+    denylist: AUTO_DEFAULTS.denylist,
+  });
+  const denylist = Array.isArray(s.denylist)
+    ? s.denylist
+    : String(s.denylist || "")
+        .split(/[\n,]+/)
+        .map((x) => x.trim().toLowerCase())
+        .filter(Boolean);
+  return { autoCapture: Boolean(s.autoCapture), denylist };
+}
+
+// Lightweight popup status: is auto-capture on, and would this host pass the denylist gate?
+// (Dwell/length gates are evaluated in the page; popup just shows the high-level state.)
+async function autoStatusFor(url) {
+  const s = await getAutoSettings();
+  if (!s.autoCapture) return { enabled: false, eligible: false, reason: "disabled" };
+  let host = "";
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch (_) {}
+  const denied = s.denylist.some((d) => {
+    if (!d) return false;
+    if (d.includes("*")) {
+      const re = new RegExp("^" + d.replace(/[.]/g, "\\.").replace(/\*/g, ".*") + "$", "i");
+      return re.test(host);
+    }
+    return host === d || host.endsWith("." + d);
+  });
+  if (denied) return { enabled: true, eligible: false, reason: "denylist" };
+  return { enabled: true, eligible: true };
+}
+
+// ---- Auto-capture (from content script) ----
+// The content script already gates + dedups, but messages can arrive twice (e.g. dwell flush +
+// visibilitychange). Keep a tiny in-memory guard keyed by url+kind+length so we don't double-POST
+// the exact same snapshot within a short window. Auto-capture failures are silent (badge only).
+const autoCaptureSeen = new Map(); // key -> { len, at }
+
+function autoKey(p) {
+  return (p.kind || "web") + " " + (p.url || "");
+}
+
+async function handleAutoCapture(payload) {
+  if (!payload || !payload.content) return;
+  const key = autoKey(payload);
+  const len = payload.content.length;
+  const prev = autoCaptureSeen.get(key);
+  // Skip if we just sent an equal-or-larger snapshot for this url+kind.
+  if (prev && len <= prev.len && Date.now() - prev.at < 5 * 60 * 1000) return;
+  autoCaptureSeen.set(key, { len, at: Date.now() });
+  try {
+    await self.SnowanApi.capture(payload);
+    flashBadge("✓", "#16a34a"); // quiet success: badge only, no notification
+  } catch (_) {
+    // Silent: don't interrupt browsing. Roll back the guard so a later retry can go through.
+    autoCaptureSeen.delete(key);
+    flashBadge("·", "#9aa0a6");
+  }
+}
+
 // ---- Popup messaging ----
 // Protocol (popup -> background):
 //   { type: "detect", tabId }            -> { kind, site? } describing what the active tab is
 //   { type: "capture", tabId, mode }     -> { ok:true, ...backendResult } | { ok:false, error, offline }
 //   { type: "ping" }                     -> { ok, offline? }
+//   { type: "autocapture", payload }     -> fire-and-forget; POSTs payload, badge-only feedback
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     try {
@@ -187,19 +252,31 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         sendResponse(await self.SnowanApi.ping());
         return;
       }
+
+      if (msg.type === "autocapture") {
+        // Fire-and-forget from the content script; reply immediately so it isn't blocked.
+        handleAutoCapture(msg.payload);
+        sendResponse({ ok: true });
+        return;
+      }
       const tab = msg.tabId
         ? await chrome.tabs.get(msg.tabId)
         : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
 
       if (msg.type === "detect") {
-        const site = tab && isInjectableUrl(tab.url) ? detectAiSite(tab.url) : null;
+        const injectable = Boolean(tab && isInjectableUrl(tab.url));
+        const site = injectable ? detectAiSite(tab.url) : null;
+        const auto = injectable ? await autoStatusFor(tab.url) : { enabled: false, eligible: false };
         sendResponse({
           ok: true,
-          injectable: Boolean(tab && isInjectableUrl(tab.url)),
+          injectable,
           kind: site ? "ai_chat" : "web",
           site: site ? site.label : null,
           title: tab ? tab.title : "",
           url: tab ? tab.url : "",
+          autoEnabled: auto.enabled,
+          autoEligible: auto.eligible,
+          autoReason: auto.reason || null,
         });
         return;
       }

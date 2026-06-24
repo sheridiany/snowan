@@ -117,6 +117,16 @@ def _find_by_url(url: str) -> dict | None:
     return next((c for c in _all() if c["url"] == url), None)
 
 
+def _content_changed_significantly(old: str, new: str) -> bool:
+    """Whether the content shifted enough to warrant a fresh classify. Growing AI-chat
+    transcripts and re-captured pages drift slightly on every report; we only re-run
+    the model when the body grew/shrank by a meaningful fraction or a chunk of length."""
+    a, b = len(old), len(new)
+    if a == 0:
+        return b > 0
+    return abs(b - a) >= max(200, a * 0.25)
+
+
 def _index(cap: dict) -> None:
     # category + tags ride into the index title/body so a search over the vault can
     # surface them; metadata search reuses the same chunk text.
@@ -186,9 +196,12 @@ def create_capture(
     html: str | None = None,
     captured_at: str | None = None,
 ) -> dict:
-    """Save a capture as Markdown, classify it, and index it. Dedups by url + content
-    hash: if the same url is already stored with identical content, it's returned
-    unchanged; if the content changed, the existing capture is updated in place."""
+    """Save a capture as Markdown, classify it, and index it. Upserts by url: if the
+    same url is already stored, the existing capture is updated in place (same id) —
+    identical content (hash) is a no-op, otherwise content/title/captured_at are
+    overwritten and the hash + index recomputed; classification only re-runs when the
+    content changed significantly, else the original category/tags are kept to save a
+    model call. Selections and url-less captures always create a new record."""
     if kind not in _KINDS:
         kind = "web"
     content = (content or "").strip()
@@ -197,7 +210,7 @@ def create_capture(
     _dir().mkdir(parents=True, exist_ok=True)
 
     h = _content_hash(url, content)
-    existing = _find_by_url(url)
+    existing = None if kind == "selection" else _find_by_url(url)
     if existing is not None:
         if existing["content_hash"] == h:
             return _public(existing)  # unchanged — skip the reclassify + rewrite
@@ -209,8 +222,8 @@ def create_capture(
             "captured_at": captured_at or _now(),
             "content_hash": h,
         }
-        category, tags = _run_classify(title, content)
-        cap["category"], cap["tags"] = category, tags
+        if _content_changed_significantly(existing["content"], content):
+            cap["category"], cap["tags"] = _run_classify(title, content)
         cap["_path"].write_text(_serialize(cap), encoding="utf-8")
         _index(cap)
         return _public(cap)

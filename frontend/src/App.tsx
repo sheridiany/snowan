@@ -220,6 +220,11 @@ export default function App() {
               refreshKey={notesVersion}
               onOpenSettings={() => nav.go('settings')}
               autoSelect={imageMode}
+              sessions={sessions.sessions}
+              onOpenSession={(id) => {
+                sessions.setActiveId(id);
+                nav.go('conversations');
+              }}
               contextual={{
                 key: 'imagelib',
                 label: '收藏',

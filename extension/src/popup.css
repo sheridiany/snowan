@@ -99,6 +99,31 @@ button:disabled {
   background: #f8dcc3;
 }
 
+.auto-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: #9a5418;
+}
+
+.auto-status.off {
+  background: #f2efec;
+  color: var(--muted);
+}
+
+.auto-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
 .result {
   background: var(--surface);
   border: 1px solid var(--border);

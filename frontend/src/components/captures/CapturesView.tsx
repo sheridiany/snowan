@@ -4,7 +4,15 @@ import { App, Popconfirm } from 'antd';
 import { createStyles } from 'antd-style';
 import { ChevronLeft, ExternalLink, Globe, Sparkles, Trash2 } from 'lucide-react';
 import { listCaptures, deleteCapture, type Capture } from '../../api/capture';
+import type { Session } from '../types';
 import { TYPE } from '../../theme/themes';
+
+const SNOWAN_SRC = 'Snowan';
+
+// Unified list row: either an external capture or one of Snowan's own sessions.
+type Row =
+  | { kind: 'capture'; src: string; at: string; capture: Capture }
+  | { kind: 'session'; src: string; at: string; session: Session };
 
 // host -> friendly AI-chat site name; everything else falls back to the bare host.
 const aiSite = (host: string) => {
@@ -278,9 +286,15 @@ const useStyles = createStyles(({ token, css }) => ({
 export default function CapturesView({
   kind,
   refreshKey,
+  sessions,
+  onOpenSession,
 }: {
   kind: 'web' | 'ai_chat';
   refreshKey?: number;
+  // Only consumed for kind==='ai_chat': Snowan's own conversations, merged into
+  // the list alongside externally-captured AI chats.
+  sessions?: Session[];
+  onOpenSession?: (id: string) => void;
 }) {
   const { styles, cx } = useStyles();
   const { message } = App.useApp();
@@ -305,24 +319,45 @@ export default function CapturesView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, refreshKey]);
 
+  // Unified rows: captures from the backend plus (for AI 对话) Snowan's own
+  // sessions. Snowan rows sort to the top by recency so the user's live
+  // conversations lead the list; captures keep their backend captured_at order.
+  const rows = useMemo<Row[]>(() => {
+    const captureRows: Row[] = items.map((c) => ({
+      kind: 'capture',
+      src: srcOf(c),
+      at: c.captured_at,
+      capture: c,
+    }));
+    if (kind !== 'ai_chat' || !sessions?.length) return captureRows;
+    const sessionRows: Row[] = sessions.map((s) => ({
+      kind: 'session',
+      src: SNOWAN_SRC,
+      at: new Date(s.updatedAt).toISOString(),
+      session: s,
+    }));
+    return [...sessionRows, ...captureRows];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, sessions, kind]);
+
   // source -> count, for chips + the 主要来源 chart.
   const sources = useMemo(() => {
     const m = new Map<string, number>();
-    for (const c of items) m.set(srcOf(c), (m.get(srcOf(c)) || 0) + 1);
+    for (const r of rows) m.set(r.src, (m.get(r.src) || 0) + 1);
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, kind]);
+  }, [rows]);
 
-  const filtered = filter === 'all' ? items : items.filter((c) => srcOf(c) === filter);
+  const filtered = filter === 'all' ? rows : rows.filter((r) => r.src === filter);
 
-  // group filtered by day, preserving the captured_at-desc order from the backend.
+  // group filtered by day, preserving the source order (Snowan first, then the
+  // captured_at-desc order from the backend).
   const groups = useMemo(() => {
-    const out: { label: string; items: Capture[] }[] = [];
-    for (const c of filtered) {
-      const lbl = dayLabel(c.captured_at);
+    const out: { label: string; items: Row[] }[] = [];
+    for (const r of filtered) {
+      const lbl = dayLabel(r.at);
       const last = out[out.length - 1];
-      if (last && last.label === lbl) last.items.push(c);
-      else out.push({ label: lbl, items: [c] });
+      if (last && last.label === lbl) last.items.push(r);
+      else out.push({ label: lbl, items: [r] });
     }
     return out;
   }, [filtered]);
@@ -381,7 +416,7 @@ export default function CapturesView({
     );
   }
 
-  if (!loading && items.length === 0) {
+  if (!loading && rows.length === 0) {
     return (
       <div className={styles.scroll}>
         <div className={styles.empty}>
@@ -405,7 +440,7 @@ export default function CapturesView({
 
   return (
     <div className={styles.scroll}>
-      {sources.length >= 2 && items.length >= 3 && (
+      {sources.length >= 2 && rows.length >= 3 && (
         <div className={styles.chart}>
           <div className={styles.chartHead}>主要来源</div>
           <div className={styles.bars}>
@@ -444,7 +479,7 @@ export default function CapturesView({
             className={cx(styles.chip, filter === 'all' && styles.chipActive)}
             onClick={() => setFilter('all')}
           >
-            全部 <span className={styles.chipCount}>{items.length}</span>
+            全部 <span className={styles.chipCount}>{rows.length}</span>
           </span>
           {sources.map(([src, n]) => (
             <span
@@ -464,22 +499,48 @@ export default function CapturesView({
             <span>{g.label}</span>
             <span className={styles.groupCount}>{g.items.length}</span>
           </div>
-          {g.items.map((c) => (
-            <div key={c.id} className={styles.row} onClick={() => setOpen(c)}>
-              <span className={styles.avatar} style={{ background: avatarColor(srcOf(c)) }}>
-                {initial(srcOf(c))}
-              </span>
-              <span className={styles.rowBody}>
-                <span className={styles.rowTitle}>{c.title || '未命名抓取'}</span>
-                <span className={styles.rowMeta}>
-                  {c.category && c.category !== '未分类' && <span>{c.category}</span>}
-                  <span>{srcOf(c)}</span>
-                  <span>·</span>
-                  <span>{timeLabel(c.captured_at)}</span>
+          {g.items.map((r) =>
+            r.kind === 'session' ? (
+              <div
+                key={`s:${r.session.id}`}
+                className={styles.row}
+                onClick={() => onOpenSession?.(r.session.id)}
+              >
+                <span className={styles.avatar} style={{ background: avatarColor(r.src) }}>
+                  {initial(r.src)}
                 </span>
-              </span>
-            </div>
-          ))}
+                <span className={styles.rowBody}>
+                  <span className={styles.rowTitle}>{r.session.title || '新对话'}</span>
+                  <span className={styles.rowMeta}>
+                    <span>{r.src}</span>
+                    <span>·</span>
+                    <span>{timeLabel(r.at)}</span>
+                  </span>
+                </span>
+              </div>
+            ) : (
+              <div
+                key={r.capture.id}
+                className={styles.row}
+                onClick={() => setOpen(r.capture)}
+              >
+                <span className={styles.avatar} style={{ background: avatarColor(r.src) }}>
+                  {initial(r.src)}
+                </span>
+                <span className={styles.rowBody}>
+                  <span className={styles.rowTitle}>{r.capture.title || '未命名抓取'}</span>
+                  <span className={styles.rowMeta}>
+                    {r.capture.category && r.capture.category !== '未分类' && (
+                      <span>{r.capture.category}</span>
+                    )}
+                    <span>{r.src}</span>
+                    <span>·</span>
+                    <span>{timeLabel(r.at)}</span>
+                  </span>
+                </span>
+              </div>
+            ),
+          )}
         </div>
       ))}
     </div>
