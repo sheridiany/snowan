@@ -102,6 +102,7 @@ def list_skills() -> list[dict]:
             "description": s["description"],
             "enabled": meta.get("enabled", True),
             "tags": meta.get("tags", []),
+            "source": meta.get("source"),
         })
     return out
 
@@ -166,6 +167,93 @@ def set_enabled(name: str, enabled: bool) -> None:
     man = _manifest()
     man.setdefault(name, {"tags": []})["enabled"] = enabled
     _save_manifest(man)
+
+
+# --- importing skills from other agents (Claude Code / shared ~/.agents) ---------
+# Same SKILL.md format, so _parse() reads them directly. Imported skills are copied
+# into our own store disabled, so they never flood the agent until the user opts in.
+_EXTERNAL_ROOTS = [
+    (Path.home() / ".claude" / "skills", "claude"),
+    (Path.home() / ".agents" / "skills", "agents"),
+    (Path.home() / ".codex" / "skills", "codex"),
+]
+
+
+def discover_external() -> list[dict]:
+    """Scan known external agent-skill dirs for importable SKILL.md skills. Dedupe by
+    resolved target (~/.claude/skills usually symlinks into ~/.agents/skills) and flag
+    ones already present in our own store."""
+    have = {s["name"] for s in list_skills()}
+    seen: set[str] = set()
+    out: list[dict] = []
+    for root, source in _EXTERNAL_ROOTS:
+        if not root.exists():
+            continue
+        for d in sorted(root.iterdir()):
+            try:
+                if not (d.is_dir() and (d / "SKILL.md").exists()):
+                    continue
+                real = str((d / "SKILL.md").resolve())
+            except OSError:
+                continue
+            if real in seen:
+                continue
+            seen.add(real)
+            s = _parse(d)
+            if not s:
+                continue
+            out.append({
+                "name": s["name"],
+                "description": s["description"],
+                "source": source,
+                "path": str(d),
+                "already": s["name"] in have,
+            })
+    return out
+
+
+def _under_external_root(p: Path) -> bool:
+    try:
+        rp = p.resolve()
+    except OSError:
+        return False
+    for root, _ in _EXTERNAL_ROOTS:
+        try:
+            r = root.resolve()
+        except OSError:
+            continue
+        if rp == r or r in rp.parents:
+            return True
+    return False
+
+
+def import_external(paths: list[str]) -> list[dict]:
+    """Copy selected external skill folders into our store, disabled by default. Only
+    paths under a known external root are accepted; existing skills are never clobbered."""
+    _ensure_starters()
+    man = _manifest()
+    imported: list[dict] = []
+    for raw in paths:
+        src = Path(raw)
+        if not _under_external_root(src):
+            continue
+        real = src.resolve()
+        if not (real.is_dir() and (real / "SKILL.md").exists()):
+            continue
+        s = _parse(real)
+        if not s:
+            continue
+        dst = SKILLS_DIR / _slug(s["name"])
+        if dst.exists():
+            continue
+        shutil.copytree(real, dst)
+        meta = man.setdefault(s["name"], {"tags": []})
+        meta["enabled"] = False
+        meta["source"] = "imported"
+        imported.append({"name": s["name"], "description": s["description"], "enabled": False})
+    if imported:
+        _save_manifest(man)
+    return imported
 
 
 def read_resource(name: str, rel: str) -> str | None:

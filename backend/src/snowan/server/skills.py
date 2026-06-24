@@ -23,9 +23,24 @@ class EnableBody(BaseModel):
     enabled: bool
 
 
+class ImportBody(BaseModel):
+    paths: list[str]
+
+
 @router.get("")
 def list_skills() -> list[dict]:
     return store.list_skills()
+
+
+# Registered before /{name} so "external" isn't captured as a skill name.
+@router.get("/external")
+def list_external() -> list[dict]:
+    return store.discover_external()
+
+
+@router.post("/import")
+def import_external(req: ImportBody) -> dict:
+    return {"imported": store.import_external(req.paths)}
 
 
 @router.get("/{name}")

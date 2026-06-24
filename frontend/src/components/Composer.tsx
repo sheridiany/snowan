@@ -16,6 +16,7 @@ import {
   Telescope,
   Wand2,
   X,
+  Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import ModelSelect from './ModelSelect';
@@ -23,6 +24,7 @@ import ImageModelSelect from './draw/ImageModelSelect';
 import { EASING } from '../ui/motion';
 import type { Attachment } from '../api/chat';
 import type { ImgParams } from '../api/imagegen';
+import { listSkills } from '../api/skills';
 
 const ACCEPT = 'image/*,.txt,.md,.json,.csv,.log,.py,.ts,.tsx,.js,.yaml,.yml,.toml,.pdf,.docx,.xlsx,.xlsm,.pptx';
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -43,6 +45,7 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 12px 16px 18px;
   `,
   card: css`
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -279,6 +282,58 @@ const useStyles = createStyles(({ token, css }) => ({
     font-size: 11px;
     color: ${token.colorTextTertiary};
   `,
+  // Slash-command skill menu — floats just above the input card.
+  slashMenu: css`
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 20;
+    max-height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px;
+    border-radius: 14px;
+    background: ${token.colorBgElevated};
+    box-shadow: ${token.boxShadow};
+  `,
+  slashItem: css`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+    color: ${token.colorTextTertiary};
+    transition: background 0.12s ${EASING.standard};
+  `,
+  slashItemActive: css`
+    background: ${token.colorFillSecondary};
+    color: ${token.colorText};
+  `,
+  slashLabel: css`
+    flex: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: ${token.colorText};
+  `,
+  slashDesc: css`
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: ${token.colorTextTertiary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  slashHintKey: css`
+    flex: none;
+    font-size: 11px;
+    color: ${token.colorTextQuaternary};
+  `,
 }));
 
 const isGenericImageName = (f: File) =>
@@ -381,10 +436,29 @@ export default function Composer({
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
+  // Slash-command picker: the local power skills (with icons) merged with any other
+  // enabled backend skills (incl. imported external ones), so "/" surfaces the full
+  // enabled set — not just the chips.
+  const [extraSkills, setExtraSkills] = useState<
+    { id: string; label: string; desc: string; icon: LucideIcon }[]
+  >([]);
+  const [slashIdx, setSlashIdx] = useState(0);
 
   useEffect(() => {
     onModeChange?.(skill);
   }, [skill, onModeChange]);
+
+  useEffect(() => {
+    listSkills()
+      .then((list) =>
+        setExtraSkills(
+          list
+            .filter((s) => s.enabled && !SKILLS.some((k) => k.id === s.name))
+            .map((s) => ({ id: s.name, label: s.name, desc: s.description, icon: Zap })),
+        ),
+      )
+      .catch(() => {});
+  }, []);
 
   const imageMode = skill === 'image';
   // In image mode the send button also blocks on the image-gen request.
@@ -433,6 +507,29 @@ export default function Composer({
     addFiles(e.dataTransfer.files);
   };
 
+  // "/" at the very start opens a skill menu, filtered by the text after the slash.
+  const menuSkills = [
+    ...SKILLS.map((s) => ({ id: s.id, label: s.label, desc: '', icon: s.icon as LucideIcon })),
+    ...extraSkills,
+  ];
+  const slashMatch = busy ? null : /^\/(\S*)$/.exec(value);
+  const slashQuery = (slashMatch?.[1] ?? '').toLowerCase();
+  const slashItems = slashMatch
+    ? menuSkills.filter(
+        (s) =>
+          s.id.toLowerCase().includes(slashQuery) ||
+          s.label.toLowerCase().includes(slashQuery) ||
+          s.desc.toLowerCase().includes(slashQuery),
+      )
+    : [];
+  const slashOpen = slashItems.length > 0;
+  const slashActive = Math.min(slashIdx, Math.max(0, slashItems.length - 1));
+  const pickSlash = (id: string) => {
+    setSkill(id);
+    setValue('');
+    setSlashIdx(0);
+  };
+
   const submit = () => {
     const text = value.trim();
     if (busy) {
@@ -462,7 +559,7 @@ export default function Composer({
 
   return (
     <div className={styles.wrap}>
-      {!busy && (
+      {!busy && !slashOpen && (
         <div className={styles.skillRow}>
           {SKILLS.map((s) => {
             const Ico = s.icon;
@@ -488,6 +585,28 @@ export default function Composer({
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
       >
+        {slashOpen && (
+          <div className={styles.slashMenu}>
+            {slashItems.map((s, i) => {
+              const Ico = s.icon;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={cx(styles.slashItem, i === slashActive && styles.slashItemActive)}
+                  onMouseEnter={() => setSlashIdx(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pickSlash(s.id)}
+                >
+                  <Ico size={15} />
+                  <span className={styles.slashLabel}>{s.label}</span>
+                  {s.desc && <span className={styles.slashDesc}>{s.desc}</span>}
+                  {i === slashActive && <span className={styles.slashHintKey}>↵</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {attachments.length > 0 && (
           <div className={styles.chips}>
             {attachments.map((a, i) => {
@@ -523,9 +642,32 @@ export default function Composer({
         <TextArea
           className={styles.ta}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setSlashIdx(0);
+          }}
           onPaste={onPaste}
+          onKeyDown={(e) => {
+            if (!slashOpen) return;
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setSlashIdx((i) => (Math.min(i, slashItems.length - 1) + 1) % slashItems.length);
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setSlashIdx(
+                (i) => (Math.min(i, slashItems.length - 1) - 1 + slashItems.length) % slashItems.length,
+              );
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setValue('');
+            } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              pickSlash(slashItems[slashActive].id);
+            }
+          }}
           onPressEnter={(e) => {
+            // While the "/" skill menu is open, Enter picks a skill (handled in onKeyDown).
+            if (slashOpen) return;
             // While an IME candidate is composing (e.g. pinyin), Enter confirms the
             // candidate — never treat it as send, or CJK input sends half-typed text.
             if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
@@ -535,7 +677,7 @@ export default function Composer({
             }
           }}
           autoSize={{ minRows: 1, maxRows: 8 }}
-          placeholder={skill ? SKILL_PLACEHOLDER[skill] : '问点什么…(可粘贴或拖拽图片、文档)'}
+          placeholder={skill ? SKILL_PLACEHOLDER[skill] : '问点什么…'}
         />
 
         <div className={styles.bottomRow}>
@@ -615,11 +757,11 @@ export default function Composer({
           )}
         </div>
       </div>
-      <div className={styles.hint}>
-        {busy
-          ? 'Enter 插话(追加指令,不打断当前回答)· 方块按钮结束本回合'
-          : 'Enter 发送 · Shift + Enter 换行 · 支持图片 / 文档'}
-      </div>
+      {busy && (
+        <div className={styles.hint}>
+          Enter 插话(追加指令,不打断当前回答)· 方块按钮结束本回合
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button, Markdown, Text } from '@lobehub/ui';
-import { App, Dropdown, Input, Modal, Spin, Switch } from 'antd';
+import { App, Checkbox, Dropdown, Input, Modal, Spin, Switch } from 'antd';
 import { createStyles } from 'antd-style';
-import { ChevronRight, MoreHorizontal, Plus, Zap } from 'lucide-react';
+import { ChevronRight, DownloadCloud, Layers, MoreHorizontal, Plus, Zap } from 'lucide-react';
 import {
   listSkills,
   getSkill,
@@ -10,8 +10,11 @@ import {
   updateSkill,
   setEnabled,
   deleteSkill,
+  discoverExternalSkills,
+  importSkills,
   type Skill,
   type SkillDetail,
+  type ExternalSkill,
 } from '../../api/skills';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -119,6 +122,56 @@ const useStyles = createStyles(({ token, css }) => ({
     line-height: 1.5;
     color: ${token.colorTextTertiary};
   `,
+  badge: css`
+    display: inline-flex;
+    align-items: center;
+    height: 17px;
+    padding: 0 6px;
+    margin-left: 6px;
+    border-radius: 5px;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: ${token.colorTextTertiary};
+    background: ${token.colorFillSecondary};
+    vertical-align: middle;
+  `,
+  headBtns: css`
+    display: flex;
+    flex: none;
+    gap: 8px;
+  `,
+  impHead: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  `,
+  impList: css`
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 52vh;
+    overflow-y: auto;
+  `,
+  impRow: css`
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    &:hover {
+      background: ${token.colorFillQuaternary};
+    }
+  `,
+  impRowDone: css`
+    opacity: 0.5;
+    cursor: default;
+    &:hover {
+      background: transparent;
+    }
+  `,
 }));
 
 function SkillModal({
@@ -202,12 +255,124 @@ function SkillModal({
   );
 }
 
+function ImportModal({
+  open,
+  onClose,
+  onDone,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { styles, cx } = useStyles();
+  const { message } = App.useApp();
+  const [items, setItems] = useState<ExternalSkill[] | null>(null);
+  const [sel, setSel] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setItems(null);
+    setSel({});
+    discoverExternalSkills()
+      .then(setItems)
+      .catch(() => setItems([]));
+  }, [open]);
+
+  const importable = (items ?? []).filter((s) => !s.already);
+  const selCount = Object.values(sel).filter(Boolean).length;
+  const allSel = importable.length > 0 && importable.every((s) => sel[s.path]);
+  const toggleAll = () => {
+    if (allSel) return setSel({});
+    const next: Record<string, boolean> = {};
+    importable.forEach((s) => (next[s.path] = true));
+    setSel(next);
+  };
+  const doImport = async () => {
+    const paths = importable.filter((s) => sel[s.path]).map((s) => s.path);
+    if (!paths.length) return;
+    setBusy(true);
+    try {
+      const r = await importSkills(paths);
+      message.success(`已导入 ${r.imported.length} 个技能(默认关闭,按需启用)`);
+      onDone();
+      onClose();
+    } catch {
+      message.error('导入失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="从其它 Agent 导入技能"
+      open={open}
+      onCancel={onClose}
+      onOk={doImport}
+      okText={selCount ? `导入 ${selCount} 个` : '导入'}
+      okButtonProps={{ disabled: !selCount }}
+      cancelText="取消"
+      confirmLoading={busy}
+      width={600}
+      destroyOnHidden
+    >
+      {items === null ? (
+        <div className={styles.empty}>
+          <Spin />
+        </div>
+      ) : items.length === 0 ? (
+        <div className={styles.empty}>
+          <Layers size={26} />
+          没有发现可导入的技能
+          <div className={styles.hint} style={{ maxWidth: 340, textAlign: 'center' }}>
+            会扫描 ~/.claude/skills 与 ~/.agents/skills(Claude Code 等使用的标准目录)。把其它 Agent 的技能放到那里后再试。
+          </div>
+        </div>
+      ) : (
+        <div style={{ paddingTop: 4 }}>
+          <div className={styles.impHead}>
+            <span className={styles.hint}>
+              发现 {items.length} 个 · 可导入 {importable.length} 个
+            </span>
+            <Button size="small" type="text" onClick={toggleAll} disabled={!importable.length}>
+              {allSel ? '取消全选' : '全选'}
+            </Button>
+          </div>
+          <div className={styles.impList}>
+            {items.map((s) => (
+              <label key={s.path} className={cx(styles.impRow, s.already && styles.impRowDone)}>
+                <Checkbox
+                  checked={!!sel[s.path]}
+                  disabled={s.already}
+                  onChange={(e) => setSel((p) => ({ ...p, [s.path]: e.target.checked }))}
+                />
+                <div className={styles.body}>
+                  <div className={styles.name}>
+                    {s.name}
+                    <span className={styles.badge}>{s.source}</span>
+                  </div>
+                  <div className={styles.desc} style={s.description ? undefined : { fontStyle: 'italic' }}>
+                    {s.description || '未填写说明'}
+                  </div>
+                </div>
+                {s.already && <span className={styles.hint}>已导入</span>}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 export default function SettingsSkills() {
   const { styles, cx } = useStyles();
   const { message, modal } = App.useApp();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [openSet, setOpenSet] = useState<Record<string, SkillDetail | 'loading'>>({});
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<SkillDetail | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -278,9 +443,14 @@ export default function SettingsSkills() {
             教助手「怎么做某类事」的流程。相关时它会自动加载并照着做。启用的技能会注入到它的指令里。
           </div>
         </div>
-        <Button type="primary" icon={<Plus size={15} />} onClick={() => setAddOpen(true)}>
-          添加技能
-        </Button>
+        <div className={styles.headBtns}>
+          <Button icon={<DownloadCloud size={15} />} onClick={() => setImportOpen(true)}>
+            导入
+          </Button>
+          <Button type="primary" icon={<Plus size={15} />} onClick={() => setAddOpen(true)}>
+            添加技能
+          </Button>
+        </div>
       </div>
 
       {!loaded && !loadError ? (
@@ -318,7 +488,10 @@ export default function SettingsSkills() {
                     <Zap size={16} />
                   </span>
                   <div className={styles.body}>
-                    <div className={styles.name}>{s.name}</div>
+                    <div className={styles.name}>
+                      {s.name}
+                      {s.source === 'imported' && <span className={styles.badge}>导入</span>}
+                    </div>
                     <div className={styles.desc} style={s.description ? undefined : { fontStyle: 'italic' }}>
                       {s.description || '未填写说明'}
                     </div>
@@ -358,6 +531,7 @@ export default function SettingsSkills() {
 
       <SkillModal open={addOpen} onClose={() => setAddOpen(false)} onDone={load} />
       <SkillModal open={!!editing} edit={editing} onClose={() => setEditing(null)} onDone={load} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
     </div>
   );
 }

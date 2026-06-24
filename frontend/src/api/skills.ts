@@ -1,7 +1,20 @@
 import { api } from './base';
 
-export type Skill = { name: string; description: string; enabled: boolean; tags?: string[] };
+export type Skill = {
+  name: string;
+  description: string;
+  enabled: boolean;
+  tags?: string[];
+  source?: string | null;
+};
 export type SkillDetail = Skill & { body: string };
+export type ExternalSkill = {
+  name: string;
+  description: string;
+  source: string;
+  path: string;
+  already: boolean;
+};
 
 const j = <T>(r: Response): Promise<T> => {
   if (!r.ok) throw new Error(`${r.status}`);
@@ -31,3 +44,9 @@ export const setEnabled = (name: string, enabled: boolean) =>
 
 export const deleteSkill = (name: string) =>
   fetch(api(`/api/skills/${encodeURIComponent(name)}`), { method: 'DELETE' });
+
+export const discoverExternalSkills = () =>
+  fetch(api('/api/skills/external')).then((r) => j<ExternalSkill[]>(r));
+
+export const importSkills = (paths: string[]) =>
+  send<{ imported: Skill[] }>('POST', '/api/skills/import', { paths });
