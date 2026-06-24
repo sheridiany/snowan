@@ -22,6 +22,9 @@ pub struct SidecarState {
 /// quit events (CloseRequested/ExitRequested) are unreliable, so a previous run can
 /// leave an orphaned backend holding the port; reaping it here makes startup self-heal.
 fn free_port() {
+    // sh/lsof are macOS/Linux only; on Windows this is a best-effort no-op (the OS
+    // frees the port when the previous process exits).
+    #[cfg(not(windows))]
     let _ = std::process::Command::new("sh")
         .arg("-c")
         .arg("pids=$(lsof -ti tcp:8787 2>/dev/null); [ -n \"$pids\" ] && kill -9 $pids; exit 0")

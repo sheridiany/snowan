@@ -26,6 +26,15 @@ pub fn run() {
                 let win = app.get_webview_window("main").unwrap();
                 win.set_traffic_lights_inset(16.0, 20.0).unwrap();
             }
+            // Windows has no traffic-light overlay; the config keeps decorations ON for
+            // macOS's Overlay titleBarStyle, so strip the native frame here and let our
+            // React titlebar draw its own min/max/close (see TitleBar.tsx).
+            #[cfg(target_os = "windows")]
+            {
+                let win = app.get_webview_window("main").unwrap();
+                let _ = win.set_decorations(false);
+                let _ = win.set_shadow(true);
+            }
             // Launch the Python backend sidecar (dev: uv run from source · release:
             // the bundled PyInstaller binary). Async so setup doesn't block.
             let handle = app.handle().clone();
