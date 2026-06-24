@@ -6,7 +6,6 @@ import { motion } from 'motion/react';
 import {
   BookOpen,
   Calendar,
-  ChevronDown,
   ChevronLeft,
   Download,
   FileCode,
@@ -17,7 +16,6 @@ import {
   MessageSquare,
   Mic,
   PencilLine,
-  RotateCw,
   StickyNote,
   Trash2,
 } from 'lucide-react';
@@ -51,10 +49,12 @@ import { getPrefs } from '../../api/system';
 // and 文件夹 are wired to the backend; the rest are placeholders until their list
 // endpoints land.
 type SourceKey = 'notes' | 'folders' | 'calendar' | 'recording';
-type Source = { key: SourceKey; label: string; icon: LucideIcon };
+export type RightSource = { key: SourceKey; label: string; icon: LucideIcon };
 
+// The built-in knowledge sources. Exported so the top bar can render them as tabs
+// (App owns the active-source state; this panel renders the matching content).
 // 网页 and AI 对话 are intentionally omitted until a real list endpoint lands.
-const SOURCES: Source[] = [
+export const RIGHT_SOURCES: RightSource[] = [
   { key: 'notes', label: '笔记', icon: StickyNote },
   { key: 'folders', label: '文件夹', icon: FolderOpen },
   { key: 'calendar', label: '日程', icon: Calendar },
@@ -138,6 +138,50 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   chevron: css`
     color: ${token.colorTextTertiary};
+  `,
+  // Horizontal source tabs (Otty-style): icon-only when inactive, icon + label when active.
+  tabs: css`
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  `,
+  tab: css`
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 9px;
+    border-radius: ${token.borderRadius}px;
+    cursor: pointer;
+    color: ${token.colorTextTertiary};
+    font-size: 13px;
+    font-weight: 500;
+    transition:
+      background 0.15s ${EASING.standard},
+      color 0.15s ${EASING.standard};
+    &:hover {
+      background: ${token.colorFillTertiary};
+      color: ${token.colorText};
+    }
+  `,
+  tabActive: css`
+    background: ${token.colorFillSecondary};
+    color: ${token.colorPrimary};
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorPrimary};
+    }
+  `,
+  tabText: css`
+    white-space: nowrap;
   `,
   crumb: css`
     display: inline-flex;
@@ -367,17 +411,17 @@ function RightPanel({
   refreshKey,
   onOpenSettings,
   contextual,
-  autoSelect,
+  source,
 }: {
   refreshKey?: number;
   onOpenSettings?: () => void;
+  // The active source key — owned by App so the top bar renders the source tabs
+  // and this panel renders the matching content (one unified top bar).
+  source: string;
   // A view-provided source pinned to the top of the dropdown and selected by
   // default (e.g. 画图's 收藏). Lets a per-view panel live inside the one shared
   // RightPanel shell instead of being a bespoke right column.
   contextual?: { key: string; label: string; icon: LucideIcon; node: ReactNode };
-  // When this transitions to true, switch the panel to the contextual source
-  // (e.g. entering image mode auto-opens 收藏).
-  autoSelect?: boolean;
 }) {
   const { styles } = useStyles();
   const { message } = App.useApp();
@@ -388,9 +432,6 @@ function RightPanel({
     max: 560,
     side: 'left',
   });
-  const [source, setSource] = useState<string>(
-    autoSelect && contextual ? contextual.key : 'calendar',
-  );
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<KbFolder[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -407,24 +448,11 @@ function RightPanel({
       .catch(() => setOnboarded(true));
   }, []);
 
-  // When autoSelect turns on (e.g. entering image mode), switch to 收藏.
+  // Switching source closes any open note detail (source selection lives in the
+  // top bar now; App owns the active-source state).
   useEffect(() => {
-    if (autoSelect && contextual) setSource(contextual.key);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoSelect]);
-
-  // A refreshKey bump means a note was just saved elsewhere (App bumps it and
-  // opens the panel). Surface that note: jump to 笔记 instead of leaving the user
-  // on the default 日程 source where the fresh note isn't visible. Skip the first
-  // render so the initial default (calendar / contextual) is respected.
-  const prevRefreshKey = useRef(refreshKey);
-  useEffect(() => {
-    if (refreshKey !== prevRefreshKey.current) {
-      prevRefreshKey.current = refreshKey;
-      setSource('notes');
-      setOpen(null);
-    }
-  }, [refreshKey]);
+    setOpen(null);
+  }, [source]);
 
   // Fetch only what the active source needs; scope the spinner over all
   // in-flight requests with one finally. Returns a no-op for sources that
@@ -452,11 +480,6 @@ function RightPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, refreshKey]);
 
-  // The contextual source (if any) sits atop the built-in sources in the dropdown.
-  const sources: { key: string; label: string; icon: LucideIcon }[] = contextual
-    ? [{ key: contextual.key, label: contextual.label, icon: contextual.icon }, ...SOURCES]
-    : SOURCES;
-  const active = sources.find((s) => s.key === source) ?? sources[0];
   const isContextual = source === contextual?.key;
 
   // Play the list entrance stagger only the first time a source shows content;
@@ -526,7 +549,7 @@ function RightPanel({
             <span className={styles.back} onClick={() => setOpen(null)}>
               <ChevronLeft size={18} />
             </span>
-            <span className={styles.crumbTitle}>{active.label}</span>
+            <span className={styles.crumbTitle}>笔记</span>
           </span>
           <div className={styles.actions}>
             <ActionIcon icon={PencilLine} size="small" title="编辑" onClick={openEdit} />
@@ -602,34 +625,6 @@ function RightPanel({
 
   return (
     <aside className={styles.panel} style={{ width }}>
-      <div className={styles.header}>
-        <Dropdown
-          trigger={['click']}
-          menu={{
-            items: sources.map((s) => ({
-              key: s.key,
-              icon: <s.icon size={15} />,
-              label: s.label,
-            })),
-            onClick: ({ key }) => {
-              setSource(key);
-              setOpen(null);
-            },
-          }}
-        >
-          <span className={styles.source}>
-            <active.icon size={16} />
-            {active.label}
-            <ChevronDown size={15} className={styles.chevron} />
-          </span>
-        </Dropdown>
-        {!isContextual && (
-          <div className={styles.actions}>
-            <ActionIcon icon={RotateCw} size="small" title="刷新" onClick={() => fetchSource(source)} spin={loading} />
-          </div>
-        )}
-      </div>
-
       {isContextual ? (
         <div className={styles.ctxBody}>{contextual!.node}</div>
       ) : source === 'recording' ? (

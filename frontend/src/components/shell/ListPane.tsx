@@ -9,7 +9,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { SquarePenRounded } from './craftIcons';
 import { useResizableWidth } from './useResizableWidth';
 import { LAYOUT, TYPE } from '../../theme/themes';
 import DisplayHeading from '../../ui/DisplayHeading';
@@ -156,18 +155,13 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-function SideNav({ onNewChat }: Pick<NavProps, 'onNewChat'>) {
+function SideNav() {
   const { styles } = useStyles();
   return (
     <nav className={styles.nav}>
       <DisplayHeading level={3} className={styles.brand}>
         Snowan
       </DisplayHeading>
-      <Tooltip title="新建对话" placement="bottom">
-        <div className={styles.newBtn} onClick={onNewChat}>
-          <SquarePenRounded size={17} />
-        </div>
-      </Tooltip>
     </nav>
   );
 }
@@ -200,7 +194,6 @@ function SideFooter({ view, onView }: Pick<NavProps, 'view' | 'onView'>) {
 export function ListPane({
   view,
   onView,
-  onNewChat,
   children,
 }: NavProps & { children: ReactNode }) {
   const { styles } = useStyles();
@@ -213,7 +206,7 @@ export function ListPane({
   });
   return (
     <div className={styles.col} style={{ width }}>
-      <SideNav onNewChat={onNewChat} />
+      <SideNav />
       <div className={styles.scroll}>{children}</div>
       <SideFooter view={view} onView={onView} />
       <div className={styles.handle} onPointerDown={onResizeStart} />

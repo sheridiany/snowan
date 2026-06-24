@@ -1,8 +1,10 @@
 import { createStyles, cx } from 'antd-style';
-import { ChevronLeft, ChevronRight, Copy, Minus, Square, X } from 'lucide-react';
+import { Tooltip } from 'antd';
+import { ChevronLeft, Copy, Minus, Square, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { PanelLeftRounded, PanelRightRounded } from './craftIcons';
+import { PanelLeftRounded, PanelRightRounded, SquarePenRounded } from './craftIcons';
 import { EASING } from '../../ui/motion';
 import { TYPE } from '../../theme/themes';
 
@@ -36,6 +38,47 @@ const useStyles = createStyles(({ token, css }) => ({
     font-weight: 600;
     color: ${token.colorTextSecondary};
     pointer-events: none;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 8px;
+  `,
+  // Right-panel source tabs, hosted in the top bar (Otty-style): icon-only when
+  // inactive, icon + label when active.
+  tabs: css`
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  `,
+  tab: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: ${token.borderRadiusSM}px;
+    cursor: pointer;
+    color: ${token.colorTextTertiary};
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s ${EASING.standard}, color 0.15s ${EASING.standard};
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorText};
+    }
+  `,
+  tabActive: css`
+    background: ${token.colorFillSecondary};
+    color: ${token.colorPrimary};
+    &:hover {
+      background: ${token.colorFillSecondary};
+      color: ${token.colorPrimary};
+    }
+  `,
+  tabText: css`
+    white-space: nowrap;
   `,
   iconBtn: css`
     width: 28px;
@@ -107,23 +150,27 @@ type Props = {
   navCollapsed: boolean;
   rightOpen: boolean;
   canBack: boolean;
-  canForward: boolean;
   title?: string;
+  sources: { key: string; label: string; icon: LucideIcon }[];
+  activeSource: string;
+  onSelectSource: (key: string) => void;
+  onNewChat: () => void;
   onToggleNav: () => void;
   onToggleRight: () => void;
   onBack: () => void;
-  onForward: () => void;
 };
 
 export default function TitleBar({
   rightOpen,
   canBack,
-  canForward,
   title,
+  sources,
+  activeSource,
+  onSelectSource,
+  onNewChat,
   onToggleNav,
   onToggleRight,
   onBack,
-  onForward,
 }: Props) {
   const { styles } = useStyles();
 
@@ -206,22 +253,43 @@ export default function TitleBar({
       style={{ paddingLeft: IS_MAC ? 78 : 10, paddingRight: IS_MAC ? 10 : 0 }}
     >
       <Btn icon={<PanelLeftRounded size={18} />} label="折叠侧栏" onClick={onToggleNav} />
-      <Btn
-        icon={<ChevronLeft size={18} strokeWidth={1.5} />}
-        label="后退"
-        onClick={onBack}
-        disabled={!canBack}
-      />
-      <Btn
-        icon={<ChevronRight size={18} strokeWidth={1.5} />}
-        label="前进"
-        onClick={onForward}
-        disabled={!canForward}
-      />
+      <Btn icon={<SquarePenRounded size={17} />} label="新建对话" onClick={onNewChat} />
+      {canBack && (
+        <Btn
+          icon={<ChevronLeft size={18} strokeWidth={1.5} />}
+          label="后退"
+          onClick={onBack}
+        />
+      )}
 
       <div className={styles.spacer} data-tauri-drag-region>
         {title ? <span className={styles.title}>{title}</span> : null}
       </div>
+
+      {rightOpen && sources.length > 0 && (
+        <div className={styles.tabs}>
+          {sources.map((s) => {
+            const on = s.key === activeSource;
+            const Ico = s.icon;
+            return (
+              <Tooltip key={s.key} title={s.label} placement="bottom" mouseEnterDelay={0.4}>
+                <div
+                  className={cx(styles.tab, on && styles.tabActive)}
+                  data-tauri-drag-region="false"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={s.label}
+                  aria-pressed={on}
+                  onClick={() => onSelectSource(s.key)}
+                >
+                  <Ico size={16} />
+                  {on && <span className={styles.tabText}>{s.label}</span>}
+                </div>
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
 
       <Btn
         icon={<PanelRightRounded size={18} />}

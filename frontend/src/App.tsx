@@ -4,7 +4,7 @@ import { App as AntApp } from 'antd';
 import { Heart } from 'lucide-react';
 import { persistThemeMode } from './theme/themes';
 import TitleBar from './components/shell/TitleBar';
-import RightPanel from './components/shell/RightPanel';
+import RightPanel, { RIGHT_SOURCES } from './components/shell/RightPanel';
 import ChatView from './components/ChatView';
 import Composer from './components/Composer';
 import ImgLibraryPanel from './components/draw/ImgLibraryPanel';
@@ -74,6 +74,13 @@ export default function App() {
   // swaps to the 收藏 library so generated images land in context.
   const [imageMode, setImageMode] = useState(false);
   const [imgBusy, setImgBusy] = useState(false);
+  // The right panel's active source lives here so the top bar can render the
+  // source tabs while the panel renders the matching content (one unified bar).
+  const [rightSource, setRightSource] = useState('calendar');
+  // Entering image mode pins the panel to 收藏 so generated images land in view.
+  useEffect(() => {
+    if (imageMode) setRightSource('imagelib');
+  }, [imageMode]);
 
   // Image generation shows a pending turn immediately, then settles it once the
   // (30–60s) generation resolves.
@@ -158,17 +165,31 @@ export default function App() {
     [lib.library, lib.removeLibrary, message],
   );
 
+  // 收藏 (contextual) + the built-in sources, rendered as tabs in the top bar.
+  // Memoized so streaming chat re-renders don't rebuild the memoized RightPanel.
+  const rightContextual = useMemo(
+    () => ({ key: 'imagelib', label: '收藏', icon: Heart, node: imgLibNode }),
+    [imgLibNode],
+  );
+  const rightSources = useMemo(
+    () => [{ key: 'imagelib', label: '收藏', icon: Heart }, ...RIGHT_SOURCES],
+    [],
+  );
+
   return (
     <div className={styles.app}>
       <TitleBar
         navCollapsed={nav.listCollapsed}
         rightOpen={nav.rightOpen}
         canBack={nav.canBack}
-        canForward={nav.canForward}
+        title={nav.view === 'settings' ? '设置' : sessions.activeTitle}
+        sources={rightSources}
+        activeSource={rightSource}
+        onSelectSource={setRightSource}
+        onNewChat={handleNew}
         onToggleNav={nav.toggleNav}
         onToggleRight={nav.toggleRight}
         onBack={nav.back}
-        onForward={nav.forward}
       />
       <div className={styles.body}>
         <main className={styles.stage}>
@@ -187,7 +208,7 @@ export default function App() {
                   onDelete={handleDelete}
                 />
               )}
-              <DetailPane title={sessions.activeTitle}>
+              <DetailPane>
                 <ChatView
                   messages={chat.messages}
                   busy={chat.busy}
@@ -219,13 +240,8 @@ export default function App() {
             <RightPanel
               refreshKey={notesVersion}
               onOpenSettings={() => nav.go('settings')}
-              autoSelect={imageMode}
-              contextual={{
-                key: 'imagelib',
-                label: '收藏',
-                icon: Heart,
-                node: imgLibNode,
-              }}
+              source={rightSource}
+              contextual={rightContextual}
             />
           )}
         </main>
@@ -238,6 +254,7 @@ export default function App() {
         onClose={() => setNoteDraft((s) => ({ ...s, open: false }))}
         onSaved={() => {
           setNotesVersion((v) => v + 1);
+          setRightSource('notes'); // surface the just-saved note
           nav.openRight(); // reveal the panel so the saved note lands in view
         }}
       />

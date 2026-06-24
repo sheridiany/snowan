@@ -59,10 +59,12 @@ export default function DetailPane({
   const { styles, cx } = useStyles();
   return (
     <section className={cx(styles.detail, glow && styles.glow)}>
-      <header className={cx(styles.header, align === 'between' ? styles.between : styles.center)}>
-        <span className={styles.title}>{title}</span>
-        {align === 'between' && extra}
-      </header>
+      {(title || extra) && (
+        <header className={cx(styles.header, align === 'between' ? styles.between : styles.center)}>
+          <span className={styles.title}>{title}</span>
+          {align === 'between' && extra}
+        </header>
+      )}
       {children}
     </section>
   );
