@@ -11,7 +11,7 @@ import {
 import type { ReactNode } from 'react';
 import { SquarePenRounded } from './craftIcons';
 import { useResizableWidth } from './useResizableWidth';
-import { LAYOUT } from '../../theme/themes';
+import { LAYOUT, TYPE } from '../../theme/themes';
 import DisplayHeading from '../../ui/DisplayHeading';
 import { EASING } from '../../ui/motion';
 
@@ -37,9 +37,8 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: none;
     display: flex;
     flex-direction: column;
-    /* Ambient top spotlight layered over the solid container fill — large
-       surface, so no backdrop-filter (glass is reserved for overlays). */
-    background: ${token.colorSceneSpotlight}, ${token.colorBgContainer};
+    /* Solid container fill — large surface, single depth language (ring only). */
+    background: ${token.colorBgContainer};
     border-radius: ${token.borderRadiusLG}px;
     box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
@@ -83,14 +82,7 @@ const useStyles = createStyles(({ token, css }) => ({
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    background: linear-gradient(
-      135deg,
-      ${token.colorText} 0%,
-      ${token.colorTextSecondary} 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: ${token.colorText};
     user-select: none;
   `,
   newBtn: css`
@@ -120,7 +112,7 @@ const useStyles = createStyles(({ token, css }) => ({
   scroll: css`
     flex: 1;
     overflow-y: auto;
-    padding: 8px;
+    padding: 10px;
   `,
   footer: css`
     flex: none;
@@ -235,7 +227,7 @@ const useRowStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: ${LAYOUT.rowGap}px;
-    padding: 9px 10px;
+    padding: 11px 12px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;
     transition:
@@ -324,7 +316,7 @@ const useRowStyles = createStyles(({ token, css }) => ({
     gap: 1px;
   `,
   label: css`
-    font-size: 13px;
+    font-size: ${TYPE.dense}px;
     font-weight: 500;
     color: ${token.colorText};
     overflow: hidden;
@@ -332,7 +324,7 @@ const useRowStyles = createStyles(({ token, css }) => ({
     white-space: nowrap;
   `,
   sub: css`
-    font-size: 11px;
+    font-size: ${TYPE.small}px;
     color: ${token.colorTextTertiary};
     overflow: hidden;
     text-overflow: ellipsis;
@@ -340,7 +332,7 @@ const useRowStyles = createStyles(({ token, css }) => ({
   `,
   right: css`
     flex: none;
-    font-size: 11px;
+    font-size: ${TYPE.micro}px;
     color: ${token.colorTextQuaternary};
     transition: opacity 0.14s ease;
   `,
@@ -407,11 +399,11 @@ export function ListRow({
 const useGroupStyles = createStyles(({ token, css }) => ({
   group: css`
     padding: 14px 10px 5px;
-    font-size: 10.5px;
+    font-size: ${TYPE.micro}px;
     font-weight: 600;
     line-height: 1.2;
     text-transform: uppercase;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.04em;
     color: ${token.colorTextQuaternary};
     &:first-of-type {
       padding-top: 4px;

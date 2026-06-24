@@ -18,7 +18,7 @@ const useStyles = createStyles(({ token, css }) => ({
     box-shadow: ${token.shadowGlass};
   `,
   hero: css`
-    background: ${token.colorSceneSpotlight}, ${token.colorHeroGlow}, ${token.colorBgContainer};
+    background: ${token.colorHeroGlow}, ${token.colorBgContainer};
     box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
   `,

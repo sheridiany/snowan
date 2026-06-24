@@ -2,6 +2,7 @@ import { createStyles, cx } from 'antd-style';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PanelLeftRounded, PanelRightRounded } from './craftIcons';
 import { EASING } from '../../ui/motion';
+import { TYPE } from '../../theme/themes';
 
 const useStyles = createStyles(({ token, css }) => ({
   bar: css`
@@ -24,10 +25,8 @@ const useStyles = createStyles(({ token, css }) => ({
     justify-content: center;
   `,
   title: css`
-    font-family: ${token.fontFamilyDisplay};
-    font-size: 13px;
+    font-size: ${TYPE.dense}px;
     font-weight: 600;
-    letter-spacing: -0.01em;
     color: ${token.colorTextSecondary};
     pointer-events: none;
   `,
@@ -43,11 +42,14 @@ const useStyles = createStyles(({ token, css }) => ({
     color: ${token.colorTextSecondary};
     border: 1px solid transparent;
     transition: background 0.15s ${EASING.standard}, color 0.15s ${EASING.standard},
-      border-color 0.15s ${EASING.standard};
+      border-color 0.15s ${EASING.standard}, transform 0.15s ${EASING.standard};
     &:hover {
       background: ${token.colorFillSecondary};
       border-color: ${token.colorBorderSecondary};
       color: ${token.colorText};
+    }
+    &:active {
+      transform: scale(0.94);
     }
   `,
   disabled: css`

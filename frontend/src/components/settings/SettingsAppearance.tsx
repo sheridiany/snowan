@@ -4,7 +4,7 @@ import { Select, Switch } from 'antd';
 import { createStyles, cx, useThemeMode } from 'antd-style';
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { Row, Section } from './_kit';
-import { THEME_PRESETS, useThemePreset } from '../../theme/themes';
+import { THEME_PRESETS, TYPE, useThemePreset } from '../../theme/themes';
 import { EASING } from '../../ui/motion';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -88,7 +88,7 @@ const useStyles = createStyles(({ token, css }) => ({
     justify-content: space-between;
     gap: 6px;
     padding: 0 2px;
-    font-size: 12.5px;
+    font-size: ${TYPE.small}px;
     font-weight: 500;
     color: ${token.colorText};
   `,
@@ -218,10 +218,6 @@ export default function SettingsAppearance() {
                   <span
                     className={styles.bar}
                     style={{ background: pal.textTertiary, width: '42%' }}
-                  />
-                  <span
-                    className={styles.bar}
-                    style={{ background: pal.accent, width: '30%', height: 6 }}
                   />
                 </div>
                 <span className={styles.name}>

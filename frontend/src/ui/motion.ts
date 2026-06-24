@@ -33,16 +33,15 @@ export const fadeRise: Variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: STANDARD },
+    transition: { duration: 0.15, ease: STANDARD },
   },
 };
 
-// Parent that staggers its children in sequence.
+// Kept for API compatibility — no longer staggers; children just fade in
+// together (the design law dropped the cascade in favor of one quick entrance).
 export const staggerContainer: Variants = {
   hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.06, delayChildren: 0.04 },
-  },
+  visible: {},
 };
 
 // Child item for staggerContainer.
@@ -51,7 +50,7 @@ export const staggerItem: Variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.42, ease: STANDARD },
+    transition: { duration: 0.15, ease: STANDARD },
   },
 };
 

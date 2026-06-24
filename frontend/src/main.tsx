@@ -1,6 +1,7 @@
 // Self-hosted serif display face (offline — bundled, never a CDN). Provides
 // 'Fraunces Variable', the head of the fontFamilyDisplay stack.
 import '@fontsource-variable/fraunces';
+import './index.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider } from '@lobehub/ui';

@@ -12,7 +12,6 @@ import ToolGroup from './ToolGroup';
 import ApprovalCard from './ApprovalCard';
 import DiagramCard from './DiagramCard';
 import DisplayHeading from '../ui/DisplayHeading';
-import GradientThumb from '../ui/GradientThumb';
 import { EASING, fadeRise, lift, staggerContainer, staggerItem } from '../ui/motion';
 import { textOfBlocks, type Block, type Message, type ToolStep } from './types';
 
@@ -102,41 +101,42 @@ const useStyles = createStyles(({ token, css }) => ({
     z-index: 1;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 16px;
     width: 100%;
-    max-width: 500px;
+    max-width: 560px;
   `,
   promptCard: css`
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
+    gap: 14px;
+    padding: 16px 18px;
     border-radius: ${token.borderRadiusLG}px;
     background: ${token.colorBgContainer};
-    border: 1px solid ${token.colorBorderSecondary};
     box-shadow: ${token.boxShadowTertiary};
     text-align: left;
     cursor: pointer;
     transition:
-      border-color ${EASING.standard} 0.18s,
       box-shadow ${EASING.standard} 0.18s,
       background ${EASING.standard} 0.18s;
     &:hover {
       background: ${token.colorBgElevated};
-      border-color: ${token.colorBorder};
       box-shadow: ${token.boxShadowSecondary};
     }
     &:focus-visible {
       outline: none;
-      border-color: ${token.colorPrimary};
-      box-shadow: 0 0 0 3px ${token.colorBrandGlow};
+      box-shadow: ${token.boxShadowTertiary}, 0 0 0 3px ${token.colorBrandGlow};
     }
+  `,
+  promptIcon: css`
+    flex: none;
+    display: flex;
+    color: ${token.colorTextTertiary};
   `,
   promptText: css`
     flex: 1;
     min-width: 0;
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 14px;
+    line-height: 1.5;
     color: ${token.colorText};
   `,
   user: css`
@@ -151,9 +151,7 @@ const useStyles = createStyles(({ token, css }) => ({
     word-break: break-word;
     box-shadow:
       inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-      inset 0 -1px 0 0 rgba(0, 0, 0, 0.08),
-      0 2px 6px -2px ${token.colorBrandGlow},
-      0 10px 24px -10px ${token.colorBrandGlow};
+      0 4px 12px -4px rgba(0, 0, 0, 0.14);
   `,
   attachRow: css`
     display: flex;
@@ -329,8 +327,7 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 2px;
     padding: 3px;
     border-radius: ${token.borderRadius}px;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.62);
     opacity: 0;
     transition: opacity 0.15s ease;
     button,
@@ -446,14 +443,11 @@ type Props = {
   onPickPrompt?: (text: string) => void;
 };
 
-// Each card's GradientThumb is seeded by a stable index so its mesh color is
-// fixed per prompt and distinct from its neighbours (0..3 hash to four
-// different GRADIENT_ACCENTS buckets; the string seeds 'note'/'summary' collided).
 const SUGGESTED_PROMPTS = [
-  { text: '把这段对话存成笔记', icon: NotebookPen, seed: 0 },
-  { text: '总结一下今天的工作', icon: ListChecks, seed: 1 },
-  { text: '搜索最新的 AI 进展', icon: Search, seed: 2 },
-  { text: '帮我解释一段代码', icon: Code2, seed: 3 },
+  { text: '把这段对话存成笔记', icon: NotebookPen },
+  { text: '总结一下今天的工作', icon: ListChecks },
+  { text: '搜索最新的 AI 进展', icon: Search },
+  { text: '帮我解释一段代码', icon: Code2 },
 ] as const;
 
 export default function ChatView({
@@ -521,7 +515,9 @@ export default function ChatView({
                 {...(reduceMotion ? {} : { variants: staggerItem, whileHover: lift })}
                 onClick={() => onPickPrompt?.(p.text)}
               >
-                <GradientThumb seed={p.seed} size={36} radius={10} icon={p.icon} />
+                <span className={styles.promptIcon}>
+                  <p.icon size={18} strokeWidth={1.75} />
+                </span>
                 <span className={styles.promptText}>{p.text}</span>
               </motion.button>
             ))}

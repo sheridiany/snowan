@@ -26,15 +26,11 @@ import type { LucideIcon } from 'lucide-react';
 import CalendarSource from './CalendarSource';
 import { useResizableWidth } from './useResizableWidth';
 import DailyExpand from '../daily/DailyExpand';
-import { LAYOUT } from '../../theme/themes';
+import { LAYOUT, TYPE } from '../../theme/themes';
 import RecordingPanel from '../recording/RecordingPanel';
-import GradientThumb from '../../ui/GradientThumb';
 import IconOrb from '../../ui/IconOrb';
-import Stat from '../../ui/Stat';
-import StatusBadge from '../../ui/StatusBadge';
 import Surface from '../../ui/Surface';
 import DisplayHeading from '../../ui/DisplayHeading';
-import { CHART_COLORS } from '../../ui/gradients';
 import { EASING, staggerContainer, staggerItem } from '../../ui/motion';
 import {
   listNotes,
@@ -200,7 +196,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   detailCard: css`
     margin: 6px 0 16px;
-    padding: 18px 18px 16px;
+    padding: 20px 24px;
   `,
   detailTitle: css`
     margin: 0 0 10px;
@@ -209,7 +205,7 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     color: ${token.colorTextTertiary};
     font-variant-numeric: tabular-nums;
   `,
@@ -221,43 +217,37 @@ const useStyles = createStyles(({ token, css }) => ({
       margin-top: 0;
     }
   `,
-  // The stats band atop the 笔记 list — a restrained row of real metrics.
-  statBand: css`
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin: 2px 2px 12px;
+  // A single restrained line of real metrics atop the 笔记 list — no cards, no color.
+  statLine: css`
+    margin: 2px 2px 10px;
+    font-size: ${TYPE.small}px;
+    line-height: 1.5;
+    color: ${token.colorTextTertiary};
+    font-variant-numeric: tabular-nums;
   `,
-  // A Stat wrapped with a thin top-accent bar (CHART_COLORS) for a touch of color.
-  statCard: css`
-    position: relative;
-    border-radius: ${token.borderRadiusLG}px;
-    overflow: hidden;
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0 0 auto 0;
-      height: 2px;
-      border-radius: 2px;
-      background: var(--stat-accent);
-      opacity: 0.85;
-    }
+  // Monochrome icon chip: a lucide glyph on a faint quaternary fill.
+  rowIcon: css`
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: ${token.colorFillQuaternary};
+    color: ${token.colorTextTertiary};
   `,
-  // Rich note row: gradient cover + serif title + secondary snippet.
   noteRow: css`
     position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 9px 10px;
+    padding: 11px 12px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;
-    transition:
-      background 0.16s ${EASING.standard},
-      box-shadow 0.16s ${EASING.standard};
+    transition: background 0.16s ${EASING.standard};
     &:hover {
       background: ${token.colorFillTertiary};
-      box-shadow: ${token.boxShadowTertiary};
     }
     &:hover [data-rowdate] {
       opacity: 0;
@@ -274,18 +264,16 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 2px;
   `,
   noteTitle: css`
-    font-family: ${token.fontFamilyDisplay};
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.35;
-    letter-spacing: -0.01em;
+    font-size: ${TYPE.body}px;
+    font-weight: 500;
+    line-height: 1.4;
     color: ${token.colorText};
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   `,
   noteSnippet: css`
-    font-size: 11.5px;
+    font-size: ${TYPE.small}px;
     color: ${token.colorTextTertiary};
     overflow: hidden;
     text-overflow: ellipsis;
@@ -293,7 +281,7 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   noteRight: css`
     flex: none;
-    font-size: 11px;
+    font-size: ${TYPE.small}px;
     color: ${token.colorTextQuaternary};
     font-variant-numeric: tabular-nums;
     transition: opacity 0.14s ease;
@@ -354,17 +342,17 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
   emptyDesc: css`
     max-width: 240px;
-    font-size: 12.5px;
+    font-size: ${TYPE.small}px;
     line-height: 1.6;
     color: ${token.colorTextTertiary};
   `,
-  // Folder rows reuse the note-row shell but carry a folder gradient cover.
+  // Folder rows reuse the note-row shell with the same monochrome icon chip.
   folderRow: css`
     position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 9px 10px;
+    padding: 11px 12px;
     border-radius: ${token.borderRadius}px;
     cursor: default;
     transition: background 0.16s ${EASING.standard};
@@ -539,14 +527,13 @@ function RightPanel({
           </div>
         </div>
         <div className={styles.detail}>
-          <Surface variant="solid" glow className={styles.detailCard}>
+          <Surface variant="solid" className={styles.detailCard}>
             <DisplayHeading level={2} className={styles.detailTitle}>
               {open.title || '无标题'}
             </DisplayHeading>
             <div className={styles.detailMeta}>
-              <StatusBadge status={open.origin === 'chat' ? 'info' : 'neutral'}>
-                {open.origin === 'chat' ? '来自对话' : '手动创建'}
-              </StatusBadge>
+              <span>{open.origin === 'chat' ? '来自对话' : '手动创建'}</span>
+              <span>·</span>
               <span>{noteDate(open.updated_at)}</span>
             </div>
           </Surface>
@@ -633,7 +620,9 @@ function RightPanel({
               {folders.map((f) => (
                 <motion.div key={f.id} variants={staggerItem}>
                   <div className={styles.folderRow}>
-                    <GradientThumb seed={f.id} size={40} icon={Folder} />
+                    <span className={styles.rowIcon}>
+                      <Folder size={16} />
+                    </span>
                     <span className={styles.noteText}>
                       <span className={styles.noteTitle}>
                         {f.path.split('/').filter(Boolean).pop() || f.path}
@@ -662,50 +651,21 @@ function RightPanel({
           )
         ) : (
           <>
-            <div className={styles.statBand}>
-              <div
-                className={styles.statCard}
-                style={{ ['--stat-accent' as string]: CHART_COLORS[0] }}
-              >
-                <Stat
-                  value={notes.length}
-                  label="笔记"
-                  icon={StickyNote}
-                  accent
-                  trend={
-                    embReady === null
-                      ? undefined
-                      : embReady
-                        ? { status: 'success', text: '语义检索可用' }
-                        : { status: 'warning', text: '仅关键词' }
-                  }
-                />
-              </div>
-              <div
-                className={styles.statCard}
-                style={{ ['--stat-accent' as string]: CHART_COLORS[2] }}
-              >
-                <Stat
-                  value={chatNotes}
-                  label="来自对话"
-                  icon={MessageSquare}
-                  trend={
-                    notes.length - chatNotes > 0
-                      ? { status: 'neutral', text: `${notes.length - chatNotes} 手动创建` }
-                      : undefined
-                  }
-                />
-              </div>
+            <div className={styles.statLine}>
+              笔记 {notes.length} · 来自对话 {chatNotes} ·{' '}
+              {embReady === false ? '仅关键词' : '语义检索可用'}
             </div>
             <motion.div variants={staggerContainer} {...enterOnce('notes')}>
               {notes.map((n) => (
                 <motion.div key={n.id} variants={staggerItem}>
                   <div className={styles.noteRow} onClick={() => setOpen(n)}>
-                    <GradientThumb
-                      seed={n.id}
-                      size={40}
-                      icon={n.origin === 'chat' ? MessageSquare : PencilLine}
-                    />
+                    <span className={styles.rowIcon}>
+                      {n.origin === 'chat' ? (
+                        <MessageSquare size={16} />
+                      ) : (
+                        <PencilLine size={16} />
+                      )}
+                    </span>
                     <span className={styles.noteText}>
                       <span className={styles.noteTitle}>{n.title || '无标题'}</span>
                       <span className={styles.noteSnippet}>{snippet(n.body)}</span>

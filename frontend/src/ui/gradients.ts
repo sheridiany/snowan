@@ -3,20 +3,11 @@
 // for note covers, welcome cards, empty states, and chart series. Vivid on
 // purpose; they read as playful accents over the restrained neutral shell.
 
-// 8 mesh/aurora accents spanning warm orange → rose → purple → indigo → cyan →
-// emerald → lemon. Mix of linear & radial for variety.
+// Two warm, low-key accent gradients — soft amber→orange large blocks that sit
+// quietly with the brand. Kept as a small set so nothing reads as neon confetti.
 export const GRADIENT_ACCENTS: string[] = [
-  'linear-gradient(135deg, #FF8A4C 0%, #FF5E8A 100%)', // warm orange → rose
-  'linear-gradient(135deg, #FF5E8A 0%, #A24BFF 100%)', // rose → violet
-  'linear-gradient(135deg, #7C5CFF 0%, #4C9AFF 100%)', // purple → indigo
-  'radial-gradient(120% 120% at 20% 10%, #4C9AFF 0%, #2DD4BF 100%)', // indigo → teal
-  'linear-gradient(135deg, #21D4FD 0%, #3B82F6 100%)', // cyan → blue
-  'linear-gradient(135deg, #2DD4BF 0%, #5BD672 100%)', // teal → emerald
-  // lemon → green and amber → orange are deepened a luminance notch from their
-  // candy-bright origins so GradientThumb's fixed white ink stays ≥3:1 legible
-  // across the whole cover (the bright originals dropped to ~1.5:1). Hues/sat held.
-  'radial-gradient(120% 120% at 80% 15%, #72A00D 0%, #0EAA2A 100%)', // lemon → green
-  'linear-gradient(135deg, #B8880F 0%, #ED6C26 100%)', // amber → orange
+  'linear-gradient(135deg, #D98A4E 0%, #C2703D 100%)', // soft amber → brand orange
+  'linear-gradient(135deg, #C99A5A 0%, #B5713A 100%)', // wheat → terracotta
 ];
 
 // 6 coordinated vivid data-series colors.

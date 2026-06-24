@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import { createStyles } from 'antd-style';
 import IconOrb from './IconOrb';
 import StatusBadge, { type BadgeStatus } from './StatusBadge';
+import { TYPE } from '../theme/themes';
 
 const useStyles = createStyles(({ token, css }) => ({
   root: css`
@@ -18,14 +19,14 @@ const useStyles = createStyles(({ token, css }) => ({
   value: css`
     font-family: ${token.fontFamilyDisplay};
     font-variant-numeric: tabular-nums;
-    font-size: 32px;
-    font-weight: 480;
+    font-size: ${TYPE.page}px;
+    font-weight: 600;
     line-height: 1.05;
     letter-spacing: -0.02em;
     color: ${token.colorText};
   `,
   label: css`
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     font-weight: 500;
     color: ${token.colorTextSecondary};
   `,

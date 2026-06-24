@@ -5,6 +5,7 @@ import { createStyles } from 'antd-style';
 import { Check } from 'lucide-react';
 import type { ReactNode } from 'react';
 import DisplayHeading from '../../ui/DisplayHeading';
+import { TYPE } from '../../theme/themes';
 
 const useStyles = createStyles(({ token, css }) => ({
   section: css`
@@ -18,11 +19,8 @@ const useStyles = createStyles(({ token, css }) => ({
     gap: 3px;
     padding: 0 2px;
   `,
-  sectionTitle: css`
-    font-size: 16px;
-  `,
   sectionSub: css`
-    font-size: 12.5px;
+    font-size: ${TYPE.small}px;
     line-height: 1.5;
     color: ${token.colorTextTertiary};
   `,
@@ -57,12 +55,12 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13.5px;
+    font-size: ${TYPE.dense}px;
     font-weight: 500;
     color: ${token.colorText};
   `,
   rowSub: css`
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     line-height: 1.5;
     color: ${token.colorTextTertiary};
   `,
@@ -82,12 +80,12 @@ const useStyles = createStyles(({ token, css }) => ({
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     font-weight: 500;
     color: ${token.colorSuccess};
   `,
   unset: css`
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     color: ${token.colorTextQuaternary};
   `,
 }));
@@ -109,11 +107,7 @@ export function Section({
     <div className={styles.section}>
       {(title || subtitle) && (
         <div className={styles.sectionHead}>
-          {title && (
-            <DisplayHeading level={3} className={styles.sectionTitle}>
-              {title}
-            </DisplayHeading>
-          )}
+          {title && <DisplayHeading level={4}>{title}</DisplayHeading>}
           {subtitle && <Text className={styles.sectionSub}>{subtitle}</Text>}
         </div>
       )}

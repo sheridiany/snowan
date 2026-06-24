@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { createStyles } from 'antd-style';
+import { TYPE } from '../theme/themes';
 
 const useStyles = createStyles(({ token, css }) => ({
   detail: css`
@@ -13,10 +14,10 @@ const useStyles = createStyles(({ token, css }) => ({
     box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
   `,
-  // Ambient top spotlight + a stronger hero bloom, layered above the base
-  // container fill. No backdrop-filter here — this is a large surface.
+  // A single soft hero bloom layered above the base container fill (opt-in via
+  // the glow prop). No backdrop-filter here — this is a large surface.
   glow: css`
-    background: ${token.colorHeroGlow}, ${token.colorSceneSpotlight}, ${token.colorBgContainer};
+    background: ${token.colorHeroGlow}, ${token.colorBgContainer};
   `,
   header: css`
     flex: none;
@@ -33,10 +34,8 @@ const useStyles = createStyles(({ token, css }) => ({
     justify-content: space-between;
   `,
   title: css`
-    font-family: ${token.fontFamilyDisplay};
-    font-size: 15px;
+    font-size: ${TYPE.section}px;
     font-weight: 600;
-    letter-spacing: -0.01em;
     color: ${token.colorText};
     overflow: hidden;
     text-overflow: ellipsis;

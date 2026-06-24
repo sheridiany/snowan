@@ -4,6 +4,7 @@ import { createStyles } from 'antd-style';
 import { Maximize2, Moon } from 'lucide-react';
 
 import { ConflictError, getDaily, saveDaily } from '../../api/daily';
+import { TYPE } from '../../theme/themes';
 
 // The compact daily-note jotter shown under the selected-day events inside the
 // 日程 right-panel source. Quick capture only: drafting (晚复盘) and serious
@@ -28,7 +29,7 @@ const useStyles = createStyles(({ token, css }) => ({
     margin: 0 2px 6px;
   `,
   label: css`
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     color: ${token.colorTextTertiary};
     margin-right: auto;
   `,
@@ -39,7 +40,7 @@ const useStyles = createStyles(({ token, css }) => ({
     height: 24px;
     padding: 0 8px;
     border-radius: ${token.borderRadiusSM}px;
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     color: ${token.colorTextSecondary};
     cursor: pointer;
     transition: background 0.12s ease, color 0.12s ease;
@@ -60,7 +61,7 @@ const useStyles = createStyles(({ token, css }) => ({
     resize: none;
     background: ${token.colorFillQuaternary};
     color: ${token.colorText};
-    font-size: 13px;
+    font-size: ${TYPE.dense}px;
     line-height: 1.6;
     transition: border-color 0.12s ease, background 0.12s ease;
     &:focus {
@@ -71,7 +72,7 @@ const useStyles = createStyles(({ token, css }) => ({
   hint: css`
     height: 16px;
     margin: 4px 2px 0;
-    font-size: 11px;
+    font-size: ${TYPE.micro}px;
     color: ${token.colorTextQuaternary};
   `,
 }));

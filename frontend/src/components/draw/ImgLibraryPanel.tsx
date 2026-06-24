@@ -5,6 +5,7 @@ import { createStyles } from 'antd-style';
 import { Copy, Heart, Trash2 } from 'lucide-react';
 
 import { imageFileUrl, type LibraryEntry } from '../../api/imagegen';
+import { TYPE } from '../../theme/themes';
 
 const useStyles = createStyles(({ token, css }) => ({
   // Embedded inside RightPanel: the host provides the chrome, header and width.
@@ -26,7 +27,7 @@ const useStyles = createStyles(({ token, css }) => ({
   card: css`
     border-radius: ${token.borderRadiusLG}px;
     overflow: hidden;
-    background: ${token.colorFillQuaternary};
+    background: ${token.colorFillTertiary};
     border: 1px solid ${token.colorBorderSecondary};
     &:hover .lib-actions {
       opacity: 1;
@@ -56,7 +57,6 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadius}px;
     /* Dark scrim + forced white icons: legible over any photo, both themes. */
     background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(6px);
     opacity: 0;
     transition: opacity 0.15s ease;
     button {
@@ -71,7 +71,7 @@ const useStyles = createStyles(({ token, css }) => ({
     padding: 8px 10px 10px;
   `,
   prompt: css`
-    font-size: 12px;
+    font-size: ${TYPE.small}px;
     line-height: 1.5;
     color: ${token.colorTextSecondary};
     display: -webkit-box;

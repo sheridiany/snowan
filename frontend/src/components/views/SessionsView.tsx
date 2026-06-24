@@ -18,9 +18,9 @@ import { ListPane, type NavProps } from '../shell/ListPane';
 import type { Session, SessionStatus } from '../types';
 import StatusBadge, { type BadgeStatus } from '../../ui/StatusBadge';
 import GradientThumb from '../../ui/GradientThumb';
-import IconOrb from '../../ui/IconOrb';
 import DisplayHeading from '../../ui/DisplayHeading';
-import { EASING, staggerContainer, staggerItem } from '../../ui/motion';
+import { TYPE } from '../../theme/themes';
+import { EASING, fadeRise } from '../../ui/motion';
 
 // Relative time in Chinese from a past epoch ms: "刚刚" / "3分钟" / "5小时" / "19天".
 function relTime(ts: number): string {
@@ -51,8 +51,8 @@ const NEXT: Record<SessionStatus, SessionStatus> = {
 };
 
 const useStyles = createStyles(({ token, css }) => {
-  // Soft tinted pill for tags — same language as StatusBadge (rgba fill + inset
-  // ring, no border, no dot), seeded from a neutral token (no color-mix).
+  // Soft tinted pill for tags — flat rgba fill (no ring, no border, no dot),
+  // seeded from a neutral token (no color-mix).
   const rgb = (hex: string) => {
     const c = hex.replace('#', '');
     if (c.length !== 6) return '120, 120, 120';
@@ -87,10 +87,10 @@ const useStyles = createStyles(({ token, css }) => {
   `,
   sectionLabel: css`
     flex: 1;
-    font-size: 11px;
+    font-size: ${TYPE.micro}px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     color: ${token.colorTextSecondary};
   `,
   row: css`
@@ -98,7 +98,7 @@ const useStyles = createStyles(({ token, css }) => {
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    padding: 9px 10px;
+    padding: 10px 12px;
     border-radius: ${token.borderRadius}px;
     cursor: pointer;
     transition: background 0.16s ${EASING.standard};
@@ -184,7 +184,7 @@ const useStyles = createStyles(({ token, css }) => {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
   `,
   rowTop: css`
     display: flex;
@@ -197,7 +197,7 @@ const useStyles = createStyles(({ token, css }) => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 13px;
+    font-size: ${TYPE.dense}px;
     color: ${token.colorText};
   `,
   rowTitleDone: css`
@@ -205,7 +205,7 @@ const useStyles = createStyles(({ token, css }) => {
   `,
   time: css`
     flex: none;
-    font-size: 11px;
+    font-size: ${TYPE.micro}px;
     color: ${token.colorTextQuaternary};
   `,
   more: css`
@@ -236,37 +236,38 @@ const useStyles = createStyles(({ token, css }) => {
     height: 18px;
     padding: 0 7px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: ${TYPE.micro}px;
     line-height: 1;
     color: rgba(${tagTint}, 1);
-    background: rgba(${tagTint}, 0.12);
-    box-shadow: inset 0 0 0 1px rgba(${tagTint}, 0.22);
+    background: rgba(${tagTint}, 0.1);
+  `,
+  tagMore: css`
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    font-size: ${TYPE.micro}px;
+    line-height: 1;
+    color: ${token.colorTextQuaternary};
   `,
   empty: css`
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 56px 24px 40px;
-    gap: 16px;
+    padding: 80px 24px 56px;
+    gap: 18px;
   `,
   emptyArt: css`
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-  `,
-  emptyOrb: css`
-    position: absolute;
-    right: -8px;
-    bottom: -8px;
   `,
   emptyTitle: css`
     margin: 4px 0 0;
   `,
   emptyDesc: css`
     max-width: 220px;
-    font-size: 12.5px;
+    font-size: ${TYPE.small}px;
     line-height: 1.6;
     color: ${token.colorTextTertiary};
   `,
@@ -330,9 +331,6 @@ export default function SessionsView({
         <div className={styles.empty}>
           <div className={styles.emptyArt}>
             <GradientThumb seed="sessions-empty" size={72} radius={20} icon={MessagesSquare} />
-            <span className={styles.emptyOrb}>
-              <IconOrb icon={Pencil} size="sm" tone="brand" />
-            </span>
           </div>
           <DisplayHeading level={3} className={styles.emptyTitle}>
             还没有会话
@@ -356,18 +354,16 @@ export default function SessionsView({
                 </StatusBadge>
               </div>
               {!isCollapsed && (
-                <motion.div
-                  variants={staggerContainer}
-                  initial={reduceMotion ? false : 'hidden'}
-                  animate="visible"
-                >
+                <div>
                 {items.map((s) => {
                   const active = s.id === activeId;
                   const done = s.status === 'done';
                   return (
                     <motion.div
                       key={s.id}
-                      variants={reduceMotion ? undefined : staggerItem}
+                      variants={reduceMotion ? undefined : fadeRise}
+                      initial={reduceMotion ? false : 'hidden'}
+                      animate="visible"
                       className={cx(styles.row, active && styles.rowActive)}
                       onClick={() => onSelect(s.id)}
                     >
@@ -396,7 +392,7 @@ export default function SessionsView({
                               size="small"
                               autoFocus
                               variant="borderless"
-                              style={{ flex: 1, padding: 0, height: 18, fontSize: 13 }}
+                              style={{ flex: 1, padding: 0, height: 18, fontSize: TYPE.dense }}
                               value={editVal}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) => setEditVal(e.target.value)}
@@ -446,18 +442,21 @@ export default function SessionsView({
                         </div>
                         {s.tags.length > 0 && (
                           <Flexbox className={styles.tags}>
-                            {s.tags.map((t) => (
+                            {s.tags.slice(0, 2).map((t) => (
                               <span key={t} className={styles.tag}>
                                 {t}
                               </span>
                             ))}
+                            {s.tags.length > 2 && (
+                              <span className={styles.tagMore}>+{s.tags.length - 2}</span>
+                            )}
                           </Flexbox>
                         )}
                       </div>
                     </motion.div>
                   );
                 })}
-                </motion.div>
+                </div>
               )}
             </div>
           );

@@ -22,13 +22,7 @@ import { useSessions } from './hooks/useSessions';
 import { useChat } from './hooks/useChat';
 import { useImageLibrary } from './hooks/useImageLibrary';
 
-// A tiled fractal-noise texture (inline SVG data URI) overlaid app-wide for a
-// matte / frosted grain. Theme-agnostic: the blend mode flips per appearance so
-// the grain darkens on light themes and lightens on dark ones.
-const NOISE_URL =
-  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='1.3'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E\")";
-
-const useStyles = createStyles(({ token, css, isDarkMode }) => ({
+const useStyles = createStyles(({ token, css }) => ({
   app: css`
     position: relative;
     height: 100vh;
@@ -38,22 +32,6 @@ const useStyles = createStyles(({ token, css, isDarkMode }) => ({
     color: ${token.colorText};
     font-feature-settings: 'cv11' 1, 'ss01' 1;
     font-variant-numeric: tabular-nums;
-    /* The grain sits just above the scene bg and beneath everything else. Keep
-       its z-index at 0 and never give an in-flow child of .app a positive
-       z-index, or the grain will paint inconsistently (some surfaces grained,
-       some not). Floating chrome — modals, popovers — renders in body-level
-       portals (antd), so it stays above the grain regardless. */
-    &::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      background-image: ${NOISE_URL};
-      background-size: 140px 140px;
-      opacity: ${isDarkMode ? 0.1 : 0.065};
-      mix-blend-mode: ${isDarkMode ? 'screen' : 'multiply'};
-    }
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,
@@ -209,7 +187,7 @@ export default function App() {
                   onDelete={handleDelete}
                 />
               )}
-              <DetailPane title={sessions.activeTitle} glow>
+              <DetailPane title={sessions.activeTitle}>
                 <ChatView
                   messages={chat.messages}
                   busy={chat.busy}
