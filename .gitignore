@@ -28,3 +28,4 @@ frontend/src-tauri/binaries/
 # build caches + agent session/worktrees
 *.tsbuildinfo
 .claude/
+extension/dist/

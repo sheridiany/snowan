@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Snowan 剪藏",
+  "version": "0.1.0",
+  "description": "把网页正文、AI 对话(ChatGPT/Claude/Gemini/豆包)和划词选中内容一键存进本地 Snowan 知识库,并由本地 AI 自动分类与打标签。数据只发到你本机,不上传任何第三方。",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "contextMenus",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8787/*",
+    "http://localhost:8787/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.doubao.com/*",
+    "https://doubao.com/*"
+  ],
+  "action": {
+    "default_title": "Snowan 剪藏",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "options_page": "src/options.html",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>Snowan 剪藏</title>
+  </head>
+  <body>
+    <header class="hd">
+      <div class="logo">❄</div>
+      <div class="hd-text">
+        <div class="hd-title">Snowan 剪藏</div>
+        <div class="hd-sub" id="kind-hint">正在识别页面…</div>
+      </div>
+    </header>
+
+    <main class="body">
+      <button id="capture-btn" class="primary" disabled>剪藏本页</button>
+      <button id="capture-selection" class="ghost" hidden>剪藏选中内容</button>
+
+      <div id="result" class="result" hidden>
+        <div class="result-title" id="result-title"></div>
+        <div class="result-row">
+          <span class="cat" id="result-cat"></span>
+          <span class="tags" id="result-tags"></span>
+        </div>
+      </div>
+
+      <div id="message" class="message" hidden></div>
+    </main>
+
+    <footer class="ft">
+      <span class="status" id="status">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">检查连接中…</span>
+      </span>
+      <button id="open-options" class="link">设置</button>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
