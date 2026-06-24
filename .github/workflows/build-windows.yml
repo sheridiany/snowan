@@ -22,9 +22,20 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
+      # Freeze against a standard python.org CPython (setup-python), NOT uv's
+      # python-build-standalone interpreter — the standalone build, once frozen by
+      # PyInstaller, can fail to load python3xx.dll on other Windows machines
+      # (LoadLibrary access violation 998). only-system makes uv reuse this one.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       # 1) Freeze the Python backend into binaries/snowan-backend/snowan-backend.exe
       - name: Build backend (PyInstaller)
         working-directory: backend
+        env:
+          UV_PYTHON_PREFERENCE: only-system
+          UV_PYTHON: '3.12'
         run: |
           uv sync
           uv pip install "pyinstaller>=6.0.0" "pyinstaller-hooks-contrib>=2024.9"
