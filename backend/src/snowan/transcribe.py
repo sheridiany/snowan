@@ -13,6 +13,7 @@ CACHE_DIR = SNOWAN_HOME / "models"  # shared, user-visible app model dir
 
 _model = None  # WhisperModel singleton
 _downloading = False
+_error: str | None = None  # last download failure, surfaced to the Settings UI
 _lock = threading.Lock()
 
 
@@ -39,16 +40,25 @@ def is_downloading() -> bool:
     return _downloading
 
 
+def last_error() -> str | None:
+    return _error
+
+
 def download() -> None:
-    """Explicitly fetch the model (blocks until done). Safe to call when ready."""
-    global _downloading
+    """Explicitly fetch the model (blocks until done). Safe to call when ready. On
+    failure the error is captured (not raised) so the Settings UI can show it instead
+    of silently flipping back to 'download'."""
+    global _downloading, _error
     with _lock:
         if _downloading:
             return
         _downloading = True
+        _error = None
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         _build()  # instantiating downloads the weights into CACHE_DIR
+    except Exception as e:  # noqa: BLE001 — surface any failure to the UI
+        _error = str(e) or e.__class__.__name__
     finally:
         _downloading = False
 

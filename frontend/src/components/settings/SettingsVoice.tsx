@@ -51,6 +51,16 @@ const useStyles = createStyles(({ token, css }) => ({
     font-weight: 500;
     color: ${token.colorSuccess};
   `,
+  err: css`
+    margin-top: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: ${token.colorErrorBg};
+    color: ${token.colorError};
+    font-size: 12px;
+    line-height: 1.5;
+    word-break: break-word;
+  `,
   hint: css`
     font-size: 12.5px;
     line-height: 1.6;
@@ -108,10 +118,13 @@ export default function SettingsVoice() {
             </Button>
           ) : (
             <Button size="small" type="primary" icon={<DownloadCloud size={15} />} onClick={start}>
-              下载模型
+              {status?.error ? '重试下载' : '下载模型'}
             </Button>
           )}
         </div>
+        {status?.error && !status.downloading && (
+          <div className={styles.err}>下载失败:{status.error}</div>
+        )}
       </Section>
 
       <Section title="怎么用" bare>

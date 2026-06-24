@@ -39,6 +39,7 @@ def asr_status() -> dict:
         "size_mb": transcribe.SIZE_MB,
         "ready": transcribe.is_ready(),
         "downloading": transcribe.is_downloading(),
+        "error": transcribe.last_error(),
     }
 
 

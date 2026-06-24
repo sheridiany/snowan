@@ -42,6 +42,7 @@ export type AsrStatus = {
   size_mb: number;
   ready: boolean;
   downloading: boolean;
+  error?: string | null;
 };
 
 export const getAsrStatus = () => fetch(api('/api/recordings/asr')).then((r) => j<AsrStatus>(r));
