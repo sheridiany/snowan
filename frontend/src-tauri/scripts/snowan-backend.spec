@@ -122,6 +122,11 @@ analysis = Analysis(
     noarchive=False,
 )
 
+# strip corrupts the Python DLL / bootloader on Windows (python3xx.dll fails to load
+# with a LoadLibrary access violation), so only strip on macOS/Linux where it safely
+# shrinks the bundle.
+_STRIP = sys.platform != "win32"
+
 pyz = PYZ(analysis.pure)
 
 exe = EXE(
@@ -131,7 +136,7 @@ exe = EXE(
     name="snowan-backend",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
+    strip=_STRIP,
     # UPX triggers antivirus false positives and can corrupt binaries.
     upx=False,
     console=False,
@@ -146,7 +151,7 @@ coll = COLLECT(
     exe,
     analysis.binaries,
     analysis.datas,
-    strip=True,
+    strip=_STRIP,
     upx=False,
     name="snowan-backend",
 )
