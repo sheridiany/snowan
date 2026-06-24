@@ -28,6 +28,7 @@ import type { Attachment } from '../api/chat';
 import type { ImgParams } from '../api/imagegen';
 import { listSkills } from '../api/skills';
 import { transcribeAudio } from '../api/recording';
+import { createNote } from '../api/knowledge';
 
 const ACCEPT = 'image/*,.txt,.md,.json,.csv,.log,.py,.ts,.tsx,.js,.yaml,.yml,.toml,.pdf,.docx,.xlsx,.xlsm,.pptx';
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -333,6 +334,12 @@ const useStyles = createStyles(({ token, css }) => ({
     font-weight: 500;
     color: ${token.colorText};
   `,
+  slashSub: css`
+    flex: none;
+    font-size: 11px;
+    color: ${token.colorTextQuaternary};
+    font-family: ${token.fontFamilyCode};
+  `,
   slashDesc: css`
     flex: 1;
     min-width: 0;
@@ -351,6 +358,14 @@ const useStyles = createStyles(({ token, css }) => ({
 
 const isGenericImageName = (f: File) =>
   (f.type || '').startsWith('image/') && (!f.name || /^(image|blob)/i.test(f.name));
+
+// Imported external skills carry an English `name` (e.g. analyze-data). Prefer a friendly
+// label from the first Chinese segment of `description` (up to —— / : / 。/ newline);
+// fall back to the name when there's no usable description.
+const friendlyLabel = (name: string, description: string): string => {
+  const head = (description || '').split(/——|[:：。\n]/)[0].trim();
+  return head || name;
+};
 
 // The 4 power skills launched from below the input. The id is the built-in skill name
 // the backend activates for the turn (server/skills_builtin/<id>/SKILL.md).
@@ -454,7 +469,7 @@ export default function Composer({
   // enabled backend skills (incl. imported external ones), so "/" surfaces the full
   // enabled set — not just the chips.
   const [extraSkills, setExtraSkills] = useState<
-    { id: string; label: string; desc: string; icon: LucideIcon }[]
+    { id: string; label: string; sub?: string; desc: string; icon: LucideIcon }[]
   >([]);
   const [slashIdx, setSlashIdx] = useState(0);
   const [recording, setRecording] = useState(false);
@@ -472,7 +487,13 @@ export default function Composer({
         setExtraSkills(
           list
             .filter((s) => s.enabled && !SKILLS.some((k) => k.id === s.name))
-            .map((s) => ({ id: s.name, label: s.name, desc: s.description, icon: Zap })),
+            .map((s) => ({
+              id: s.name,
+              label: friendlyLabel(s.name, s.description),
+              sub: s.name,
+              desc: s.description,
+              icon: Zap,
+            })),
         ),
       )
       .catch(() => {});
@@ -526,7 +547,7 @@ export default function Composer({
   };
 
   // "/" at the very start opens a skill menu, filtered by the text after the slash.
-  const menuSkills = [
+  const menuSkills: { id: string; label: string; sub?: string; desc: string; icon: LucideIcon }[] = [
     ...SKILLS.map((s) => ({ id: s.id, label: s.label, desc: '', icon: s.icon as LucideIcon })),
     ...extraSkills,
   ];
@@ -575,6 +596,30 @@ export default function Composer({
     onSend(text, atts, skill ?? undefined);
   };
 
+  // After a transcription lands in the input, offer to also save it as a note (besides
+  // filling the input). Title is the first 20 chars; origin marks it as voice-captured.
+  const saveTranscriptNote = (text: string) => {
+    const key = `voice-note-${Date.now()}`;
+    message.success({
+      key,
+      content: (
+        <span>
+          已转写并填入输入框{' '}
+          <a
+            onClick={() => {
+              message.destroy(key);
+              createNote({ body: text, title: text.slice(0, 20), origin: 'voice' })
+                .then(() => message.success('已存为笔记'))
+                .catch(() => message.error('存为笔记失败'));
+            }}
+          >
+            存为笔记
+          </a>
+        </span>
+      ),
+    });
+  };
+
   // Voice input: record from the mic, transcribe locally, append the text to the input.
   const startVoice = async () => {
     try {
@@ -594,7 +639,10 @@ export default function Composer({
           const t = (text || '').trim();
           if (!t) message.info('没听清,再说一次试试');
           else if (/未下载|未安装/.test(t)) message.warning(t);
-          else setValue((v) => (v ? `${v.replace(/\s*$/, '')} ${t}` : t));
+          else {
+            setValue((v) => (v ? `${v.replace(/\s*$/, '')} ${t}` : t));
+            saveTranscriptNote(t);
+          }
         } catch {
           message.error('转写失败');
         } finally {
@@ -658,6 +706,9 @@ export default function Composer({
                 >
                   <Ico size={15} />
                   <span className={styles.slashLabel}>{s.label}</span>
+                  {s.sub && s.sub !== s.label && (
+                    <span className={styles.slashSub}>{s.sub}</span>
+                  )}
                   {s.desc && <span className={styles.slashDesc}>{s.desc}</span>}
                   {i === slashActive && <span className={styles.slashHintKey}>↵</span>}
                 </button>

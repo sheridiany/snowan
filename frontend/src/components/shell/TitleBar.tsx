@@ -1,5 +1,6 @@
 import { createStyles, cx } from 'antd-style';
-import { ChevronLeft, ChevronRight, Minus, Square, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Minus, Square, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { PanelLeftRounded, PanelRightRounded } from './craftIcons';
 import { EASING } from '../../ui/motion';
@@ -126,6 +127,26 @@ export default function TitleBar({
 }: Props) {
   const { styles } = useStyles();
 
+  // Track maximized state so the caption button can swap between maximize/restore.
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    if (IS_MAC) return;
+    const win = getCurrentWindow();
+    win
+      .isMaximized()
+      .then(setMaximized)
+      .catch(() => {});
+    const unlisten = win.onResized(() => {
+      win
+        .isMaximized()
+        .then(setMaximized)
+        .catch(() => {});
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
+
   const Btn = ({
     icon,
     label,
@@ -217,8 +238,14 @@ export default function TitleBar({
             onClick={() => void getCurrentWindow().minimize().catch(() => {})}
           />
           <WinBtn
-            icon={<Square size={12} strokeWidth={1.7} />}
-            label="最大化 / 还原"
+            icon={
+              maximized ? (
+                <Copy size={13} strokeWidth={1.6} />
+              ) : (
+                <Square size={12} strokeWidth={1.7} />
+              )
+            }
+            label={maximized ? '还原' : '最大化'}
             onClick={() => void getCurrentWindow().toggleMaximize().catch(() => {})}
           />
           <WinBtn

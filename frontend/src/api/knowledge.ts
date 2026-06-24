@@ -65,6 +65,13 @@ export const createNote = (payload: {
   source?: Record<string, unknown>;
 }) => post<Note>('/api/knowledge/notes', payload);
 
+export const updateNote = (id: string, patch: { title?: string; body?: string }) =>
+  fetch(api(`/api/knowledge/notes/${id}`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  }).then((r) => j<Note>(r));
+
 export const deleteNote = (id: string) =>
   fetch(api(`/api/knowledge/notes/${id}`), { method: 'DELETE' }).then((r) => {
     // 404 = already gone; treat as deleted so a stale list row still resolves cleanly.

@@ -22,13 +22,27 @@ pub struct SidecarState {
 /// quit events (CloseRequested/ExitRequested) are unreliable, so a previous run can
 /// leave an orphaned backend holding the port; reaping it here makes startup self-heal.
 fn free_port() {
-    // sh/lsof are macOS/Linux only; on Windows this is a best-effort no-op (the OS
-    // frees the port when the previous process exits).
+    // sh/lsof are macOS/Linux only.
     #[cfg(not(windows))]
     let _ = std::process::Command::new("sh")
         .arg("-c")
         .arg("pids=$(lsof -ti tcp:8787 2>/dev/null); [ -n \"$pids\" ] && kill -9 $pids; exit 0")
         .status();
+
+    // On Windows, find the PID listening on 8787 via netstat and kill it with taskkill.
+    // Same self-heal as above, best-effort: any failure is ignored.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let _ = std::process::Command::new("cmd")
+            .args([
+                "/C",
+                "for /f \"tokens=5\" %a in ('netstat -ano ^| findstr \":8787\" ^| findstr \"LISTENING\"') do taskkill /F /PID %a",
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+    }
 }
 
 /// Spawns the backend sidecar, stores its handle, and watches its output.

@@ -345,6 +345,10 @@ PREF_DEFAULTS: dict = {
     "disabled_tools": [],  # native tools the user turned off (by name)
     "memory_enabled": True,  # paused = stop saving/referencing long-term memory (data kept)
     "onboarded": False,  # user has seen/finished the first-run persona nudge
+    # UI preferences (consumed by the frontend, not the agent).
+    "show_provider_icons": True,  # show provider logos in ModelSelect etc.
+    "rich_tool_desc": True,  # verbose tool-call descriptions in ToolCallCard
+    "ui_font": "inter",  # inter | system
 }
 
 

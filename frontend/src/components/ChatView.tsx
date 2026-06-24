@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { ActionIcon, Markdown } from '@lobehub/ui';
 import { App as AntApp, Image } from 'antd';
 import { createStyles } from 'antd-style';
@@ -371,7 +371,7 @@ const useStyles = createStyles(({ token, css }) => ({
 
 // Generated-image hover bar: download the file, or copy its prompt — mirrors the
 // 收藏 panel's actions. No 重新生成 (would need lifting Composer's input — out of scope).
-function ImageActions({ id, prompt }: { id: string; prompt: string }) {
+const ImageActions = memo(function ImageActions({ id, prompt }: { id: string; prompt: string }) {
   const { styles } = useStyles();
   const { message } = AntApp.useApp();
   const copyPrompt = async () => {
@@ -390,9 +390,9 @@ function ImageActions({ id, prompt }: { id: string; prompt: string }) {
       <ActionIcon icon={Copy} size="small" title="复制提示词" onClick={copyPrompt} />
     </div>
   );
-}
+});
 
-function CopyAction({ text }: { text: string }) {
+const CopyAction = memo(function CopyAction({ text }: { text: string }) {
   const [done, setDone] = useState(false);
   const copy = async () => {
     try {
@@ -411,9 +411,9 @@ function CopyAction({ text }: { text: string }) {
       onClick={copy}
     />
   );
-}
+});
 
-function ArtifactCard({ path, title }: { path: string; title: string }) {
+const ArtifactCard = memo(function ArtifactCard({ path, title }: { path: string; title: string }) {
   const { styles } = useStyles();
   const name = path.split('/').pop() || path;
   const isImg = /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
@@ -433,7 +433,7 @@ function ArtifactCard({ path, title }: { path: string; title: string }) {
       </div>
     </div>
   );
-}
+});
 
 type Props = {
   messages: Message[];

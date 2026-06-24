@@ -13,7 +13,12 @@ import {
   snowanCustomToken,
   useThemePreset,
 } from './theme/themes';
+import { useUiPref } from './hooks/useUiPrefs';
 import App from './App';
+
+// System sans-serif stack used when ui_font is 'system' (no bundled Inter).
+const SYSTEM_FONT =
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif";
 
 // lobe-ui's ThemeProvider merges the `theme` prop as a plain object, so we must
 // hand it a STATIC ThemeConfig (not a function). themeMode is therefore controlled
@@ -32,10 +37,16 @@ function Root() {
         : 'light'
       : mode;
 
-  const theme = useMemo(
-    () => makeThemeConfig(themeId)(appearance),
-    [themeId, appearance],
-  );
+  const uiFont = useUiPref('ui_font');
+
+  const theme = useMemo(() => {
+    const base = makeThemeConfig(themeId)(appearance);
+    if (uiFont !== 'system') return base;
+    return {
+      ...base,
+      token: { ...base.token, fontFamily: SYSTEM_FONT },
+    };
+  }, [themeId, appearance, uiFont]);
 
   return (
     <ThemeProvider

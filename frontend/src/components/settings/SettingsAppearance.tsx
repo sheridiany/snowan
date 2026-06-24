@@ -1,11 +1,11 @@
-import { useState } from 'react';
 import { Segmented, ThemeSwitch } from '@lobehub/ui';
-import { Select, Switch } from 'antd';
+import { Switch } from 'antd';
 import { createStyles, cx, useThemeMode } from 'antd-style';
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { Row, Section } from './_kit';
 import { THEME_PRESETS, TYPE, useThemePreset } from '../../theme/themes';
 import { EASING } from '../../ui/motion';
+import { setUiPref, useUiPref } from '../../hooks/useUiPrefs';
 
 const useStyles = createStyles(({ token, css }) => ({
   wrap: css`
@@ -112,10 +112,9 @@ export default function SettingsAppearance() {
         : 'light'
       : themeMode;
 
-  const [font, setFont] = useState<'inter' | 'system'>('inter');
-  const [lang, setLang] = useState('zh');
-  const [showProviderIcons, setShowProviderIcons] = useState(true);
-  const [richToolDesc, setRichToolDesc] = useState(true);
+  const font = useUiPref('ui_font');
+  const showProviderIcons = useUiPref('show_provider_icons');
+  const richToolDesc = useUiPref('rich_tool_desc');
 
   return (
     <div className={styles.wrap}>
@@ -126,25 +125,10 @@ export default function SettingsAppearance() {
           control={
             <Segmented
               value={font}
-              onChange={(v) => setFont(v as 'inter' | 'system')}
+              onChange={(v) => setUiPref('ui_font', v as string)}
               options={[
                 { value: 'inter', label: 'Inter' },
                 { value: 'system', label: '系统' },
-              ]}
-            />
-          }
-        />
-        <Row
-          label="语言"
-          subtitle="应用界面的显示语言"
-          control={
-            <Select
-              value={lang}
-              onChange={setLang}
-              style={{ width: 148 }}
-              options={[
-                { value: 'zh', label: '简体中文' },
-                { value: 'en', label: 'English' },
               ]}
             />
           }
@@ -239,13 +223,21 @@ export default function SettingsAppearance() {
           label="连接图标"
           subtitle="在会话列表和模型选择器中显示提供商图标"
           control={
-            <Switch checked={showProviderIcons} onChange={setShowProviderIcons} />
+            <Switch
+              checked={showProviderIcons}
+              onChange={(v) => setUiPref('show_provider_icons', v)}
+            />
           }
         />
         <Row
           label="丰富的工具描述"
           subtitle="为所有工具调用添加操作名称和意图描述"
-          control={<Switch checked={richToolDesc} onChange={setRichToolDesc} />}
+          control={
+            <Switch
+              checked={richToolDesc}
+              onChange={(v) => setUiPref('rich_tool_desc', v)}
+            />
+          }
         />
       </Section>
     </div>

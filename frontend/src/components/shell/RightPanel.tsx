@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActionIcon, Button, Empty, Markdown } from '@lobehub/ui';
-import { App, Dropdown, Popconfirm } from 'antd';
+import { App, Dropdown, Input, Modal, Popconfirm } from 'antd';
 import { createStyles } from 'antd-style';
 import { motion } from 'motion/react';
 import {
@@ -38,6 +38,7 @@ import {
   getEmbeddingStatus,
   exportNote,
   deleteNote,
+  updateNote,
   type ExportFormat,
   type Note,
   type KbFolder,
@@ -489,6 +490,33 @@ function RightPanel({
       })
       .catch((e: Error) => message.error(`删除失败:${e.message || '请重试'}`));
 
+  // Inline note editor (title + body), persisted via updateNote.
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftBody, setDraftBody] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const openEdit = () => {
+    if (!open) return;
+    setDraftTitle(open.title || '');
+    setDraftBody(open.body);
+    setEditing(true);
+  };
+  const saveEdit = async () => {
+    if (!open) return;
+    setSavingEdit(true);
+    try {
+      const updated = await updateNote(open.id, { title: draftTitle.trim(), body: draftBody });
+      setOpen(updated);
+      setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
+      setEditing(false);
+      message.success('已保存');
+    } catch {
+      message.error('保存失败,请重试');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   // Detail view — a single opened note, with breadcrumb back to its list.
   if (open) {
     return (
@@ -501,6 +529,7 @@ function RightPanel({
             <span className={styles.crumbTitle}>{active.label}</span>
           </span>
           <div className={styles.actions}>
+            <ActionIcon icon={PencilLine} size="small" title="编辑" onClick={openEdit} />
             <Dropdown
               trigger={['click']}
               menu={{
@@ -542,6 +571,31 @@ function RightPanel({
           </div>
         </div>
         <div className={styles.handle} onPointerDown={onResizeStart} />
+        <Modal
+          title="编辑笔记"
+          open={editing}
+          onOk={saveEdit}
+          onCancel={() => setEditing(false)}
+          okText="保存"
+          cancelText="取消"
+          confirmLoading={savingEdit}
+          width={640}
+          destroyOnHidden
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 6 }}>
+            <Input
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              placeholder="标题"
+            />
+            <Input.TextArea
+              value={draftBody}
+              onChange={(e) => setDraftBody(e.target.value)}
+              autoSize={{ minRows: 12, maxRows: 24 }}
+              placeholder="正文(Markdown)"
+            />
+          </div>
+        </Modal>
       </aside>
     );
   }

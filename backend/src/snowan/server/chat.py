@@ -20,7 +20,11 @@ from pydantic_ai import (
     TextPartDelta,
     ToolDenied,
 )
-from pydantic_ai.exceptions import UndrainedPendingMessagesError
+from pydantic_ai.exceptions import (
+    ModelAPIError,
+    ModelHTTPError,
+    UndrainedPendingMessagesError,
+)
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import UsageLimits
 
@@ -248,6 +252,53 @@ def _drain_pending_text(run: Any) -> str:
     return "\n".join(out).strip()
 
 
+# Retry tuning for transient model-provider failures (overload / rate-limit / network).
+_RETRY_MAX_ATTEMPTS = 3
+_RETRY_BASE_DELAY = 1.0  # seconds; doubled each attempt (1s, 2s, 4s)
+
+
+def _is_retryable(err: BaseException) -> bool:
+    """True for transient provider failures worth retrying: 408/429/5xx HTTP errors and
+    bare network/connection errors. 4xx (bad key, bad request, content filter) are not."""
+    if isinstance(err, ModelHTTPError):
+        return err.status_code == 408 or err.status_code == 429 or err.status_code >= 500
+    # ModelAPIError without an HTTP status is a transport-level failure (DNS, timeout, reset).
+    return isinstance(err, ModelAPIError)
+
+
+def _friendly_error(err: BaseException) -> str:
+    """A readable Chinese explanation + triage hints for a model-call failure."""
+    if isinstance(err, ModelHTTPError):
+        code = err.status_code
+        if code in (401, 403):
+            return (
+                "调用模型失败:凭证无效或已过期(HTTP "
+                f"{code})。请到设置中检查 API Key 是否正确、是否仍在有效期内。"
+            )
+        if code == 429:
+            return (
+                "调用模型失败:触发服务商限流(HTTP 429)。已自动重试多次仍未成功,"
+                "请稍后再试,或在设置中切换到额度更充足的模型/账号。"
+            )
+        if code >= 500:
+            return (
+                f"调用模型失败:服务商暂时不可用(HTTP {code})。这是模型服务端的问题,"
+                "已自动重试多次仍未恢复,请稍后再试。"
+            )
+        if code == 400:
+            return (
+                "调用模型失败:请求被服务商拒绝(HTTP 400)。可能是模型名配置有误或本次"
+                "输入不被支持,请到设置中检查所选模型。"
+            )
+        return f"调用模型失败:服务商返回 HTTP {code}。请稍后再试或检查设置中的模型配置。"
+    if isinstance(err, ModelAPIError):
+        return (
+            "调用模型失败:无法连接到模型服务(网络问题)。请检查网络连接、代理设置,"
+            "以及设置中的接口地址是否正确,稍后再试。"
+        )
+    return f"调用模型失败:{err}"
+
+
 async def _drive(
     session_id: str,
     prompt: Any,
@@ -258,10 +309,49 @@ async def _drive(
     """Stream one agent turn, registering it as the session's active run so a steer
     (POST /api/chat/steer) can `enqueue` into it mid-flight. A steer that lands too
     late to be injected (the brief final-response window, where the loop hits End with
-    the message still queued) is run as an immediate follow-up turn rather than lost."""
+    the message still queued) is run as an immediate follow-up turn rather than lost.
+
+    A transient model-provider failure (overload / rate-limit / network) is retried with
+    exponential backoff while nothing has been streamed yet; if every attempt fails, or a
+    non-retryable error surfaces, a clear Chinese error message is streamed to the client
+    instead of a bare 500."""
+    stranded = ""
+    progress = {"emitted": False, "stranded": ""}
+    for attempt in range(_RETRY_MAX_ATTEMPTS):
+        try:
+            async for chunk in _drive_once(
+                session_id, prompt, history, deferred_results, skill, progress
+            ):
+                yield chunk
+            stranded = progress["stranded"]
+            break
+        except (ModelHTTPError, ModelAPIError) as e:
+            # Only retry while the turn produced no output: re-running after partial
+            # content would duplicate it. Non-retryable errors fall straight through.
+            if progress["emitted"] or not _is_retryable(e) or attempt == _RETRY_MAX_ATTEMPTS - 1:
+                yield _sse({"type": "delta", "text": f"\n\n⚠️ {_friendly_error(e)}"})
+                yield _sse({"type": "error", "message": str(e)})
+                yield _sse({"type": "done"})
+                break
+            await asyncio.sleep(_RETRY_BASE_DELAY * (2**attempt))
+    if stranded:
+        async for chunk in _run_new(stranded, load_history(session_id), session_id, skill=skill):
+            yield chunk
+
+
+async def _drive_once(
+    session_id: str,
+    prompt: Any,
+    history: list[ModelMessage],
+    deferred_results: DeferredToolResults | None,
+    skill: str | None,
+    progress: dict[str, Any],
+) -> AsyncIterator[str]:
+    """One attempt of a turn. Sets progress["emitted"] once any chunk is streamed (so the
+    caller knows a retry would duplicate output) and progress["stranded"] for a late steer.
+    Re-raises model-provider errors for the caller's retry loop after persisting the turn."""
     # Build per-request so a model/key change saved in Settings takes effect at once.
     agent = build_agent(skill=skill)
-    stranded = ""
     async with AsyncExitStack() as stack:
         toolsets = await _live_mcp(stack)
         kwargs: dict[str, Any] = {"message_history": history, "usage_limits": _limits(skill), "toolsets": toolsets}
@@ -273,11 +363,17 @@ async def _drive(
             try:
                 try:
                     async for chunk in _stream_run(run):
+                        progress["emitted"] = True
                         yield chunk
                 except UndrainedPendingMessagesError:
-                    stranded = _drain_pending_text(run)
+                    progress["stranded"] = _drain_pending_text(run)
                     yield _sse({"type": "done"})
                 usage.record(run.result)
+            except (ModelHTTPError, ModelAPIError):
+                # Transient/provider failure: persist the partial turn and let _drive's
+                # retry loop decide whether to retry or surface a friendly message.
+                save_history(session_id, run.all_messages())
+                raise
             except BaseException as e:
                 # Persist the partial turn on Stop (GeneratorExit/CancelledError) and on
                 # any mid-stream failure, then surface the error to the client. The turn
@@ -291,9 +387,6 @@ async def _drive(
                 save_history(session_id, run.all_messages())
             finally:
                 _active_runs.pop(session_id, None)
-    if stranded:
-        async for chunk in _run_new(stranded, load_history(session_id), session_id, skill=skill):
-            yield chunk
 
 
 async def _run_new(

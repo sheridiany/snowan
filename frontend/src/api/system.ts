@@ -17,6 +17,9 @@ export type Prefs = {
   disabled_tools: string[];
   memory_enabled: boolean;
   onboarded: boolean;
+  show_provider_icons: boolean;
+  rich_tool_desc: boolean;
+  ui_font: string; // 'inter' | 'system'
 };
 export type About = {
   version: string;

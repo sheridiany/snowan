@@ -26,6 +26,9 @@ class PrefsPatch(BaseModel):
     disabled_tools: list[str] | None = None
     memory_enabled: bool | None = None
     onboarded: bool | None = None
+    show_provider_icons: bool | None = None
+    rich_tool_desc: bool | None = None
+    ui_font: str | None = None
 
 
 @router.get("/api/tools")

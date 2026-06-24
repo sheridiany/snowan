@@ -4,6 +4,7 @@ import { createStyles, useTheme } from 'antd-style';
 import { Brain, Check, ChevronRight, X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import StatusBadge from '../ui/StatusBadge';
+import { useUiPref } from '../hooks/useUiPrefs';
 import { EASING } from '../ui/motion';
 import type { ToolStep } from './types';
 
@@ -197,6 +198,7 @@ export default function ToolCallCard({ step }: { step: ToolStep }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
+  const richDesc = useUiPref('rich_tool_desc');
 
   const categoryToken = CATEGORY_TOKENS[step.name];
   const categoryColor = categoryToken ? (theme[categoryToken] as string) : undefined;
@@ -238,7 +240,7 @@ export default function ToolCallCard({ step }: { step: ToolStep }) {
           {denied && <X size={14} className={styles.denied} />}
         </span>
         <Text className={styles.name}>{step.name}</Text>
-        {summary && <span className={styles.summary}>{summary}</span>}
+        {richDesc && summary && <span className={styles.summary}>{summary}</span>}
         {pending && (
           <span className={styles.badge}>
             <StatusBadge status="warning">需要确认</StatusBadge>
