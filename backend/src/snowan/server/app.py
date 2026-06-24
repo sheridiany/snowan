@@ -9,7 +9,6 @@ from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 from .calendar import router as calendar_router  # noqa: E402
-from .capture import router as capture_router  # noqa: E402
 from .chat import router  # noqa: E402
 from .imagegen import router as imagegen_router  # noqa: E402
 from .knowledge import router as knowledge_router  # noqa: E402
@@ -41,13 +40,11 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Snowan", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    # Local single-user app: the dev server, the packaged Tauri webview
-    # (tauri://localhost / *.tauri.localhost), and the companion browser extension
-    # (chrome-extension://<id>) all hit this on localhost.
+    # Local single-user app: the dev server and the packaged Tauri webview
+    # (tauri://localhost / *.tauri.localhost) hit this on localhost.
     allow_origin_regex=(
         r"^(http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?"
-        r"|tauri://localhost|https?://[a-z.]*tauri\.localhost"
-        r"|chrome-extension://.*)$"
+        r"|tauri://localhost|https?://[a-z.]*tauri\.localhost)$"
     ),
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,7 +61,6 @@ app.include_router(imagegen_router)
 app.include_router(recordings_router)
 app.include_router(calendar_router)
 app.include_router(workspace_router)
-app.include_router(capture_router)
 
 
 @app.get("/health")

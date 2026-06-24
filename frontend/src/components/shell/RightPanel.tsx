@@ -14,12 +14,10 @@ import {
   FileType,
   Folder,
   FolderOpen,
-  Globe,
   MessageSquare,
   Mic,
   PencilLine,
   RotateCw,
-  Sparkles,
   StickyNote,
   Trash2,
 } from 'lucide-react';
@@ -30,7 +28,6 @@ import { useResizableWidth } from './useResizableWidth';
 import DailyExpand from '../daily/DailyExpand';
 import { LAYOUT, TYPE } from '../../theme/themes';
 import RecordingPanel from '../recording/RecordingPanel';
-import CapturesView from '../captures/CapturesView';
 import IconOrb from '../../ui/IconOrb';
 import Surface from '../../ui/Surface';
 import DisplayHeading from '../../ui/DisplayHeading';
@@ -48,20 +45,17 @@ import {
 } from '../../api/knowledge';
 import { getCalendar, type CalendarEvent } from '../../api/calendar';
 import { getPrefs } from '../../api/system';
-import type { Session } from '../types';
 
 // The right panel is the in-context knowledge browser (remio-style): a source
 // dropdown in the header, a list below, and click-to-open detail in place. 笔记
 // and 文件夹 are wired to the backend; the rest are placeholders until their list
 // endpoints land.
-type SourceKey = 'notes' | 'web' | 'ai_chat' | 'folders' | 'calendar' | 'recording';
+type SourceKey = 'notes' | 'folders' | 'calendar' | 'recording';
 type Source = { key: SourceKey; label: string; icon: LucideIcon };
 
 // 网页 and AI 对话 are intentionally omitted until a real list endpoint lands.
 const SOURCES: Source[] = [
   { key: 'notes', label: '笔记', icon: StickyNote },
-  { key: 'web', label: '网页', icon: Globe },
-  { key: 'ai_chat', label: 'AI 对话', icon: Sparkles },
   { key: 'folders', label: '文件夹', icon: FolderOpen },
   { key: 'calendar', label: '日程', icon: Calendar },
   { key: 'recording', label: '录音', icon: Mic },
@@ -374,15 +368,9 @@ function RightPanel({
   onOpenSettings,
   contextual,
   autoSelect,
-  sessions,
-  onOpenSession,
 }: {
   refreshKey?: number;
   onOpenSettings?: () => void;
-  // Snowan's own conversations, surfaced inside the AI 对话 source so the panel
-  // lists them alongside externally-captured chats.
-  sessions?: Session[];
-  onOpenSession?: (id: string) => void;
   // A view-provided source pinned to the top of the dropdown and selected by
   // default (e.g. 画图's 收藏). Lets a per-view panel live inside the one shared
   // RightPanel shell instead of being a bespoke right column.
@@ -646,15 +634,6 @@ function RightPanel({
         <div className={styles.ctxBody}>{contextual!.node}</div>
       ) : source === 'recording' ? (
         <RecordingPanel refreshKey={refreshKey} />
-      ) : source === 'web' ? (
-        <CapturesView kind="web" refreshKey={refreshKey} />
-      ) : source === 'ai_chat' ? (
-        <CapturesView
-          kind="ai_chat"
-          refreshKey={refreshKey}
-          sessions={sessions}
-          onOpenSession={onOpenSession}
-        />
       ) : (
       <div className={styles.scroll}>
         {embReady === false && (

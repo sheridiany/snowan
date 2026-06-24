@@ -14,16 +14,14 @@ from . import embeddings, knowledge_index
 
 _RRF_K = 60
 
-# A deliberately-saved/generated note is higher-signal than a passively captured
-# page or chat, so notes outrank other sources at equal relevance. Weighting is by
-# source_type (manual vs chat-generated notes both rank as notes — provenance, not
-# weight, distinguishes them). Future sources slot in here.
+# A deliberately-saved/generated note is higher-signal than an indexed file, so
+# notes outrank other sources at equal relevance. Weighting is by source_type
+# (manual vs chat-generated notes both rank as notes — provenance, not weight,
+# distinguishes them). Future sources slot in here.
 _SOURCE_WEIGHTS = {
     "memory": 1.1,  # long-term memory outranks everything at equal relevance
     "note": 1.0,
     "file": 0.85,
-    "ai_chat": 0.7,
-    "web_page": 0.7,
     "calendar": 0.6,
     "email": 0.6,
 }
