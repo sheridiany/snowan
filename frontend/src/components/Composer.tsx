@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Button, TextArea } from '@lobehub/ui';
-import { Select } from 'antd';
+import { App, Select } from 'antd';
 import { createStyles } from 'antd-style';
 import {
   ArrowUp,
   FileText,
   Image as ImageIcon,
+  Loader2,
+  Mic,
   Paperclip,
   Presentation,
   RectangleHorizontal,
@@ -25,6 +27,7 @@ import { EASING } from '../ui/motion';
 import type { Attachment } from '../api/chat';
 import type { ImgParams } from '../api/imagegen';
 import { listSkills } from '../api/skills';
+import { transcribeAudio } from '../api/recording';
 
 const ACCEPT = 'image/*,.txt,.md,.json,.csv,.log,.py,.ts,.tsx,.js,.yaml,.yml,.toml,.pdf,.docx,.xlsx,.xlsm,.pptx';
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -195,6 +198,16 @@ const useStyles = createStyles(({ token, css }) => ({
     text-align: center;
     font-size: 11px;
     color: ${token.colorTextQuaternary};
+  `,
+  voiceSpin: css`
+    svg {
+      animation: voicespin 0.8s linear infinite;
+    }
+    @keyframes voicespin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   `,
   skillRow: css`
     display: flex;
@@ -428,7 +441,8 @@ export default function Composer({
   onGenerateImage,
   onModeChange,
 }: ComposerProps) {
-  const { styles, cx } = useStyles();
+  const { styles, cx, theme } = useStyles();
+  const { message } = App.useApp();
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [skill, setSkill] = useState<string | null>(null);
@@ -443,6 +457,10 @@ export default function Composer({
     { id: string; label: string; desc: string; icon: LucideIcon }[]
   >([]);
   const [slashIdx, setSlashIdx] = useState(0);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     onModeChange?.(skill);
@@ -556,6 +574,46 @@ export default function Composer({
     setAttachments([]);
     onSend(text, atts, skill ?? undefined);
   };
+
+  // Voice input: record from the mic, transcribe locally, append the text to the input.
+  const startVoice = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => {
+        if (e.data.size) chunksRef.current.push(e.data);
+      };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' });
+        if (!blob.size) return;
+        setTranscribing(true);
+        try {
+          const { text } = await transcribeAudio(blob);
+          const t = (text || '').trim();
+          if (!t) message.info('没听清,再说一次试试');
+          else if (/未下载|未安装/.test(t)) message.warning(t);
+          else setValue((v) => (v ? `${v.replace(/\s*$/, '')} ${t}` : t));
+        } catch {
+          message.error('转写失败');
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mr.start();
+      recRef.current = mr;
+      setRecording(true);
+    } catch {
+      message.error('无法访问麦克风');
+    }
+  };
+  const stopVoice = () => {
+    recRef.current?.stop();
+    recRef.current = null;
+    setRecording(false);
+  };
+  const toggleVoice = () => (recording ? stopVoice() : startVoice());
 
   return (
     <div className={styles.wrap}>
@@ -694,6 +752,15 @@ export default function Composer({
             accept={ACCEPT}
             hidden
             onChange={(e) => addFiles(e.target.files)}
+          />
+          <ActionIcon
+            icon={transcribing ? Loader2 : recording ? Square : Mic}
+            size="small"
+            title={recording ? '停止并转写' : transcribing ? '转写中…' : '语音输入'}
+            disabled={transcribing}
+            onClick={toggleVoice}
+            className={transcribing ? styles.voiceSpin : undefined}
+            style={recording ? { color: theme.colorError } : undefined}
           />
           {imageMode && (
             <>

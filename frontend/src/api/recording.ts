@@ -35,3 +35,26 @@ export const deleteRecording = (id: string) =>
   });
 
 export const recordingAudioUrl = (id: string) => api(`/api/recordings/${id}/audio`);
+
+// --- speech-to-text model + one-off voice transcription -------------------------
+export type AsrStatus = {
+  model: string;
+  size_mb: number;
+  ready: boolean;
+  downloading: boolean;
+};
+
+export const getAsrStatus = () => fetch(api('/api/recordings/asr')).then((r) => j<AsrStatus>(r));
+
+export const downloadAsr = () =>
+  fetch(api('/api/recordings/asr/download'), { method: 'POST' }).then((r) =>
+    j<{ ready: boolean; downloading: boolean }>(r),
+  );
+
+export const transcribeAudio = (blob: Blob) => {
+  const form = new FormData();
+  form.append('file', blob, 'voice.webm');
+  return fetch(api('/api/recordings/transcribe'), { method: 'POST', body: form }).then((r) =>
+    j<{ text: string }>(r),
+  );
+};

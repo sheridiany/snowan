@@ -2,11 +2,13 @@
 playback, and delete. Upload is multipart/form-data (an audio blob recorded in the
 browser); the heavy local transcription runs off the event loop so the request
 worker isn't blocked while Whisper churns."""
+import threading
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response, StreamingResponse
 
-from .. import recordings
+from .. import recordings, transcribe
 
 router = APIRouter(prefix="/api/recordings")
 
@@ -27,6 +29,38 @@ async def create_recording(
     return await run_in_threadpool(
         recordings.create_recording, audio, file.content_type or "audio/webm", duration_ms
     )
+
+
+# Registered before /{rec_id} so "asr" / "transcribe" aren't captured as recording ids.
+@router.get("/asr")
+def asr_status() -> dict:
+    return {
+        "model": f"faster-whisper {transcribe.MODEL_NAME}",
+        "size_mb": transcribe.SIZE_MB,
+        "ready": transcribe.is_ready(),
+        "downloading": transcribe.is_downloading(),
+    }
+
+
+@router.post("/asr/download")
+def asr_download() -> dict:
+    if transcribe.is_ready():
+        return {"ready": True, "downloading": False}
+    if not transcribe.is_downloading():
+        threading.Thread(target=transcribe.download, daemon=True).start()
+    return {"ready": False, "downloading": True}
+
+
+@router.post("/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)) -> dict:
+    """One-off transcription for voice input — returns text only (no stored memo)."""
+    audio = await file.read()
+    if not audio:
+        raise HTTPException(422, "录音文件为空")
+    text = await run_in_threadpool(
+        recordings.transcribe_blob, audio, file.content_type or "audio/webm"
+    )
+    return {"text": text}
 
 
 @router.get("/{rec_id}")

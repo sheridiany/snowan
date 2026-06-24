@@ -26,6 +26,18 @@ _EXT = {
 }
 _MIME_BY_EXT = {v: k for k, v in _EXT.items()}
 
+
+def transcribe_blob(audio: bytes, mime: str) -> str:
+    """One-off transcription for voice input — write to a temp file, transcribe, return
+    text. No storage and no summary (that's what create_recording is for)."""
+    import tempfile
+
+    ext = _EXT.get(mime, ".webm")
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=True) as f:
+        f.write(audio)
+        f.flush()
+        return transcribe.transcribe(f.name)
+
 _SYSTEM = """你是录音整理助手。根据下面这段录音转写文本,产出一个简短标题和要点摘要。
 严格只输出 JSON,格式为 {"title": "…", "summary": "…"}:
 - title:不超过 20 字的中文短标题,概括这段录音讲了什么,不要书名号、不要标点结尾。

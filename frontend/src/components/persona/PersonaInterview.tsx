@@ -160,7 +160,8 @@ export default function PersonaInterview({ open, onClose, onSaved }: Props) {
       title="让 Snowan 更懂你"
       open={open}
       onCancel={later}
-      width={580}
+      width={720}
+      centered
       footer={null}
       destroyOnHidden
     >
@@ -180,7 +181,7 @@ export default function PersonaInterview({ open, onClose, onSaved }: Props) {
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             placeholder="随便聊聊,几句话就好"
-            autoSize={{ minRows: 3, maxRows: 8 }}
+            autoSize={{ minRows: 5, maxRows: 12 }}
             autoFocus
           />
           <div className={styles.footer}>

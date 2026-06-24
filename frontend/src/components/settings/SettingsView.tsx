@@ -8,6 +8,7 @@ import {
   Palette,
   Plug,
   Library,
+  Mic,
   Sparkles,
   UserRound,
   Wrench,
@@ -31,6 +32,7 @@ import SettingsRun from './SettingsRun';
 import SettingsProfile from './SettingsProfile';
 import SettingsSkills from './SettingsSkills';
 import SettingsShortcuts from './SettingsShortcuts';
+import SettingsVoice from './SettingsVoice';
 import SettingsAbout from './SettingsAbout';
 
 // Merged tabs — composed from the existing panels so each keeps its own state/logic.
@@ -74,6 +76,7 @@ const CATEGORIES: Category[] = [
   { id: 'mcp', title: 'MCP', subtitle: '外部工具服务器', icon: Plug, panel: SettingsMcp, group: '能力' },
   { id: 'skills', title: '技能', subtitle: '可安装的能力', icon: Zap, panel: SettingsSkills, group: '能力' },
   { id: 'knowledge', title: '知识库', subtitle: '本地语义检索', icon: Library, panel: SettingsKnowledge, group: '知识' },
+  { id: 'voice', title: '语音', subtitle: '语音转写与输入模型', icon: Mic, panel: SettingsVoice, group: '知识' },
   { id: 'calendar', title: '日历', subtitle: '系统日历与 ICS', icon: CalendarDays, panel: SettingsCalendar, group: '知识' },
   { id: 'appearance', title: '外观', subtitle: '主题、字体与快捷键', icon: Palette, panel: AppearancePanel, group: '应用' },
   { id: 'about', title: '关于', subtitle: '版本与数据', icon: Info, panel: SettingsAbout, group: '应用' },
