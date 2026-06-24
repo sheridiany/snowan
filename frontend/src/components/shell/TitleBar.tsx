@@ -16,14 +16,18 @@ const IS_MAC =
 
 const useStyles = createStyles(({ token, css }) => ({
   bar: css`
-    height: 44px;
-    flex: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: 40px;
     display: flex;
     align-items: center;
     gap: 2px;
     padding: 0 10px;
-    /* Solid surface, seamless with the panels below (Otty-style flush top). */
-    background: ${token.colorBgContainer};
+    /* Transparent overlay so the panels — and their dividers — run to the very top. */
+    background: transparent;
     user-select: none;
   `,
   spacer: css`
@@ -56,8 +60,8 @@ const useStyles = createStyles(({ token, css }) => ({
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 28px;
-    padding: 0 8px;
+    height: 26px;
+    padding: 0 7px;
     border-radius: ${token.borderRadiusSM}px;
     cursor: pointer;
     color: ${token.colorTextTertiary};

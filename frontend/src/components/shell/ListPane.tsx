@@ -11,7 +11,6 @@ import {
 import type { ReactNode } from 'react';
 import { useResizableWidth } from './useResizableWidth';
 import { LAYOUT, TYPE } from '../../theme/themes';
-import DisplayHeading from '../../ui/DisplayHeading';
 import { EASING } from '../../ui/motion';
 
 export type View =
@@ -109,7 +108,7 @@ const useStyles = createStyles(({ token, css }) => ({
   scroll: css`
     flex: 1;
     overflow-y: auto;
-    padding: 10px;
+    padding: 44px 10px 10px;
   `,
   footer: css`
     flex: none;
@@ -153,17 +152,6 @@ const useStyles = createStyles(({ token, css }) => ({
   `,
 }));
 
-function SideNav() {
-  const { styles } = useStyles();
-  return (
-    <nav className={styles.nav}>
-      <DisplayHeading level={3} className={styles.brand}>
-        Snowan
-      </DisplayHeading>
-    </nav>
-  );
-}
-
 function SideFooter({ view, onView }: Pick<NavProps, 'view' | 'onView'>) {
   const { styles, cx } = useStyles();
   const { isDarkMode, setThemeMode } = useThemeMode();
@@ -204,7 +192,6 @@ export function ListPane({
   });
   return (
     <div className={styles.col} style={{ width }}>
-      <SideNav />
       <div className={styles.scroll}>{children}</div>
       <SideFooter view={view} onView={onView} />
       <div className={styles.handle} onPointerDown={onResizeStart} />

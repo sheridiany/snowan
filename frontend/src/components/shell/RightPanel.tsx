@@ -55,9 +55,8 @@ export type RightSource = { key: SourceKey; label: string; icon: LucideIcon };
 // (App owns the active-source state; this panel renders the matching content).
 // 网页 and AI 对话 are intentionally omitted until a real list endpoint lands.
 export const RIGHT_SOURCES: RightSource[] = [
-  { key: 'notes', label: '笔记', icon: StickyNote },
-  { key: 'folders', label: '文件夹', icon: FolderOpen },
   { key: 'calendar', label: '日程', icon: Calendar },
+  { key: 'notes', label: '笔记', icon: StickyNote },
   { key: 'recording', label: '录音', icon: Mic },
 ];
 
@@ -83,6 +82,7 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     background: ${token.colorBgContainer};
     border-left: 1px solid ${token.colorBorderSecondary};
+    padding-top: 44px;
     overflow: hidden;
   `,
   handle: css`

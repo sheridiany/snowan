@@ -495,7 +495,6 @@ export default function ChatView({
     return (
       <div className={styles.emptyScroll} ref={scrollRef}>
         <div className={styles.hero}>
-          <div className={styles.heroGlow} />
           <DisplayHeading level={1} className={styles.greeting}>
             {greeting}
             {name && <span className={styles.greetingName}>,{name}</span>}

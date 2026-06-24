@@ -170,7 +170,7 @@ export default function App() {
     [imgLibNode],
   );
   const rightSources = useMemo(
-    () => [{ key: 'imagelib', label: '收藏', icon: Heart }, ...RIGHT_SOURCES],
+    () => [...RIGHT_SOURCES, { key: 'imagelib', label: '收藏', icon: Heart }],
     [],
   );
 
