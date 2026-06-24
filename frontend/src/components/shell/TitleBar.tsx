@@ -22,8 +22,8 @@ const useStyles = createStyles(({ token, css }) => ({
     align-items: center;
     gap: 2px;
     padding: 0 10px;
-    /* Transparent so the app-shell aurora (colorSceneBg) reads through the chrome. */
-    background: transparent;
+    /* Solid surface, seamless with the panels below (Otty-style flush top). */
+    background: ${token.colorBgContainer};
     user-select: none;
   `,
   spacer: css`

@@ -36,10 +36,8 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: none;
     display: flex;
     flex-direction: column;
-    /* Solid container fill — large surface, single depth language (ring only). */
     background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: ${token.boxShadowTertiary};
+    border-right: 1px solid ${token.colorBorderSecondary};
     overflow: hidden;
   `,
   handle: css`

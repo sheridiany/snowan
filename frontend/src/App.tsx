@@ -52,8 +52,6 @@ const useStyles = createStyles(({ token, css }) => ({
     flex: 1;
     min-width: 0;
     display: flex;
-    gap: 8px;
-    padding: 8px;
   `,
 }));
 

@@ -10,8 +10,6 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: ${token.boxShadowTertiary};
     overflow: hidden;
   `,
   // A single soft hero bloom layered above the base container fill (opt-in via

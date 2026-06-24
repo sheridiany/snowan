@@ -82,8 +82,7 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     flex-direction: column;
     background: ${token.colorBgContainer};
-    border-radius: ${token.borderRadiusLG}px;
-    box-shadow: ${token.boxShadowTertiary};
+    border-left: 1px solid ${token.colorBorderSecondary};
     overflow: hidden;
   `,
   handle: css`
