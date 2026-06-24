@@ -3,7 +3,19 @@ notes so related info collects in one place instead of spawning duplicate notes 
 the 深度研究 / 文档编辑 skills and whenever the user says「补充到之前那篇里」."""
 from ... import knowledge
 
-_NOT_FOUND = "没有找到 id 为 {} 的笔记。先用 knowledge_search 查到正确的 note_id。"
+# Terminal message — must NOT tell the model to "search again", or a file_* id (a
+# read-only indexed file, never resolvable here) sends it into an endless
+# append_note → not-found → knowledge_search → append_note loop.
+def _not_found(note_id: str) -> str:
+    if str(note_id).startswith("file_"):
+        return (
+            f"{note_id} 是一篇只读的索引文件,不是 app 内笔记,不能 append/rewrite。"
+            "要记录就用 save_note 新建一篇,或用 edit_file 按文件路径直接改它。不要再检索这个 id。"
+        )
+    return (
+        f"没有 id 为 {note_id} 的可编辑笔记(可能已删除或 id 不对)。"
+        "要记录就直接用 save_note 新建,不要反复检索同一个 id。"
+    )
 
 
 def save_note(title: str, content: str) -> str:
@@ -18,7 +30,7 @@ def read_note(note_id: str) -> str:
     追加或重写之前先读一遍现有内容,避免重复或破坏原有结构。"""
     note = knowledge.get_note(note_id)
     if note is None:
-        return _NOT_FOUND.format(note_id)
+        return _not_found(note_id)
     return f"《{note['title']}》(id: {note['id']})\n\n{note['body']}"
 
 
@@ -27,7 +39,7 @@ def append_note(note_id: str, content: str) -> str:
     用户说「补充 / 加到之前那篇里」时用它,不要为同一主题新建重复笔记。"""
     note = knowledge.get_note(note_id)
     if note is None:
-        return _NOT_FOUND.format(note_id)
+        return _not_found(note_id)
     merged = f"{note['body'].rstrip()}\n\n{content.strip()}\n"
     updated = knowledge.update_note(note_id, body=merged)
     return f"已把内容追加到笔记「{updated['title']}」。"
@@ -38,6 +50,6 @@ def rewrite_note(note_id: str, content: str, title: str = "") -> str:
     会覆盖原正文,所以先用 read_note 读全原文再重写。note_id 来自 knowledge_search。"""
     note = knowledge.get_note(note_id)
     if note is None:
-        return _NOT_FOUND.format(note_id)
+        return _not_found(note_id)
     updated = knowledge.update_note(note_id, body=content, title=title.strip() or None)
     return f"已重新整理笔记「{updated['title']}」。"
