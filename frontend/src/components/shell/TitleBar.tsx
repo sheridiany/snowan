@@ -63,30 +63,40 @@ const useStyles = createStyles(({ token, css }) => ({
     cursor: default;
     pointer-events: none;
   `,
-  // Windows/Linux caption buttons: full-height, flush to the right edge.
+  // Windows/Linux caption buttons: full-height, flush to the right edge, set off
+  // from the app's nav buttons by a hairline divider.
   winControls: css`
     align-self: stretch;
     display: flex;
-    margin-left: 4px;
-    margin-right: -10px;
+    margin-left: 8px;
+    padding-left: 6px;
+    border-left: 1px solid ${token.colorBorderSecondary};
   `,
   winBtn: css`
-    width: 46px;
+    width: 44px;
     align-self: stretch;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: ${token.colorTextSecondary};
+    color: ${token.colorTextTertiary};
     cursor: pointer;
+    border-radius: ${token.borderRadiusSM}px;
     transition: background 0.12s ${EASING.standard}, color 0.12s ${EASING.standard};
     &:hover {
       background: ${token.colorFillSecondary};
       color: ${token.colorText};
     }
+    &:active {
+      background: ${token.colorFill};
+    }
   `,
   winClose: css`
     &:hover {
-      background: #e81123;
+      background: #c42b1c;
+      color: #fff;
+    }
+    &:active {
+      background: #b0261a;
       color: #fff;
     }
   `,
@@ -202,19 +212,19 @@ export default function TitleBar({
       {!IS_MAC && (
         <div className={styles.winControls}>
           <WinBtn
-            icon={<Minus size={16} strokeWidth={1.5} />}
+            icon={<Minus size={15} strokeWidth={1.6} />}
             label="最小化"
-            onClick={() => getCurrentWindow().minimize()}
+            onClick={() => void getCurrentWindow().minimize().catch(() => {})}
           />
           <WinBtn
-            icon={<Square size={13} strokeWidth={1.6} />}
-            label="最大化"
-            onClick={() => getCurrentWindow().toggleMaximize()}
+            icon={<Square size={12} strokeWidth={1.7} />}
+            label="最大化 / 还原"
+            onClick={() => void getCurrentWindow().toggleMaximize().catch(() => {})}
           />
           <WinBtn
-            icon={<X size={17} strokeWidth={1.6} />}
+            icon={<X size={16} strokeWidth={1.7} />}
             label="关闭"
-            onClick={() => getCurrentWindow().close()}
+            onClick={() => void getCurrentWindow().close().catch(() => {})}
             close
           />
         </div>
