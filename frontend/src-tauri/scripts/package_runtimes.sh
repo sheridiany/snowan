@@ -25,8 +25,8 @@ pack() {
     local tmp; tmp="$(mktemp -d)"
     echo "== runtime: ${feat} ($*) =="
     uv pip install --python "${VENV_PY}" --target "${tmp}" "$@" >/dev/null
+    # Keep .dist-info — packages like fastembed query importlib.metadata at import time.
     find "${tmp}" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
-    find "${tmp}" -name '*.dist-info' -type d -prune -exec rm -rf {} + 2>/dev/null || true
     mkdir -p "${OUT}"
     tar -czf "${OUT}/snowan-${feat}-${TAG}.tar.gz" -C "${tmp}" .
     rm -rf "${tmp}"

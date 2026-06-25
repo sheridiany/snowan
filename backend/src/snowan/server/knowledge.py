@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .. import embeddings, export, knowledge, knowledge_draft, knowledge_folders, memory
+from .. import embeddings, export, knowledge, knowledge_draft, knowledge_folders, memory, runtimes
 from ..config import load_prefs, load_settings
 
 router = APIRouter(prefix="/api/knowledge")
@@ -163,9 +163,10 @@ def embedding_status() -> dict:
     """Local semantic-search model status, for the Settings download UI."""
     return {
         "model": embeddings.MODEL_ID,
-        "size_mb": embeddings.SIZE_MB,
+        "size_mb": embeddings.SIZE_MB + runtimes.FEATURES["embed"]["size_mb"],
         "ready": embeddings.is_ready(),
-        "downloading": embeddings.is_downloading(),
+        "downloading": embeddings.is_downloading() or runtimes.status("embed")["downloading"],
+        "error": runtimes.status("embed")["error"],
     }
 
 
@@ -178,6 +179,7 @@ def embedding_download() -> dict:
     if not embeddings.is_downloading():
 
         def _run() -> None:
+            runtimes.install("embed")  # onnxruntime/fastembed aren't bundled — fetch first
             embeddings.download()
             knowledge.sync_index()  # back-fill vectors for already-saved notes
             knowledge_folders.reindex()  # …and for indexed files

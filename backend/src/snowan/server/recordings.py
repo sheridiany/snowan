@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response, StreamingResponse
 
-from .. import recordings, transcribe
+from .. import recordings, runtimes, transcribe
 
 router = APIRouter(prefix="/api/recordings")
 
@@ -36,10 +36,10 @@ async def create_recording(
 def asr_status() -> dict:
     return {
         "model": f"faster-whisper {transcribe.MODEL_NAME}",
-        "size_mb": transcribe.SIZE_MB,
+        "size_mb": transcribe.SIZE_MB + runtimes.FEATURES["voice"]["size_mb"],
         "ready": transcribe.is_ready(),
-        "downloading": transcribe.is_downloading(),
-        "error": transcribe.last_error(),
+        "downloading": transcribe.is_downloading() or runtimes.status("voice")["downloading"],
+        "error": transcribe.last_error() or runtimes.status("voice")["error"],
     }
 
 
@@ -48,7 +48,12 @@ def asr_download() -> dict:
     if transcribe.is_ready():
         return {"ready": True, "downloading": False}
     if not transcribe.is_downloading():
-        threading.Thread(target=transcribe.download, daemon=True).start()
+
+        def _run() -> None:
+            runtimes.install("voice")  # av/ctranslate2/faster-whisper aren't bundled
+            transcribe.download()
+
+        threading.Thread(target=_run, daemon=True).start()
     return {"ready": False, "downloading": True}
 
 
