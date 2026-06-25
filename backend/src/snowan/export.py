@@ -1,9 +1,13 @@
-"""Document export: render a Markdown note (or sanitized article HTML) to a
-standalone HTML page or a Word .docx. No pandoc — the docx side is a small
-markdown-it token walker covering headings, paragraphs, lists, code and inline
-emphasis/links. PDF is intentionally out of scope (would need a new dep)."""
+"""Document export and in-process file generation. Markdown -> standalone HTML or
+Word .docx (a small markdown-it token walker, no pandoc); Markdown -> PDF via the
+bundled Chromium (no extra dep); plus structured builders for Excel (.xlsx) and
+PowerPoint (.pptx). Shared by the notes export endpoint and the agent's create_*
+document tools."""
+import asyncio
 import io
+import os
 import re
+import subprocess
 
 import nh3
 from docx import Document
@@ -35,7 +39,7 @@ blockquote {
 
 
 def _filename(title: str, ext: str) -> str:
-    base = re.sub(r'[\\/:*?"<>|\n\r\t]+', " ", title).strip()[:80].strip() or "未命名"
+    base = re.sub(r'[\\/:*?"<>|\x00-\x1f]+', " ", title).strip()[:80].strip() or "未命名"
     return f"{base}.{ext}"
 
 
@@ -122,3 +126,151 @@ def _render_inline(para, inline_tok) -> None:
                 run.font.underline = True
         elif c.type in ("softbreak", "hardbreak"):
             para.add_run("\n")
+
+
+_PDF_HINT = (
+    "PDF 引擎(Chromium)不可用,自动安装也失败了。请联网后重试,"
+    "或在开发环境运行 `uv run playwright install chromium`。"
+)
+
+
+def _ensure_browsers_path() -> None:
+    """In the frozen app the default browsers dir resolves INSIDE the read-only bundle,
+    so install + launch can't write/find it there. Point both at an app-owned, writable
+    dir (~/.snowan/ms-playwright), like the embedding model in ~/.snowan/models. Only in
+    the frozen app — dev/tests keep playwright's normal cache. An existing override is
+    respected."""
+    import sys
+
+    if getattr(sys, "frozen", False) and not os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
+        from .config import SNOWAN_HOME
+
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(SNOWAN_HOME / "ms-playwright")
+
+
+def _install_chromium() -> None:
+    """Provision Chromium on first use — like the embedding model, it's downloaded at
+    runtime (not bundled: a browser .app can't be ad-hoc-signed inside the
+    PyInstaller/Tauri bundle). Drives the bundled node CLI so it works in the frozen
+    app too."""
+    from playwright._impl._driver import compute_driver_executable, get_driver_env
+
+    _ensure_browsers_path()
+    exe = compute_driver_executable()
+    args = list(exe) if isinstance(exe, (list, tuple)) else [exe]
+    subprocess.run([*args, "install", "chromium"], env=get_driver_env(), check=True, timeout=600)
+
+
+async def _block_remote(route) -> None:
+    """The PDF page is self-contained (set_content, no base URL), so abort any
+    http(s) sub-resource fetch — a stray remote <img> in the content can't phone
+    home or be used for SSRF during render. Local/data: resources still load."""
+    if route.request.url.startswith(("http://", "https://")):
+        await route.abort()
+    else:
+        await route.continue_()
+
+
+async def md_to_pdf(title: str, body_md: str) -> bytes:
+    """Render the Markdown note to PDF via Chromium (same engine as the `browse` tool)
+    — full CSS fidelity, CJK fonts, no extra dependency. Chromium is provisioned on
+    first use (downloaded at runtime). Raises RuntimeError with a setup hint if the
+    engine can't be made available."""
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError as e:
+        raise RuntimeError(_PDF_HINT) from e
+    _ensure_browsers_path()
+    html = md_to_html_doc(title, body_md)
+    try:
+        async with async_playwright() as pw:
+            try:
+                browser = await pw.chromium.launch(headless=True)
+            except Exception:  # noqa: BLE001 — most likely the browser isn't provisioned yet
+                await asyncio.to_thread(_install_chromium)  # one-time download, then retry
+                browser = await pw.chromium.launch(headless=True)
+            try:
+                page = await browser.new_page()
+                await page.route("**/*", _block_remote)
+                await page.set_content(html, wait_until="load")
+                return await page.pdf(
+                    format="A4",
+                    print_background=True,
+                    margin={"top": "18mm", "bottom": "18mm", "left": "16mm", "right": "16mm"},
+                )
+            finally:
+                try:
+                    await browser.close()
+                except Exception:  # noqa: BLE001 — a cleanup error must not mask the real one
+                    pass
+    except RuntimeError:
+        raise
+    except Exception as e:  # noqa: BLE001 — browser provisioning or render failed
+        raise RuntimeError(f"生成 PDF 失败:{e}。{_PDF_HINT}") from e
+
+
+def _safe_sheet_title(name: str, used: set[str]) -> str:
+    """An Excel-legal, unique worksheet title (≤31 chars, none of []:*?/\\)."""
+    base = re.sub(r"[\[\]:*?/\\]", " ", str(name or "")).strip()[:31] or "Sheet"
+    title, n = base, 1
+    while title.lower() in used:
+        suffix = f" ({n})"
+        title = base[: 31 - len(suffix)] + suffix
+        n += 1
+    used.add(title.lower())
+    return title
+
+
+def rows_to_xlsx(sheets: list[tuple[str, list[str] | None, list[list[str]]]]) -> bytes:
+    """One worksheet per (name, columns|None, rows). Header row (if any) is bold;
+    columns are auto-sized to their longest cell."""
+    import io as _io
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    used: set[str] = set()
+    for name, columns, rows in sheets:
+        ws = wb.create_sheet(_safe_sheet_title(name, used))
+        if columns:
+            ws.append(list(columns))
+            for cell in ws[1]:
+                cell.font = Font(bold=True)
+        for row in rows:
+            ws.append([str(c) for c in row])
+        for col in ws.columns:
+            width = max((len(str(c.value or "")) for c in col), default=0)
+            ws.column_dimensions[col[0].column_letter].width = min(max(width + 2, 8), 60)
+    if not wb.sheetnames:
+        wb.create_sheet("Sheet1")
+    buf = _io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def outline_to_pptx(title: str, slides: list[dict]) -> bytes:
+    """A title slide followed by one content slide per outline entry
+    ({title, bullets, notes?}); each bullet is its own paragraph."""
+    import io as _io
+
+    from pptx import Presentation
+
+    prs = Presentation()
+    cover = prs.slides.add_slide(prs.slide_layouts[0])
+    cover.shapes.title.text = title
+    for sl in slides:
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        slide.shapes.title.text = str(sl.get("title") or "")
+        bullets = [str(b) for b in (sl.get("bullets") or [])]
+        tf = slide.placeholders[1].text_frame
+        if bullets:
+            tf.text = bullets[0]
+            for b in bullets[1:]:
+                tf.add_paragraph().text = b
+        if sl.get("notes"):
+            slide.notes_slide.notes_text_frame.text = str(sl["notes"])
+    buf = _io.BytesIO()
+    prs.save(buf)
+    return buf.getvalue()

@@ -1,6 +1,8 @@
 import asyncio
 import base64
 import json
+import os
+import re
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack
 from typing import Any
@@ -35,6 +37,7 @@ from ..agent import auto_memory
 from .. import audit, memory, usage
 from ..config import load_prefs
 from ..extract import extract_text as _extract_text
+from ..workspace import resolve_in_workspace
 
 router = APIRouter()
 
@@ -68,8 +71,35 @@ class ChatRequest(BaseModel):
     skill: str | None = None  # active composer skill mode (deep-research / make-slides / …)
 
 
+_PREVIEW_CHARS = 50_000
+
+
+def _save_upload(name: str, raw: bytes) -> str | None:
+    """Persist an uploaded document under workspace/uploads/, returning its
+    workspace-relative path (collision-suffixed). None if it can't be written —
+    persisting the original lets the agent re-open the full file (e.g. produce a
+    derived .xlsx) instead of relying on the truncated inline preview."""
+    safe = re.sub(r'[\\/:*?"<>|\x00-\x1f]+', "_", name).strip() or "attachment"
+    stem, ext = os.path.splitext(safe)
+    rel = f"uploads/{safe}"
+    try:
+        p = resolve_in_workspace(rel)
+    except ValueError:
+        return None
+    p.parent.mkdir(parents=True, exist_ok=True)
+    n = 1
+    while p.exists():
+        rel = f"uploads/{stem}-{n}{ext}"
+        p = resolve_in_workspace(rel)
+        n += 1
+    p.write_bytes(raw)
+    return rel
+
+
 def _build_prompt(message: str, attachments: list[Attachment]):
-    """Images -> vision content; documents -> extracted text; text files inlined."""
+    """Images -> vision content. Documents -> persisted to workspace/uploads/ and their
+    extracted text inlined (with the saved path so the agent can re-open the full
+    original); plain-text files inlined directly."""
     if not attachments:
         return message
     parts: list[Any] = [message] if message else []
@@ -81,6 +111,8 @@ def _build_prompt(message: str, attachments: list[Attachment]):
         if a.mime.startswith("image/"):
             parts.append(BinaryContent(data=raw, media_type=a.mime))
             continue
+        saved = _save_upload(a.name, raw)
+        loc = f"(原件已存到 workspace:{saved})" if saved else ""
         text = _extract_text(a.name, a.mime, raw)
         if text is None:
             try:
@@ -88,9 +120,12 @@ def _build_prompt(message: str, attachments: list[Attachment]):
             except UnicodeDecodeError:
                 text = None
         if text is not None:
-            parts.append(f"\n\n[附件 {a.name}]\n```\n{text[:50000]}\n```")
+            body = text[:_PREVIEW_CHARS]
+            if len(text) > _PREVIEW_CHARS:
+                body += f"\n…(预览截断,完整内容见 {saved or '原件'})"
+            parts.append(f"\n\n[附件 {a.name}{loc}]\n```\n{body}\n```")
         else:
-            parts.append(f"\n\n[附件 {a.name}:无法解析的二进制文件]")
+            parts.append(f"\n\n[附件 {a.name}{loc}:二进制文件,未能解析出文本]")
     return parts
 
 
@@ -123,19 +158,31 @@ def _approval_event(requests: DeferredToolRequests) -> dict[str, Any]:
     }
 
 
+def _doc_artifact_event(meta: dict[str, Any], content: str) -> dict[str, Any] | None:
+    """A create_document/spreadsheet/slides result is the saved workspace path; surface it
+    as a downloadable artifact. Title comes from the call args, but those are stashed
+    per-run and don't survive an approval resume (call in run A, result in run B) — so fall
+    back to the file's stem, which is itself derived from the title."""
+    if not content or content.startswith("error"):
+        return None
+    title = str(meta.get("title") or "") or os.path.splitext(os.path.basename(content))[0]
+    return {"type": "artifact", "path": content, "title": title}
+
+
 async def _stream_run(run: Any) -> AsyncIterator[str]:
     """Stream one agent run, emitting delta/tool_call/tool_result/approval_required events."""
     pending: dict[str, str] = {}  # tool_call_id -> arg summary, for the audit log
     # Tools whose call/result is surfaced as a synthetic event instead of a tool card.
     # Each: a per-call stash of the call args, the call-args key used as the audit label
-    # (with its max length), and a builder turning the stashed args into the SSE event
+    # (with its max length), and a builder (stashed args, result content) -> the SSE event
     # (returns None to emit nothing).
+    _doc = {"stash": {}, "label_key": "title", "label_len": 200, "event": _doc_artifact_event}
     special: dict[str, dict[str, Any]] = {
         "render_diagram": {
             "stash": {},
             "label_key": "title",
             "label_len": 80,
-            "event": lambda m: (
+            "event": lambda m, _c: (
                 {"type": "diagram", "svg": str(m["svg"]), "title": str(m.get("title") or "")}
                 if m.get("svg")
                 else None
@@ -145,12 +192,16 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
             "stash": {},
             "label_key": "path",
             "label_len": 200,
-            "event": lambda m: (
+            "event": lambda m, _c: (
                 {"type": "artifact", "path": str(m["path"]), "title": str(m.get("title") or "")}
                 if m.get("path")
                 else None
             ),
         },
+        # Each create_* tool returns the saved workspace path; surface it as a download card.
+        "create_document": dict(_doc, stash={}),
+        "create_spreadsheet": dict(_doc, stash={}),
+        "create_slides": dict(_doc, stash={}),
     }
     async for node in run:
         if Agent.is_model_request_node(node):
@@ -190,7 +241,7 @@ async def _stream_run(run: Any) -> AsyncIterator[str]:
                             label = str(meta.get(spec["label_key"], ""))[: spec["label_len"]]
                             audit.log(result.tool_name, label, "ok" if ok else "error")
                             if ok:
-                                event = spec["event"](meta)
+                                event = spec["event"](meta, str(result.content))
                                 if event is not None:
                                     yield _sse(event)
                             continue

@@ -7,6 +7,7 @@ from .. import skills as skills_store
 from ..config import load_prefs, load_settings
 from .providers import build_model, cache_settings
 from .tools.file_tools import append_file, edit_file, read_file, write_file
+from .tools.doc_tools import create_document, create_slides, create_spreadsheet
 from .tools.calendar_tools import upcoming_events
 from .tools.daily_tools import daily_note
 from .tools.knowledge_tools import knowledge_search
@@ -29,7 +30,11 @@ workbench. Be concise and direct. Use tools when they help; otherwise just answe
 save_note 新建——这是默认动作,别犹豫。绝不要为了找一篇笔记反复 knowledge_search / glob_search / \
 grep_search 或对同一个 id 反复 append;若 append_note/read_note 回报「找不到」或「只读索引文件」,\
 立即改用 save_note 新建(或用 edit_file 按路径改那个文件),不要再检索。用户明说「补充到之前那篇」\
-且确实搜到可编辑笔记时,才追加而非另开一篇。"""
+且确实搜到可编辑笔记时,才追加而非另开一篇。\
+需要产出文件时直接生成、不要让用户自己另存:报告/方案/长文用 create_document(docx/html/md),\
+表格 / 多 sheet 用 create_spreadsheet(每组一个 sheet,百分比等直接把 "85%" 这类字符串放进单元格),\
+幻灯片用 create_slides——它们会自动作为可下载成果展示。上传的文档已解析进对话、原件也存到了 \
+workspace 的 uploads/ 下,需要完整数据(如逐格读 Excel)时直接用其路径读取,不要只依赖预览文本。"""
 
 # Read-only tools are safe to auto-run; mutating + shell tools change the user's
 # machine. The approval_mode preference decides which get gated.
@@ -61,7 +66,12 @@ READONLY_FNS = [
 ]
 # rewrite_note overwrites an existing note's body wholesale, so it's gated like the other
 # overwriting tools rather than auto-running.
-MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill, rewrite_note]
+MUTATING_FNS = [
+    write_file, edit_file, append_file, execute_shell_command, create_skill, rewrite_note,
+    # In-process document generation — writes a file to the workspace; a successful call is
+    # surfaced as a downloadable artifact by the chat layer.
+    create_document, create_spreadsheet, create_slides,
+]
 
 
 def _first_line(fn) -> str:

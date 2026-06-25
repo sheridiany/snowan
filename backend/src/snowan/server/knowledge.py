@@ -84,6 +84,7 @@ _EXPORT = {
     "md": ("text/markdown; charset=utf-8", "md"),
     "html": ("text/html; charset=utf-8", "html"),
     "docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"),
+    "pdf": ("application/pdf", "pdf"),
 }
 
 
@@ -93,9 +94,9 @@ def _attachment(filename: str) -> str:
 
 
 @router.get("/notes/{note_id}/export")
-def export_note(note_id: str, format: str = "md") -> Response:
+async def export_note(note_id: str, format: str = "md") -> Response:
     if format not in _EXPORT:
-        raise HTTPException(422, "format must be md|html|docx")
+        raise HTTPException(422, "format must be md|html|docx|pdf")
     note = knowledge.get_note(note_id)
     if note is None:
         raise HTTPException(404, "note not found")
@@ -105,6 +106,11 @@ def export_note(note_id: str, format: str = "md") -> Response:
         content: bytes = note["body"].encode("utf-8")
     elif format == "html":
         content = export.md_to_html_doc(title, note["body"]).encode("utf-8")
+    elif format == "pdf":
+        try:
+            content = await export.md_to_pdf(title, note["body"])
+        except RuntimeError as e:  # PDF engine (Chromium) unavailable in this build
+            raise HTTPException(503, str(e)) from e
     else:
         content = export.md_to_docx(title, note["body"])
     return Response(
