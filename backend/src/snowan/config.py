@@ -338,9 +338,10 @@ PREF_DEFAULTS: dict = {
     "profile": {"name": "", "location": "", "notes": ""},
     # web tools: provider for web_search + BYO keys. "duckduckgo" is keyless so the
     # tool works on first run with no setup.
-    "web_search_provider": "duckduckgo",  # duckduckgo | tavily | brave
+    "web_search_provider": "duckduckgo",  # duckduckgo | tavily | brave | exa
     "tavily_api_key": "",
     "brave_api_key": "",
+    "exa_api_key": "",  # Exa neural/semantic search — strong for research
     "jina_api_key": "",  # optional, higher r.jina.ai rate limit for web_fetch
     "disabled_tools": [],  # native tools the user turned off (by name)
     "memory_enabled": True,  # paused = stop saving/referencing long-term memory (data kept)

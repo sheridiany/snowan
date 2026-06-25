@@ -22,6 +22,7 @@ class PrefsPatch(BaseModel):
     web_search_provider: str | None = None
     tavily_api_key: str | None = None
     brave_api_key: str | None = None
+    exa_api_key: str | None = None
     jina_api_key: str | None = None
     disabled_tools: list[str] | None = None
     memory_enabled: bool | None = None

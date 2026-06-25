@@ -6,7 +6,8 @@ import { getPrefs, savePrefs, type Prefs } from '../../api/system';
 
 const PROVIDERS = [
   { value: 'duckduckgo', label: 'DuckDuckGo（免费 · 免 key）' },
-  { value: 'tavily', label: 'Tavily（推荐 · 每月 1000 次免费）' },
+  { value: 'exa', label: 'Exa（语义搜索 · 深度研究优选）' },
+  { value: 'tavily', label: 'Tavily（每月 1000 次免费）' },
   { value: 'brave', label: 'Brave（自带 key）' },
 ];
 
@@ -45,7 +46,7 @@ export default function SettingsWeb() {
     }
   };
 
-  const saveKey = (field: 'tavily_api_key' | 'brave_api_key' | 'jina_api_key') => async (val: string) => {
+  const saveKey = (field: 'tavily_api_key' | 'brave_api_key' | 'exa_api_key' | 'jina_api_key') => async (val: string) => {
     await savePrefs({ [field]: val } as Partial<Prefs>);
     setP((prev) => (prev ? { ...prev, [field]: val } : prev));
   };
@@ -67,6 +68,13 @@ export default function SettingsWeb() {
             />
           }
         />
+        {p?.web_search_provider === 'exa' && (
+          <Row
+            label="Exa API Key"
+            subtitle="在 dashboard.exa.ai 获取;语义搜索,适合深度研究"
+            control={<SecretField value={p.exa_api_key} onSave={saveKey('exa_api_key')} />}
+          />
+        )}
         {p?.web_search_provider === 'tavily' && (
           <Row
             label="Tavily API Key"

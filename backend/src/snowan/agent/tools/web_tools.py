@@ -57,6 +57,25 @@ def _brave(query: str, n: int, key: str) -> list[dict]:
     ]
 
 
+def _exa(query: str, n: int, key: str) -> list[dict]:
+    # Exa neural/semantic search; request a short text excerpt so each hit has a snippet.
+    r = httpx.post(
+        "https://api.exa.ai/search",
+        json={"query": query, "numResults": n, "contents": {"text": {"maxCharacters": 400}}},
+        headers={"x-api-key": key, "Content-Type": "application/json"},
+        timeout=20,
+    )
+    r.raise_for_status()
+    return [
+        {
+            "title": x.get("title") or x.get("url", ""),
+            "url": x.get("url", ""),
+            "snippet": (x.get("text") or x.get("summary") or "")[:300],
+        }
+        for x in r.json().get("results", [])[:n]
+    ]
+
+
 def _ddg(query: str, n: int) -> list[dict]:
     from ddgs import DDGS
 
@@ -76,7 +95,9 @@ def web_search(query: str, max_results: int = 5) -> str:
     # The EFFECTIVE provider: a keyless tavily/brave silently falls back to ddg, so
     # the cache must key on what actually ran — else adding a key later serves a
     # stale ddg result cached under "tavily".
-    if provider == "tavily" and prefs.get("tavily_api_key"):
+    if provider == "exa" and prefs.get("exa_api_key"):
+        effective = "exa"
+    elif provider == "tavily" and prefs.get("tavily_api_key"):
         effective = "tavily"
     elif provider == "brave" and prefs.get("brave_api_key"):
         effective = "brave"
@@ -86,7 +107,9 @@ def web_search(query: str, max_results: int = 5) -> str:
     if (c := _cached(key)) is not None:
         return c
     try:
-        if effective == "tavily":
+        if effective == "exa":
+            results = _exa(query, n, prefs["exa_api_key"])
+        elif effective == "tavily":
             results = _tavily(query, n, prefs["tavily_api_key"])
         elif effective == "brave":
             results = _brave(query, n, prefs["brave_api_key"])
