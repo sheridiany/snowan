@@ -31,6 +31,7 @@ from pydantic_ai.usage import UsageLimits
 from ..agent.build import build_agent
 from ..agent.mcp import build_toolsets
 from ..agent.sessions import delete_history, load_history, save_history
+from ..agent import auto_memory
 from .. import audit, memory, usage
 from ..config import load_prefs
 from ..extract import extract_text as _extract_text
@@ -389,6 +390,11 @@ async def _drive_once(
                 _active_runs.pop(session_id, None)
 
 
+# Strong refs to fire-and-forget background tasks (auto memory capture) so the
+# event loop doesn't GC them mid-run.
+_bg_tasks: set = set()
+
+
 async def _run_new(
     prompt: Any, history: list[ModelMessage], session_id: str, skill: str | None = None
 ) -> AsyncIterator[str]:
@@ -411,6 +417,12 @@ async def _run_new(
         prompt = [block, *prompt] if isinstance(prompt, list) else [block, prompt]
     async for chunk in _drive(session_id, prompt, history, skill=skill):
         yield chunk
+    # Passive "越用越懂你" capture: distill a few terse facts about the user into L2,
+    # off the response path (best-effort). L3 profile still only changes via approval.
+    if len(query) >= 4 and load_prefs().get("memory_enabled", True):
+        _t = asyncio.create_task(auto_memory.capture(session_id))
+        _bg_tasks.add(_t)
+        _t.add_done_callback(_bg_tasks.discard)
 
 
 async def _run_resume(
