@@ -102,6 +102,12 @@ bash "${BUILD_PYINSTALLER}"
 echo "PyInstaller backend built"
 echo ""
 
+# Trim babel's CLDR locale-data before signing (signing must seal the pruned tree).
+echo "== Step 1a: Pruning bundle (babel locale-data) =="
+bash "${SCRIPT_DIR}/prune_locale_data.sh" \
+    "${SRC_TAURI_DIR}/binaries/snowan-backend/_internal/babel/locale-data" || true
+echo ""
+
 echo "== Step 1b: Signing PyInstaller Backend =="
 bash "${SIGN_MACOS_BUNDLE}" \
     "${SRC_TAURI_DIR}/binaries/snowan-backend" \

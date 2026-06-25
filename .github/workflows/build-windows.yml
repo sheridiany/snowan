@@ -11,6 +11,8 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
+    permissions:
+      contents: write  # upload the on-demand runtime archives to the runtimes-v1 release
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +49,10 @@ jobs:
           if (Test-Path frontend/src-tauri/binaries/snowan-backend) { Remove-Item -Recurse -Force frontend/src-tauri/binaries/snowan-backend }
           Copy-Item -Recurse -Force dist/pyinstaller/snowan-backend frontend/src-tauri/binaries/snowan-backend
           if (-not (Test-Path frontend/src-tauri/binaries/snowan-backend/snowan-backend.exe)) { throw "backend exe missing" }
+
+      - name: Prune bundle (babel locale-data)
+        shell: bash
+        run: bash frontend/src-tauri/scripts/prune_locale_data.sh frontend/src-tauri/binaries/snowan-backend/_internal/babel/locale-data || true
 
       # 2) Build the Tauri app -> NSIS (.exe) + MSI installers
       - name: Build Tauri app

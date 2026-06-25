@@ -55,7 +55,7 @@ hiddenimports = [
 # unpacked into ~/.snowan/runtimes and put on sys.path. tokenizers/huggingface_hub/tqdm
 # stay (shared by other features).
 for _pkg in (
-    "tokenizers", "huggingface_hub", "tqdm",
+    "huggingface_hub", "tqdm",
 ):
     _d, _b, _h = collect_all(_pkg)
     datas += _d
@@ -120,6 +120,8 @@ analysis = Analysis(
         # on sys.path (see runtimes.py). Kept out of the base app to keep it small.
         "onnxruntime", "fastembed",          # 语义检索
         "faster_whisper", "ctranslate2", "av",  # 语音转写 (av pulls the heavy ffmpeg dylibs)
+        "tokenizers",  # only the on-demand runtimes use it (their tarballs carry their own)
+        "hf_xet",      # huggingface_hub's optional xet download accelerator; base never fetches from HF
         "pandas", "matplotlib",  # analyze-data 技能跑 shell python;冻结副本从未被 import
         # GUI / dev-only stdlib the backend never touches.
         "tkinter", "_tkinter", "turtle", "turtledemo", "idlelib", "lib2to3", "pydoc_data",
