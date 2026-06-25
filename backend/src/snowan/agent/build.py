@@ -7,7 +7,7 @@ from .. import skills as skills_store
 from ..config import load_prefs, load_settings
 from .providers import build_model, cache_settings
 from .tools.file_tools import append_file, edit_file, read_file, write_file
-from .tools.doc_tools import create_document, create_slides, create_spreadsheet
+from .tools.doc_tools import create_document, create_slides, create_spreadsheet, read_table
 from .tools.calendar_tools import upcoming_events
 from .tools.daily_tools import daily_note
 from .tools.knowledge_tools import knowledge_search
@@ -41,6 +41,9 @@ workspace 的 uploads/ 下,需要完整数据(如逐格读 Excel)时直接用其
 READONLY_FNS = [
     get_current_time,
     read_file,
+    # read_table reads a workspace spreadsheet (.xlsx/.csv) fully — values + formulas +
+    # structure — in-process; read-only, so it auto-runs.
+    read_table,
     grep_search,
     glob_search,
     knowledge_search,

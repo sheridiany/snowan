@@ -1,12 +1,82 @@
-"""In-process document generation for the agent: Word / PDF / HTML / Markdown,
-Excel and PowerPoint — built with the bundled office libs (and Chromium for PDF),
-so it works the same in dev and in the packaged app (no shelling out to a system
-`python`). Each tool writes the file into the workspace and returns its path; the
-chat layer surfaces a successful call as a downloadable artifact card."""
+"""In-process spreadsheet/document tools for the agent: READ tabular files completely
+(read_table — every sheet, every cell's value AND formula, merged ranges) and PRODUCE
+Word / PDF / HTML / Markdown / Excel / PowerPoint — all with the bundled office libs, so
+it works the same in dev and the packaged app (no shelling out to a system `python`, no
+`pip install`). read_table is read-only; each create_* writes a workspace file and the
+chat layer surfaces it as a downloadable artifact card."""
 from pydantic import BaseModel
 
 from ...export import _filename, md_to_docx, md_to_html_doc, md_to_pdf, outline_to_pptx, rows_to_xlsx
 from ...workspace import resolve_in_workspace
+
+_MAX_CELL = 200  # truncate any single cell's text in the dump
+
+
+def _cell(v) -> str:
+    s = "" if v is None else str(v)
+    return s[:_MAX_CELL] + "…" if len(s) > _MAX_CELL else s
+
+
+def read_table(path: str, sheet: str | None = None, max_rows: int = 500) -> str:
+    """完整读取工作区里的表格(.xlsx/.xlsm/.csv):列出每个 sheet 的维度、合并区、逐行的单元格值,以及
+    带公式单元格的公式原文。分析/对比/按模板重排前,**先用它把上传的原件读全**(含公式、多个 sheet),
+    不要用临时 shell 脚本或 pip 装包去读。path 用附件块里给的 uploads/… 路径;sheet 只读某一页;
+    max_rows 限制每页行数(默认 500)。"""
+    try:
+        p = resolve_in_workspace(path)
+    except ValueError:
+        return f"error: 路径越界:{path}"
+    if not p.exists():
+        return f"error: 文件不存在:{path}(用附件块里标注的 uploads/… 路径)"
+    ext = p.suffix.lower()
+    if ext == ".csv":
+        try:
+            import csv as _csv
+
+            with p.open("r", encoding="utf-8-sig", newline="") as f:
+                rows = list(_csv.reader(f))
+        except Exception as e:  # noqa: BLE001
+            return f"error: 读取 CSV 失败:{e}"
+        out = [f"CSV {p.name} — {len(rows)} 行"]
+        for i, r in enumerate(rows[:max_rows]):
+            out.append(f"{i + 1} | " + " | ".join(_cell(c) for c in r))
+        if len(rows) > max_rows:
+            out.append(f"…(共 {len(rows)} 行,超过 {max_rows} 已截断)")
+        return "\n".join(out)
+    if ext not in (".xlsx", ".xlsm"):
+        return f"error: 暂不支持 {ext}(支持 .xlsx/.xlsm/.csv)"
+    try:
+        import openpyxl
+
+        wb_v = openpyxl.load_workbook(p, data_only=True)   # Excel-cached computed values
+        wb_f = openpyxl.load_workbook(p, data_only=False)  # formulas
+    except Exception as e:  # noqa: BLE001
+        return f"error: 打开工作簿失败:{e}"
+    names = [sheet] if sheet else wb_f.sheetnames
+    out = [f"工作簿 {p.name} — sheets({len(wb_f.sheetnames)}): {wb_f.sheetnames}"]
+    for nm in names:
+        if nm not in wb_f.sheetnames:
+            out.append(f"\n[sheet「{nm}」不存在]")
+            continue
+        wf, wv = wb_f[nm], wb_v[nm]
+        merged = [str(r) for r in wf.merged_cells.ranges]
+        out.append(f"\n## sheet「{nm}」 dims={wf.dimensions} 合并区={merged or '无'}")
+        formulas = []
+        for i, (rf, rv) in enumerate(zip(wf.iter_rows(), wv.iter_rows())):
+            if i >= max_rows:
+                out.append(f"…(超过 {max_rows} 行已截断)")
+                break
+            vals = [_cell(c.value) for c in rv]
+            while vals and vals[-1] == "":
+                vals.pop()
+            if vals:
+                out.append(f"{i + 1} | " + " | ".join(vals))
+            for c in rf:
+                if isinstance(c.value, str) and c.value.startswith("="):
+                    formulas.append(f"{c.coordinate}: {c.value}")
+        if formulas:
+            out.append("公式: " + " ; ".join(formulas[:300]))
+    return "\n".join(out)
 
 
 class SheetSpec(BaseModel):
