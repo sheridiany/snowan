@@ -62,3 +62,32 @@ jobs:
             frontend/src-tauri/target/release/bundle/nsis/*.exe
             frontend/src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
+
+      # 3) Package the on-demand ML runtimes for Windows (NOT bundled in the app — the
+      # app downloads them from the runtimes-v1 release on request; see runtimes.py) and
+      # publish them to that release so Windows users can fetch them.
+      - name: Package + publish Windows runtimes
+        working-directory: backend
+        shell: bash
+        env:
+          UV_PYTHON_PREFERENCE: only-system
+          UV_PYTHON: '3.12'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          gh release view runtimes-v1 -R "${{ github.repository }}" >/dev/null 2>&1 || \
+            gh release create runtimes-v1 -R "${{ github.repository }}" \
+              --title "Snowan on-demand runtimes (v1)" \
+              --notes "Per-platform ML runtimes downloaded on demand by the app." \
+              --target "$GITHUB_SHA"
+          for feat in embed voice; do
+            case "$feat" in
+              embed) pkgs="onnxruntime fastembed" ;;
+              voice) pkgs="faster-whisper" ;;
+            esac
+            rm -rf rt && uv pip install --target rt $pkgs
+            find rt -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
+            tar -czf "snowan-${feat}-windows-x64.tar.gz" -C rt .
+            gh release upload runtimes-v1 "snowan-${feat}-windows-x64.tar.gz" \
+              --clobber -R "${{ github.repository }}"
+          done
