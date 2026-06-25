@@ -74,12 +74,20 @@ if [ ! -f "${SIGN_MACOS_BUNDLE}" ]; then
 fi
 
 if [ -z "${APPLE_SIGNING_IDENTITY:-}" ] && [ -z "${APPLE_CERTIFICATE:-}" ]; then
-    # The Tauri app and PyInstaller backend are native Mach-O executables. With
-    # no Developer ID certificate configured, keep their signature state
-    # consistent with ad-hoc signatures: signed enough for local loading, not
-    # notarized.
-    export APPLE_SIGNING_IDENTITY="-"
-    echo "Using ad-hoc macOS code signing"
+    # macOS 15+ (and especially macOS 26) kills ad-hoc-signed apps with SIGKILL on a
+    # fresh Finder double-click ("icon bounces then quits"); launching via `open` from a
+    # trusted terminal sidesteps it. A real signature (Developer ID or Apple Development)
+    # from the login keychain is trusted by AMFI, so the app launches normally. Auto-pick
+    # one if present; fall back to ad-hoc on machines without a cert (CI, a friend's box).
+    _found_id=$(security find-identity -v -p codesigning 2>/dev/null \
+        | awk -F'"' '/Developer ID Application|Apple Development/ {print $2; exit}')
+    if [ -n "${_found_id}" ]; then
+        export APPLE_SIGNING_IDENTITY="${_found_id}"
+        echo "Using local code-signing identity: ${_found_id}"
+    else
+        export APPLE_SIGNING_IDENTITY="-"
+        echo "Using ad-hoc macOS code signing"
+    fi
 fi
 if [ -z "${PYINSTALLER_CODESIGN_IDENTITY:-}" ]; then
     # PyInstaller uses the same identity as the final app for bundled Mach-O
