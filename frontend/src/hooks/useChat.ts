@@ -105,6 +105,11 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
   // A session's title is its first message, truncated to fit the list row.
   const titleFrom = (text: string) => (text.length > 24 ? text.slice(0, 24) + '…' : text);
 
+  // Tools the user approved "for this session" (per session id) auto-run on later calls
+  // without re-prompting; autoIds queues those call ids to resume after the stream ends.
+  const trustedRef = useRef<Map<string, Set<string>>>(new Map());
+  const autoIds = useRef<string[]>([]);
+
   // Streamed events patch the trailing assistant message identically whether they
   // arrive from the initial turn or from an approval continuation.
   const streamHandlers: ChatHandlers = {
@@ -113,13 +118,18 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
       patchAssistant((b) => upsertTool(b, call.id, { name: call.name, args: call.args })),
     onToolResult: (res) =>
       patchAssistant((b) => upsertTool(b, res.id, { name: res.name, result: res.result })),
-    onApprovalRequired: (calls) =>
+    onApprovalRequired: (calls) => {
       patchAssistant((b) =>
         calls.reduce(
           (acc, c) => upsertTool(acc, c.id, { name: c.name, args: c.args, approval: 'pending' }),
           b,
         ),
-      ),
+      );
+      const trusted = trustedRef.current.get(activeId);
+      if (trusted && calls.length > 0 && calls.every((c) => trusted.has(c.name))) {
+        autoIds.current.push(...calls.map((c) => c.id)); // resumed automatically after this stream
+      }
+    },
     onArtifact: (a) =>
       patchAssistant((b) => [...b, { kind: 'artifact', path: a.path, title: a.title }]),
     onDiagram: (d) =>
@@ -129,6 +139,30 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
 
   const abortRef = useRef<AbortController | null>(null);
   const stop = () => abortRef.current?.abort();
+
+  // Resume tool calls the user trusted for this session (looping, since a resume can
+  // surface more trusted calls), marking the rows approved so no prompt is shown.
+  const drainAuto = async () => {
+    if (autoIds.current.length === 0) return;
+    const ids = autoIds.current;
+    autoIds.current = [];
+    setActiveMessages((prev) =>
+      prev.map((m) => ({
+        ...m,
+        blocks: m.blocks.map((b) =>
+          b.kind === 'tool' && b.step.approval === 'pending' && ids.includes(b.step.id)
+            ? { kind: 'tool', step: { ...b.step, approval: 'approved' } }
+            : b,
+        ),
+      })),
+    );
+    try {
+      await approveChat(activeId, Object.fromEntries(ids.map((id) => [id, true])), streamHandlers);
+    } catch (e) {
+      showError((e as Error).message);
+    }
+    await drainAuto();
+  };
 
   const send = async (text: string, attachments: ApiAttachment[] = [], skill?: string) => {
     setBusy(true);
@@ -152,6 +186,7 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     abortRef.current = ctrl;
     try {
       await streamChat(text, sid, attachments, streamHandlers, ctrl.signal, skill);
+      await drainAuto();
     } catch (e) {
       showError((e as Error).message);
     } finally {
@@ -162,12 +197,19 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
 
   // A paused turn answers all its pending tool calls in one resume, so the
   // decision applies to every pending row in that message at once.
-  const approve = async (messageIndex: number, decision: boolean) => {
+  const approve = async (messageIndex: number, decision: boolean, trust = false) => {
     const message = messages[messageIndex];
-    const pendingIds = (message?.blocks ?? [])
-      .filter((b): b is Extract<Block, { kind: 'tool' }> => b.kind === 'tool' && b.step.approval === 'pending')
-      .map((b) => b.step.id);
+    const pendingBlocks = (message?.blocks ?? []).filter(
+      (b): b is Extract<Block, { kind: 'tool' }> => b.kind === 'tool' && b.step.approval === 'pending',
+    );
+    const pendingIds = pendingBlocks.map((b) => b.step.id);
     if (pendingIds.length === 0) return;
+    // "Allow for this session": trust these tool names so later calls auto-run.
+    if (trust && decision) {
+      const set = trustedRef.current.get(activeId) ?? new Set<string>();
+      for (const b of pendingBlocks) set.add(b.step.name);
+      trustedRef.current.set(activeId, set);
+    }
 
     const decisions: Record<string, boolean> = {};
     for (const id of pendingIds) decisions[id] = decision;
@@ -190,6 +232,7 @@ export function useChat(activeId: string, onTitle?: (id: string, title: string) 
     setBusy(true);
     try {
       await approveChat(activeId, decisions, streamHandlers);
+      await drainAuto();
     } catch (e) {
       showError((e as Error).message);
     } finally {

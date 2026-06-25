@@ -81,7 +81,7 @@ export default function ApprovalCard({
   onDecide,
 }: {
   count: number;
-  onDecide: (approve: boolean) => void;
+  onDecide: (approve: boolean, trust?: boolean) => void;
 }) {
   const { styles } = useStyles();
   return (
@@ -105,6 +105,14 @@ export default function ApprovalCard({
               onClick={() => onDecide(true)}
             >
               允许
+            </Button>
+            <Button
+              className={styles.approve}
+              size="small"
+              title="本会话内同类操作不再询问"
+              onClick={() => onDecide(true, true)}
+            >
+              本会话允许
             </Button>
             <Button className={styles.reject} size="small" onClick={() => onDecide(false)}>
               拒绝

@@ -439,7 +439,7 @@ const ArtifactCard = memo(function ArtifactCard({ path, title }: { path: string;
 type Props = {
   messages: Message[];
   busy?: boolean;
-  onApprovalDecision?: (messageIndex: number, approve: boolean) => void;
+  onApprovalDecision?: (messageIndex: number, approve: boolean, trust?: boolean) => void;
   onSaveNote?: (messageIndex: number) => void;
   onPickPrompt?: (text: string) => void;
 };
@@ -621,7 +621,7 @@ export default function ChatView({
                     <div className={styles.tool}>
                       <ApprovalCard
                         count={pending}
-                        onDecide={(approve) => onApprovalDecision?.(i, approve)}
+                        onDecide={(approve, trust) => onApprovalDecision?.(i, approve, trust)}
                       />
                     </div>
                   )}
