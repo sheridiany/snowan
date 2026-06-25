@@ -5,6 +5,7 @@ is_ready(); the only place that triggers a download is the explicit download()."
 import threading
 from pathlib import Path
 
+from . import runtimes
 from .config import SNOWAN_HOME
 
 MODEL_NAME = "small"  # multilingual; good on Chinese, CPU int8
@@ -20,6 +21,7 @@ _lock = threading.Lock()
 def _build():
     global _model
     if _model is None:
+        runtimes.add_to_path()  # the voice runtime is an on-demand download, not bundled
         from faster_whisper import WhisperModel
 
         _model = WhisperModel(
@@ -31,7 +33,7 @@ def _build():
 def is_ready() -> bool:
     """Whether the Whisper weights are fully present locally — no network call. False
     while a download is in flight, so a recording never loads a half-written model."""
-    if _downloading or not CACHE_DIR.exists():
+    if _downloading or not runtimes.is_installed("voice") or not CACHE_DIR.exists():
         return False
     return any(CACHE_DIR.rglob("model.bin"))
 

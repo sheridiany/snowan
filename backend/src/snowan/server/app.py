@@ -8,6 +8,12 @@ load_dotenv()  # before the agent reads provider settings
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
+from .. import runtimes  # noqa: E402
+
+# On-demand ML runtimes (semantic search, voice) live outside the bundle; put any the
+# user has already downloaded on sys.path before anything tries to import them.
+runtimes.add_to_path()
+
 from .calendar import router as calendar_router  # noqa: E402
 from .chat import router  # noqa: E402
 from .imagegen import router as imagegen_router  # noqa: E402

@@ -11,6 +11,7 @@ from functools import lru_cache
 
 import numpy as np
 
+from . import runtimes
 from .config import SNOWAN_HOME
 
 MODEL_ID = "BAAI/bge-small-zh-v1.5"  # 512-dim, strong on Chinese
@@ -24,6 +25,7 @@ _lock = threading.Lock()
 
 @lru_cache(maxsize=1)
 def _model():
+    runtimes.add_to_path()  # the embed runtime is an on-demand download, not bundled
     from fastembed import TextEmbedding
 
     return TextEmbedding(model_name=MODEL_ID, cache_dir=str(CACHE_DIR))
@@ -34,7 +36,7 @@ def is_ready() -> bool:
     Requires both the onnx weights and the tokenizer (not just a half-written .onnx),
     and reports not-ready while a download is in flight, so a concurrent embed never
     loads an incomplete model."""
-    if _downloading or not CACHE_DIR.exists():
+    if _downloading or not runtimes.is_installed("embed") or not CACHE_DIR.exists():
         return False
     return any(CACHE_DIR.rglob("*.onnx")) and any(CACHE_DIR.rglob("tokenizer*.json"))
 

@@ -50,11 +50,12 @@ hiddenimports = [
 
 # Packages that load native libs, data files, or submodules by name at runtime.
 # collect_all pulls binaries + datas + hidden submodules + metadata in one shot.
-# faster_whisper/ctranslate2/av power local speech-to-text (transcribe.py) — they load
-# native libs (libctranslate2, ffmpeg) so they need collect_all, not just hiddenimports.
+# Semantic-search (onnxruntime/fastembed) and voice (faster_whisper/ctranslate2/av +
+# ffmpeg) runtimes are NOT bundled — they're on-demand downloads (see runtimes.py),
+# unpacked into ~/.snowan/runtimes and put on sys.path. tokenizers/huggingface_hub/tqdm
+# stay (shared by other features).
 for _pkg in (
-    "onnxruntime", "fastembed", "tokenizers", "huggingface_hub", "tqdm",
-    "faster_whisper", "ctranslate2", "av",
+    "tokenizers", "huggingface_hub", "tqdm",
 ):
     _d, _b, _h = collect_all(_pkg)
     datas += _d
@@ -114,7 +115,11 @@ analysis = Analysis(
     # them), so dropping them here keeps the app booting — the feature only errors if
     # actually invoked. Re-enable a feature by deleting its line and rebuilding.
     excludes=[
-        "playwright",  # browse 工具 (agent/tools/browse_tools.py) — needs runtime browsers anyway
+        "playwright",  # browse 工具已移除
+        # On-demand ML runtimes — downloaded from Settings into ~/.snowan/runtimes and put
+        # on sys.path (see runtimes.py). Kept out of the base app to keep it small.
+        "onnxruntime", "fastembed",          # 语义检索
+        "faster_whisper", "ctranslate2", "av",  # 语音转写 (av pulls the heavy ffmpeg dylibs)
         "pandas", "matplotlib",  # analyze-data 技能跑 shell python;冻结副本从未被 import
         # GUI / dev-only stdlib the backend never touches.
         "tkinter", "_tkinter", "turtle", "turtledemo", "idlelib", "lib2to3", "pydoc_data",

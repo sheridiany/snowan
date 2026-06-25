@@ -132,6 +132,12 @@ bash "${SIGN_MACOS_BUNDLE}" \
 echo "Final macOS app signed and verified"
 echo ""
 
+# Step 4: package the on-demand ML runtimes (excluded from the app to keep it small;
+# downloaded from Settings into ~/.snowan/runtimes at the user's request — see runtimes.py).
+echo "== Step 4: Packaging on-demand runtimes =="
+bash "${SCRIPT_DIR}/package_runtimes.sh"
+echo ""
+
 echo "========================================="
 echo "Build Complete!"
 echo "========================================="
