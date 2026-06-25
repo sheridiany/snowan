@@ -14,8 +14,9 @@ description: 生成幻灯片模式——把主题或内容做成结构清晰、�
 1. **定大纲**。把内容拆成 8–16 页:封面 → 分节 →(主体每页一个要点)→ 金句/结论 → 收尾。先把提纲(每页标题 + 1–3 个要点)给用户看一眼;主题清楚的可直接做。素材不够就先 `web_search` / `web_fetch` 或读用户给的附件/笔记。
 2. **取构建器**。`read_skill_resource("make-slides", "deck.py")` 拿到代码,用 `write_file` 原样写到 workspace 的 `deck.py`(**别改它**)。
 3. **写脚本**。`write_file` 写一个 `make_deck.py`:`from deck import Deck`,按大纲调下面的版式函数建每页,最后 `d.save("<主题>.pptx")`。
-4. **生成 + 自查**。`execute_shell_command` 跑 `python make_deck.py`;报错就读报错、改脚本、重跑,直到文件生成成功。
-5. **展示**。`present_artifact(path, title)` 把 `.pptx` 作为可下载成果展示,并在回复里用文字概述每页讲了什么。
+4. **生成 + 自查**。`execute_shell_command` 跑 `python make_deck.py`;报错就读报错、改脚本、重跑,直到文件生成成功。生成后**回看一遍**:页数是否合理、有没有一页塞太多、深浅页是否交替、标题是否写成了观点。
+   - **兜底**:若环境缺 `python-pptx` 等导致 deck.py 始终跑不通,改用进程内的 `create_slides(title, slides)` 至少先产出可用 `.pptx`(样式较朴素,但稳),别让用户拿不到文件。
+5. **展示**。deck.py 路径生成的用 `present_artifact(path, title)` 展示(`create_slides` 会自动展示);并在回复里用文字概述每页讲了什么。
 
 ## deck.py API
 
