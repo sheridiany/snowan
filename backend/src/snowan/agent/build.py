@@ -19,7 +19,6 @@ from .tools.artifact_tools import present_artifact
 from .tools.diagram_tools import render_diagram
 from .tools.time_tools import get_current_time
 from .tools.web_tools import web_fetch, web_search
-from .tools.browse_tools import browse
 
 INSTRUCTIONS = """You are Snowan, a local-first personal AI assistant and knowledge \
 workbench. Be concise and direct. Use tools when they help; otherwise just answer. \
@@ -60,12 +59,9 @@ READONLY_FNS = [
     # render_diagram renders an inline SVG to the chat — pure presentation, auto-runs.
     render_diagram,
 ]
-# browse renders arbitrary pages in a real (sandboxed) headless browser — same
-# threat class as web_fetch, but gated per the agreed design. Move it to
-# READONLY_FNS to let it auto-run during research.
 # rewrite_note overwrites an existing note's body wholesale, so it's gated like the other
 # overwriting tools rather than auto-running.
-MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill, browse, rewrite_note]
+MUTATING_FNS = [write_file, edit_file, append_file, execute_shell_command, create_skill, rewrite_note]
 
 
 def _first_line(fn) -> str:

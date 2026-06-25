@@ -20,7 +20,6 @@ dependencies = [
     "ddgs>=9.14.4",
     "feedparser>=6.0.12",
     "nh3>=0.3.5",
-    "playwright>=1.60.0",
     "faster-whisper>=1.2.1",
 ]
 
