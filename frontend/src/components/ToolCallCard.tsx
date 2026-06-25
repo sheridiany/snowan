@@ -8,6 +8,41 @@ import { useUiPref } from '../hooks/useUiPrefs';
 import { EASING } from '../ui/motion';
 import type { ToolStep } from './types';
 
+// Human labels for the agent's tools, so a row reads "运行命令 ls -la" instead of the
+// raw function name. Falls back to the raw name for anything unmapped.
+const TOOL_LABELS: Record<string, string> = {
+  read_file: '读取文件',
+  write_file: '写入文件',
+  edit_file: '编辑文件',
+  append_file: '追加内容',
+  execute_shell_command: '运行命令',
+  grep_search: '搜索内容',
+  glob_search: '查找文件',
+  knowledge_search: '搜索知识库',
+  read_table: '读取表格',
+  create_document: '生成文档',
+  create_spreadsheet: '生成表格',
+  create_slides: '生成幻灯片',
+  save_note: '保存笔记',
+  read_note: '读取笔记',
+  append_note: '追加笔记',
+  rewrite_note: '整理笔记',
+  daily_note: '日志',
+  upcoming_events: '查看日程',
+  get_current_time: '当前时间',
+  recall_memory: '回忆',
+  remember: '记忆',
+  web_search: '联网搜索',
+  web_fetch: '抓取网页',
+  load_skill: '加载技能',
+  read_skill_resource: '读取技能',
+  create_skill: '创建技能',
+  present_artifact: '生成文件',
+  render_diagram: '生成图示',
+};
+
+export const toolLabel = (name: string) => TOOL_LABELS[name] ?? name;
+
 const useStyles = createStyles(({ token, css }) => ({
   row: css`
     position: relative;
@@ -239,7 +274,7 @@ export default function ToolCallCard({ step }: { step: ToolStep }) {
           {done && <Check size={14} className={styles.done} />}
           {denied && <X size={14} className={styles.denied} />}
         </span>
-        <Text className={styles.name}>{step.name}</Text>
+        <Text className={styles.name}>{toolLabel(step.name)}</Text>
         {richDesc && summary && <span className={styles.summary}>{summary}</span>}
         {pending && (
           <span className={styles.badge}>

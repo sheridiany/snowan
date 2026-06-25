@@ -3,7 +3,7 @@ import { Text } from '@lobehub/ui';
 import { createStyles } from 'antd-style';
 import { Check, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import ToolCallCard, { summarize } from './ToolCallCard';
+import ToolCallCard, { summarize, toolLabel } from './ToolCallCard';
 import StatusBadge from '../ui/StatusBadge';
 import { EASING } from '../ui/motion';
 import type { ToolStep } from './types';
@@ -130,7 +130,7 @@ export default function ToolGroup({ steps }: { steps: ToolStep[] }) {
           )}
         </span>
         {allSame ? (
-          <Text className={styles.name}>{steps[0].name}</Text>
+          <Text className={styles.name}>{toolLabel(steps[0].name)}</Text>
         ) : (
           <Text className={styles.name}>工具调用</Text>
         )}
