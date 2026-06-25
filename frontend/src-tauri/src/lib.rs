@@ -20,11 +20,11 @@ pub fn run() {
             // the collapse/back/forward buttons. Our own titlebar carries the
             // drag region, so we skip create_overlay_titlebar() entirely.
             //
-            // Inset tuned by eye against the 44px titlebar icon row.
+            // Inset tuned by eye against the 40px titlebar icon row.
             #[cfg(target_os = "macos")]
             {
                 let win = app.get_webview_window("main").unwrap();
-                win.set_traffic_lights_inset(16.0, 20.0).unwrap();
+                win.set_traffic_lights_inset(16.0, 18.0).unwrap();
             }
             // Windows has no traffic-light overlay; the config keeps decorations ON for
             // macOS's Overlay titleBarStyle, so strip the native frame here and let our

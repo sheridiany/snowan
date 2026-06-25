@@ -109,22 +109,23 @@ const useStyles = createStyles(({ token, css }) => ({
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 16px 18px;
-    border-radius: ${token.borderRadiusLG}px;
+    padding: 13px 16px;
+    border-radius: ${token.borderRadius}px;
     background: ${token.colorBgContainer};
-    box-shadow: ${token.boxShadowTertiary};
+    border: 1px solid ${token.colorBorder};
     text-align: left;
     cursor: pointer;
     transition:
-      box-shadow ${EASING.standard} 0.18s,
+      border-color ${EASING.standard} 0.18s,
       background ${EASING.standard} 0.18s;
     &:hover {
-      background: ${token.colorBgElevated};
-      box-shadow: ${token.boxShadowSecondary};
+      background: ${token.colorFillQuaternary};
+      border-color: ${token.colorTextQuaternary};
     }
     &:focus-visible {
       outline: none;
-      box-shadow: ${token.boxShadowTertiary}, 0 0 0 3px ${token.colorBrandGlow};
+      border-color: ${token.colorPrimaryBorder};
+      box-shadow: 0 0 0 2px ${token.colorBrandGlow};
     }
   `,
   promptIcon: css`

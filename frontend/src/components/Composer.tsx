@@ -54,28 +54,15 @@ const useStyles = createStyles(({ token, css }) => ({
     flex-direction: column;
     gap: 8px;
     padding: 12px 12px 10px;
-    border-radius: 16px;
-    background: ${token.colorGlassBg};
-    backdrop-filter: blur(${token.glassBlur});
-    -webkit-backdrop-filter: blur(${token.glassBlur});
-    border: 1px solid ${token.colorGlassBorder};
-    box-shadow: ${token.shadowGlass};
-    transition: border-color 0.2s ${EASING.standard}, box-shadow 0.2s ${EASING.standard},
-      transform 0.2s ${EASING.standard};
-    &:hover {
-      transform: translateY(-1px);
-    }
+    border-radius: 12px;
+    background: ${token.colorBgContainer};
+    border: 1px solid ${token.colorBorder};
+    transition: border-color 0.2s ${EASING.standard}, box-shadow 0.2s ${EASING.standard};
     /* The active-input affordance is scoped to the textarea (see .ta), so opening a
-       dropdown or clicking a bottom-row control doesn't lift/ring the whole card. */
+       dropdown or clicking a bottom-row control doesn't ring the whole card. */
     &:has(textarea:focus) {
       border-color: ${token.colorPrimaryBorder};
-      box-shadow: ${token.shadowGlass}, 0 0 0 3px ${token.colorBrandGlow};
-    }
-    @media (prefers-reduced-motion: reduce) {
-      transition: border-color 0.2s ${EASING.standard}, box-shadow 0.2s ${EASING.standard};
-      &:hover {
-        transform: none;
-      }
+      box-shadow: 0 0 0 2px ${token.colorBrandGlow};
     }
   `,
   dragging: css`

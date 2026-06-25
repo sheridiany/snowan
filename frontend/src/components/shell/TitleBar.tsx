@@ -1,10 +1,10 @@
 import { createStyles, cx } from 'antd-style';
 import { Tooltip } from 'antd';
-import { ChevronLeft, Copy, Minus, Square, X } from 'lucide-react';
+import { ChevronLeft, Copy, Minus, Plus, Square, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { PanelLeftRounded, PanelRightRounded, SquarePenRounded } from './craftIcons';
+import { PanelLeftRounded, PanelRightRounded } from './craftIcons';
 import { EASING } from '../../ui/motion';
 import { TYPE } from '../../theme/themes';
 
@@ -257,7 +257,7 @@ export default function TitleBar({
       style={{ paddingLeft: IS_MAC ? 78 : 10, paddingRight: IS_MAC ? 10 : 0 }}
     >
       <Btn icon={<PanelLeftRounded size={18} />} label="折叠侧栏" onClick={onToggleNav} />
-      <Btn icon={<SquarePenRounded size={17} />} label="新建对话" onClick={onNewChat} />
+      <Btn icon={<Plus size={19} strokeWidth={2} />} label="新建对话" onClick={onNewChat} />
       {canBack && (
         <Btn
           icon={<ChevronLeft size={18} strokeWidth={1.5} />}
